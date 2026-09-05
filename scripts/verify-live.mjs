@@ -5,7 +5,7 @@ import { chromium } from "playwright";
 const url = "https://r4ndom4is.github.io/trumpet/";
 const browser = await chromium.launch();
 try {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, colorScheme: "dark" });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
@@ -32,17 +32,41 @@ try {
     const png = await image.body();
     assert.equal(`${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`, icon.sizes);
   }
+  for (const viewport of [
+    { width: 320, height: 568 }, { width: 375, height: 667 },
+    { width: 390, height: 844 }, { width: 667, height: 375 }
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.waitForTimeout(80);
+    assert.equal(await page.evaluate(() => {
+      const canvas = document.getElementById("game").getBoundingClientRect();
+      const play = document.getElementById("play").getBoundingClientRect();
+      return document.documentElement.scrollHeight <= innerHeight && document.documentElement.scrollWidth <= innerWidth &&
+        canvas.top >= 0 && canvas.bottom <= innerHeight && play.top >= 0 && play.bottom <= innerHeight;
+    }), true, `Live mobile viewport must fit ${viewport.width}x${viewport.height}`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator("#theme-switch").click();
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
   await mkdir(new URL("../test-results/", import.meta.url), { recursive: true });
   await page.screenshot({ path: "test-results/live-mobile.png", fullPage: true });
   await context.setOffline(true);
   await page.reload();
   await page.waitForFunction(() => document.getElementById("app-status").textContent === "Offline. Ready to fly.");
   assert.equal(await page.evaluate(() => navigator.onLine), false);
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
   await page.locator("#play").tap();
   assert.equal(await page.locator("#overlay").isHidden(), true);
+  await page.locator("#manual-open").tap();
+  assert.equal(await page.locator("#title").innerText(), "TAKE A BREATHER");
+  assert.match(await page.locator("#manual").innerText(), /Less panic. More rhythm./);
+  await page.waitForTimeout(600);
+  await page.locator("#manual-close").tap();
+  assert.equal(await page.locator("#title").innerText(), "TAKE A BREATHER");
+  await page.locator("#play").tap();
   await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?");
   assert.equal(await page.locator("#crash-shot").isVisible(), true);
   await page.screenshot({ path: "test-results/live-offline-retry.png", fullPage: true });
   assert.deepEqual(errors, []);
-  console.log(`Live HTTPS app, matching source, manifest/icons, installability and offline gameplay verified: ${url}`);
+  console.log(`Live HTTPS app, matching source, viewport fit, remembered theme, manual, manifest/icons, installability and offline gameplay verified: ${url}`);
 } finally { await browser.close(); }

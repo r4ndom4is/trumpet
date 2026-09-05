@@ -133,6 +133,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       }
       for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
         await page.setViewportSize(viewport);
+        await page.waitForTimeout(60);
         const fits = await page.evaluate(() => {
           document.querySelector(".dialog").scrollTop = 0;
           const image = document.getElementById("crash-image").getBoundingClientRect();
@@ -189,6 +190,141 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await context.close();
     });
 
+    await t.test("screen-fitting mobile arcade, modal focus and orientation preserve the full game", async () => {
+      for (const installed of [false, true]) {
+        const context = await browser.newContext({ serviceWorkers: "block", hasTouch: true });
+        await context.addInitScript(installed => {
+          window.requestAnimationFrame = () => 1;
+          if (installed) Object.defineProperty(navigator, "standalone", { value: true });
+        }, installed);
+        const page = await context.newPage();
+        for (const viewport of [
+          { width: 320, height: 568 }, { width: 375, height: 667 },
+          { width: 390, height: 844 }, { width: 667, height: 375 }
+        ]) {
+          await page.setViewportSize(viewport);
+          await page.goto(fixture);
+          for (const state of ["ready", "playing", "paused", "over"]) {
+            await page.evaluate(state => {
+              const game = window.__flight;
+              if (state === "playing") game.start();
+              if (state === "paused") game.pause();
+              if (state === "over") { game.start(); game.scenario(464); game.die(); }
+              game.draw();
+            }, state);
+            await page.waitForTimeout(60);
+            const geometry = await page.evaluate(state => {
+              const inside = selector => {
+                const box = document.querySelector(selector).getBoundingClientRect();
+                return box.width > 0 && box.height > 0 && box.left >= 0 && box.top >= 0 &&
+                  box.right <= innerWidth + .5 && box.bottom <= innerHeight + .5;
+              };
+              const selectors = ["#game", "#score", "#best", "#pause", "#sound", "#manual-open", "#theme-switch"];
+              if (state !== "playing") selectors.push("#play", "#title");
+              if (state === "over") selectors.push("#crash-image");
+              const canvas = document.getElementById("game").getBoundingClientRect();
+              const dialog = document.querySelector(".dialog");
+              const button = document.getElementById("play").getBoundingClientRect();
+              const dialogBox = dialog.getBoundingClientRect();
+              return {
+                overflow: document.documentElement.scrollHeight > innerHeight || document.documentElement.scrollWidth > innerWidth,
+                outside: selectors.filter(selector => !inside(selector)),
+                ratio: canvas.width / canvas.height,
+                clipped: state !== "playing" && (button.bottom > dialogBox.bottom + .5 || dialog.scrollHeight > dialog.clientHeight + 1),
+                intrinsic: [document.getElementById("game").width, document.getElementById("game").height]
+              };
+            }, state);
+            assert.equal(geometry.overflow, false, JSON.stringify({ viewport, state, installed, geometry }));
+            assert.deepEqual(geometry.outside, [], JSON.stringify({ viewport, state, installed, geometry }));
+            assert.equal(geometry.clipped, false, JSON.stringify({ viewport, state, installed, geometry }));
+            assert.ok(Math.abs(geometry.ratio - 448 / 512) < .002);
+            assert.deepEqual(geometry.intrinsic, [448, 512]);
+            if (!installed && state !== "playing") await page.screenshot({ path: `test-results/fit-${viewport.width}-${state}.png` });
+          }
+          await page.evaluate(() => window.__flight.start());
+          await page.locator("#manual-open").click();
+          assert.equal(await page.evaluate(() => window.__flight.snapshot.state), "paused");
+          assert.equal(await page.locator("#manual").evaluate(dialog => dialog.open), true);
+          const copy = await page.locator("#manual").innerText();
+          for (const text of ["Big brass.", "Big dreams.", "A very different kind of air solo.", "take a breather",
+            "Less panic. More rhythm.", "BUILT FOR THE JOY", "NO ACCOUNTS. NO QUARTERS.", "POCKET ARCADE"]) {
+            assert.ok(copy.includes(text), `Manual lost ${text}`);
+          }
+          for (let i = 0; i < 12; i++) {
+            await page.keyboard.press("Tab");
+            assert.equal(await page.evaluate(() => document.getElementById("manual").contains(document.activeElement)), true);
+          }
+          assert.equal(await page.locator("#install").isVisible(), !installed);
+          if (!installed) {
+            await page.locator("#install").click();
+            assert.equal(await page.locator("#install-help").isVisible(), true);
+          }
+          await page.keyboard.press("Escape");
+          assert.equal(await page.locator("#manual").evaluate(dialog => dialog.open), false);
+          assert.equal(await page.evaluate(() => document.activeElement.id), "manual-open");
+          assert.equal(await page.evaluate(() => window.__flight.snapshot.state), "paused");
+          await page.locator("#manual-open").click();
+          await page.mouse.click(1, 1);
+          assert.equal(await page.locator("#manual").evaluate(dialog => dialog.open), false);
+          await page.locator("#manual-open").click();
+          await page.locator("#manual-close").click();
+          await page.locator("#play").click();
+          assert.equal(await page.evaluate(() => window.__flight.snapshot.state), "playing");
+          const before = await page.evaluate(() => window.__flight.snapshot);
+          await page.setViewportSize({ width: viewport.height, height: viewport.width });
+          await page.waitForTimeout(60);
+          assert.deepEqual(await page.evaluate(() => window.__flight.snapshot), before);
+        }
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.waitForTimeout(60);
+        assert.equal(await page.locator(".intro-panel").isVisible(), true);
+        await page.locator("#manual-open").click();
+        await page.locator("#manual-close").click();
+        await page.waitForFunction(() => document.querySelector("main > .intro-panel"), null, { polling: 50 });
+        assert.equal(await page.locator("main > .intro-panel").isVisible(), true);
+        assert.equal(await page.evaluate(() => {
+          const ids = [...document.querySelectorAll("[id]")].map(node => node.id);
+          return ids.length === new Set(ids).size;
+        }), true);
+        await context.close();
+      }
+    });
+
+    await t.test("explicit theme wins on reload and offline, updates canvas, and handles storage denial", async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: "dark" });
+      const page = await context.newPage();
+      await page.goto(url);
+      await page.waitForFunction(() => navigator.serviceWorker.controller);
+      assert.equal(await page.locator("#theme-switch").innerText(), "Dark");
+      const darkPixel = await page.locator("#game").evaluate(canvas => [...canvas.getContext("2d").getImageData(0, 0, 1, 1).data]);
+      await page.locator("#theme-switch").click();
+      await page.waitForFunction(() => document.documentElement.dataset.theme === "light");
+      await page.waitForTimeout(60);
+      const lightPixel = await page.locator("#game").evaluate(canvas => [...canvas.getContext("2d").getImageData(0, 0, 1, 1).data]);
+      assert.notDeepEqual(lightPixel, darkPixel);
+      assert.equal(await page.locator('meta[name="theme-color"]').getAttribute("content"), "#f7f4ef");
+      await page.goto(url + "?scoutTheme=dark");
+      assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+      assert.equal(await page.locator("#theme-switch").getAttribute("aria-pressed"), "false");
+      await context.setOffline(true);
+      await page.reload();
+      assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+      await page.locator("#theme-switch").click();
+      await page.reload();
+      assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
+      assert.equal(await page.locator('meta[name="theme-color"]').getAttribute("content"), "#3d3b3a");
+      await context.close();
+      const blocked = await browser.newContext({ colorScheme: "dark" });
+      await blocked.addInitScript(() => Object.defineProperty(window, "localStorage", { get() { throw new DOMException("Blocked", "SecurityError"); } }));
+      const denied = await blocked.newPage();
+      await denied.goto(url);
+      await denied.locator("#theme-switch").click();
+      assert.equal(await denied.locator("html").getAttribute("data-theme"), "light");
+      assert.equal(await denied.locator("#theme-notice").isVisible(), true);
+      assert.match(await denied.locator("#theme-notice").innerText(), /visit only/);
+      await blocked.close();
+    });
+
     await t.test("service worker installs all assets, supports offline reload and safe multi-window updates", async () => {
       const context = await browser.newContext();
       const page = await context.newPage();
@@ -205,7 +341,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         const cache = await caches.open(keys[0]);
         return { keys, urls: (await cache.keys()).map(request => request.url) };
       });
-      assert.equal(cacheInfo.urls.length, 10);
+      assert.equal(cacheInfo.urls.length, 11);
       assert.ok(cacheInfo.urls.every(asset => asset.startsWith(url)));
       await context.setOffline(true);
       await page.goto(url + "?scoutTheme=dark");

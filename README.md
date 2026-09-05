@@ -14,7 +14,15 @@ This is an original, unofficial caricature game. It is not affiliated with or en
 | P / Escape / pause button | Pause or resume |
 | M / sound button | Toggle synthesized sound (initially muted) |
 
-One point per pipe pair. The personal best is saved in this browser, not synced between devices. If browser storage is blocked, the game explains that the best lasts only for the current visit. Switching windows or hiding the page pauses a flight. Reduced-motion preferences suppress decorative animation. Light/dark styling follows the system; `?scoutTheme=light` or `?scoutTheme=dark` can override it.
+One point per pipe pair. The personal best is saved in this browser, not synced between devices. If browser storage is blocked, the game explains that the best lasts only for the current visit. Switching windows or hiding the page pauses a flight. Reduced-motion preferences suppress decorative animation.
+
+The visible **Light / Dark** button switches the palette and remembers your choice, including offline. Your saved choice takes precedence over system appearance and the optional `?scoutTheme=light` / `?scoutTheme=dark` preview parameter. Until you choose, the parameter or system appearance sets the initial theme. If storage is denied, the palette still switches and an explicit notice explains that it cannot be remembered.
+
+## A pocket-sized, screen-fitting arcade
+
+On phones and short landscape screens, the complete game canvas fits the available viewport, including browser chrome and safe-area insets. Scores, sound, pause, start, and retry stay within reach without scrolling the page. Landscape moves score and sound/pause controls beside the game; the canvas keeps its original aspect ratio, physics, and collision boxes. Installed standalone windows use their extra available height automatically. This does not request native fullscreen or assume iOS supports the Fullscreen API.
+
+**Flight manual** keeps every line of the original introduction, tips, controls, installation details, and footer in an accessible, scrollable dialog. Opening it pauses an active flight. Close it with **Close**, Escape, or the backdrop; keyboard focus returns to the opener, and the game stays paused until you resume. Desktop keeps the spacious original layout.
 
 The retry panel keeps the exact collision frame: a 2x, nearest-neighbor crop centered on the rider with bounds clamped to the game canvas.
 

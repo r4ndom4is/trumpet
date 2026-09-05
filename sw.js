@@ -1,12 +1,12 @@
 "use strict";
 
 // Bump for every published app change. Installation is atomic: incomplete builds never activate.
-const VERSION = "v2";
+const VERSION = "v3";
 const PREFIX = `trumpet-flight:${self.registration.scope}:`;
 const CACHE = PREFIX + VERSION;
 const local = path => new URL(path, self.registration.scope).href;
 const ASSETS = [
-  "./", "./index.html", "./pwa.js", "./manifest.webmanifest",
+  "./", "./index.html", "./pwa.js", "./ui.js", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png",
   "./icons/maskable-192.png", "./icons/maskable-512.png",
   "./icons/favicon-32.png", "./icons/apple-touch-180.png"
