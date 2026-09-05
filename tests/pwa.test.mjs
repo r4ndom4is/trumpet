@@ -31,7 +31,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
   let failInstall = false;
   const server = serve({ transform(file, content) {
     if (file === "sw.js") {
-      let source = content.toString().replace('const VERSION = "v1"', `const VERSION = "${revision}"`);
+      let source = content.toString().replace(/const VERSION = "[^"]+"/, `const VERSION = "${revision}"`);
       if (failInstall) source = source.replace('"./", "./index.html"', '"./missing.png", "./index.html"');
       return source;
     }
@@ -134,9 +134,13 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
         await page.setViewportSize(viewport);
         const fits = await page.evaluate(() => {
+          document.querySelector(".dialog").scrollTop = 0;
           const image = document.getElementById("crash-image").getBoundingClientRect();
           const dialog = document.querySelector(".dialog").getBoundingClientRect();
-          return document.documentElement.scrollWidth <= innerWidth && image.left >= dialog.left && image.right <= dialog.right;
+          const title = document.getElementById("title").getBoundingClientRect();
+          const retry = document.getElementById("play").getBoundingClientRect();
+          return document.documentElement.scrollWidth <= innerWidth && image.left >= dialog.left && image.right <= dialog.right &&
+            title.top >= dialog.top && retry.bottom <= dialog.bottom;
         });
         assert.equal(fits, true);
         await page.locator("#play").scrollIntoViewIfNeeded();

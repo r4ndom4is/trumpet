@@ -1,7 +1,7 @@
 "use strict";
 
 // Bump for every published app change. Installation is atomic: incomplete builds never activate.
-const VERSION = "v1";
+const VERSION = "v2";
 const PREFIX = `trumpet-flight:${self.registration.scope}:`;
 const CACHE = PREFIX + VERSION;
 const local = path => new URL(path, self.registration.scope).href;

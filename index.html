@@ -151,6 +151,16 @@ a { color: var(--cp-link); }
   h1 br { display: none; } .intro { max-width: none; margin: 0; font-size: 13px; } .instructions, .tip { display: none; }
   .eyebrow { font-size: 9px; } .dialog { padding: 20px; } footer { font-size: 9px; }
 }
+@media (max-width: 420px) {
+  .overlay { padding: 12px; }
+  .dialog.crashed { padding: 10px; }
+  .dialog.crashed .pixel-title { font-size: 20px; margin: 6px 0; }
+  .dialog.crashed .crash-shot { margin-bottom: 8px; }
+  .dialog.crashed .crash-shot canvas { width: auto; max-height: 24vw; }
+  .dialog.crashed p { font-size: 11px; line-height: 1.4; margin: 6px 0 8px; }
+  .dialog.crashed .primary { padding: 10px; }
+  .dialog.crashed .prompt { margin-top: 8px; font-size: 8px; }
+}
 @media (prefers-reduced-motion: reduce) { .primary:active { transform: none; } }
 </style>
 </head>
