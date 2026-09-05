@@ -42,16 +42,23 @@ try {
     await page.waitForTimeout(80);
     assert.equal(await page.locator(".edition").isVisible(), true);
     assert.equal(await page.locator(".compact-tagline").innerText(), "SMALL GAME. BIG ONE-MORE-TRY ENERGY.");
+    assert.equal(await page.locator("header #theme-switch").count(), 0);
+    assert.equal(await page.locator(".tools #theme-switch svg").count(), 1);
     assert.equal(await page.evaluate(() => {
       const canvas = document.getElementById("game").getBoundingClientRect();
       const play = document.getElementById("play").getBoundingClientRect();
+      const brand = document.querySelector(".brand").getBoundingClientRect();
+      const edition = document.querySelector(".edition").getBoundingClientRect();
       return document.documentElement.scrollHeight <= innerHeight && document.documentElement.scrollWidth <= innerWidth &&
-        canvas.top >= 0 && canvas.bottom <= innerHeight && play.top >= 0 && play.bottom <= innerHeight;
+        canvas.top >= 0 && canvas.bottom <= innerHeight && play.top >= 0 && play.bottom <= innerHeight &&
+        brand.right <= edition.left;
     }), true, `Live mobile viewport must fit ${viewport.width}x${viewport.height}`);
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator("#theme-switch").click();
   assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+  assert.equal(await page.locator("#theme-switch").getAttribute("aria-label"), "Switch to dark theme");
+  assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "false");
   await mkdir(new URL("../test-results/", import.meta.url), { recursive: true });
   await page.screenshot({ path: "test-results/live-mobile.png", fullPage: true });
   await context.setOffline(true);

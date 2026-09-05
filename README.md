@@ -18,13 +18,13 @@ This is an original, unofficial caricature game. It is not affiliated with or en
 
 One point per pipe pair. The personal best is saved in this browser, not synced between devices. If browser storage is blocked, the game explains that the best lasts only for the current visit. Switching windows or hiding the page pauses a flight. Reduced-motion preferences suppress decorative animation.
 
-The visible **Light / Dark** button switches the palette and remembers your choice, including offline. Your saved choice takes precedence over system appearance and the optional `?scoutTheme=light` / `?scoutTheme=dark` preview parameter. Until you choose, the parameter or system appearance sets the initial theme. If storage is denied, the palette still switches and an explicit notice explains that it cannot be remembered.
+The single **sun/moon icon beside mute** switches light/dark appearance and remembers your choice, including offline. Its icon and accessible label describe the theme you can switch to. Your saved choice takes precedence over system appearance and the optional `?scoutTheme=light` / `?scoutTheme=dark` preview parameter. Until you choose, the parameter or system appearance sets the initial theme. If storage is denied, the palette still switches and an explicit notice explains that it cannot be remembered.
 
 ## A pocket-sized, screen-fitting arcade
 
 On phones and short landscape screens, the complete game canvas fits the available viewport, including browser chrome and safe-area insets. Scores, sound, pause, start, and retry stay within reach without scrolling the page. Landscape moves score and sound/pause controls beside the game; the canvas keeps its original aspect ratio, physics, and collision boxes. Installed standalone windows use their extra available height automatically. This does not request native fullscreen or assume iOS supports the Fullscreen API.
 
-The **trumpet flight.** title, **POCKET ARCADE / NO. 001** edition, and **SMALL GAME. BIG ONE-MORE-TRY ENERGY.** tagline stay visible above the mobile game.
+The header keeps **trumpet flight.** on the left and **POCKET ARCADE / NO. 001** on the right. **SMALL GAME. BIG ONE-MORE-TRY ENERGY.** stays visible below it on mobile. The Flight manual button sits beneath the game, separate from the mute, theme, and pause controls.
 
 **Flight manual** keeps every line of the original introduction, tips, controls, installation details, and footer in an accessible, scrollable dialog. Opening it pauses an active flight. Close it with **Close**, Escape, or the backdrop; keyboard focus returns to the opener, and the game stays paused until you resume. Desktop keeps the spacious original layout.
 

@@ -237,6 +237,9 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
               if (state !== "playing") selectors.push("#play", "#title");
               if (state === "over") selectors.push("#crash-image");
               const canvas = document.getElementById("game").getBoundingClientRect();
+              const brand = document.querySelector(".brand").getBoundingClientRect();
+              const edition = document.querySelector(".edition").getBoundingClientRect();
+              const buttons = ["sound", "theme-switch", "pause"].map(id => document.getElementById(id).getBoundingClientRect());
               const dialog = document.querySelector(".dialog");
               const button = document.getElementById("play").getBoundingClientRect();
               const dialogBox = dialog.getBoundingClientRect();
@@ -244,6 +247,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
                 overflow: document.documentElement.scrollHeight > innerHeight || document.documentElement.scrollWidth > innerWidth,
                 outside: selectors.filter(selector => !inside(selector)),
                 ratio: canvas.width / canvas.height,
+                headerSides: brand.right <= edition.left && Math.abs((brand.top + brand.height / 2) - (edition.top + edition.height / 2)) < 2,
+                toolbarFits: buttons.every((box, index) => box.width >= 44 && box.height >= 44 && (index === 0 || buttons[index - 1].right <= box.left)),
                 clipped: state !== "playing" && (button.bottom > dialogBox.bottom + .5 || dialog.scrollHeight > dialog.clientHeight + 1),
                 intrinsic: [document.getElementById("game").width, document.getElementById("game").height]
               };
@@ -251,10 +256,26 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
             assert.equal(geometry.overflow, false, JSON.stringify({ viewport, state, installed, geometry }));
             assert.deepEqual(geometry.outside, [], JSON.stringify({ viewport, state, installed, geometry }));
             assert.equal(geometry.clipped, false, JSON.stringify({ viewport, state, installed, geometry }));
+            assert.equal(geometry.headerSides, true, JSON.stringify({ viewport, geometry }));
+            assert.equal(geometry.toolbarFits, true, JSON.stringify({ viewport, geometry }));
             assert.ok(Math.abs(geometry.ratio - 448 / 512) < .002);
             assert.deepEqual(geometry.intrinsic, [448, 512]);
             if (!installed && state !== "playing") await page.screenshot({ path: `test-results/fit-${viewport.width}-${state}.png` });
           }
+          assert.equal(await page.locator("header #theme-switch").count(), 0);
+          assert.equal(await page.locator(".tools #theme-switch").count(), 1);
+          assert.equal(await page.locator("#theme-switch").innerText(), "");
+          await page.evaluate(() => { window.__flight.start(); window.__flight.scenario(230); });
+          const beforeControls = await page.evaluate(() => window.__flight.snapshot);
+          const oldIcon = await page.locator("#theme-symbol").getAttribute("d");
+          await page.locator("#theme-switch").click();
+          assert.notEqual(await page.locator("#theme-symbol").getAttribute("d"), oldIcon);
+          assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "false");
+          assert.deepEqual(await page.evaluate(() => window.__flight.snapshot), beforeControls);
+          await page.locator("#sound").click();
+          await page.waitForFunction(() => document.getElementById("sound").getAttribute("aria-pressed") === "true", null, { polling: 25 });
+          assert.deepEqual(await page.evaluate(() => window.__flight.snapshot), beforeControls);
+          await page.locator("#sound").click();
           await page.evaluate(() => window.__flight.start());
           assert.equal(await page.locator(".edition").innerText(), "POCKET ARCADE / NO. 001");
           assert.equal(await page.locator(".compact-tagline").innerText(), "SMALL GAME. BIG ONE-MORE-TRY ENERGY.");
@@ -312,7 +333,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       const page = await context.newPage();
       await page.goto(url);
       await page.waitForFunction(() => navigator.serviceWorker.controller);
-      assert.equal(await page.locator("#theme-switch").innerText(), "Dark");
+      assert.equal(await page.locator("#theme-switch").getAttribute("aria-label"), "Switch to light theme");
       const darkPixel = await page.locator("#game").evaluate(canvas => [...canvas.getContext("2d").getImageData(0, 0, 1, 1).data]);
       await page.locator("#theme-switch").click();
       await page.waitForFunction(() => document.documentElement.dataset.theme === "light");
@@ -322,7 +343,9 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.equal(await page.locator('meta[name="theme-color"]').getAttribute("content"), "#f7f4ef");
       await page.goto(url + "?scoutTheme=dark");
       assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
-      assert.equal(await page.locator("#theme-switch").getAttribute("aria-pressed"), "false");
+      assert.equal(await page.locator("#theme-switch").getAttribute("aria-label"), "Switch to dark theme");
+      assert.equal(await page.locator("#theme-switch").getAttribute("title"), "Switch to dark theme");
+      assert.equal(await page.locator("#theme-switch").getAttribute("data-theme"), "light");
       await context.setOffline(true);
       await page.reload();
       assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
