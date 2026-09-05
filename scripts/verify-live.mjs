@@ -11,7 +11,9 @@ try {
   page.on("pageerror", error => errors.push(error.message));
   const response = await page.goto(url);
   assert.equal(response.status(), 200);
-  assert.equal(await response.text(), await readFile(new URL("../index.html", import.meta.url), "utf8"));
+  const published = (await response.text()).replace(/\r\n/g, "\n");
+  const source = (await readFile(new URL("../index.html", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
+  assert.equal(published, source, "Published HTML must match the checkout, ignoring Git line-ending normalization");
   await page.waitForFunction(() => navigator.serviceWorker.controller && document.getElementById("app-status").textContent === "Ready for offline play.");
   const registration = await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).scope);
   assert.equal(registration, url);
