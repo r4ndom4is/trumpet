@@ -40,6 +40,8 @@ try {
   ]) {
     await page.setViewportSize(viewport);
     await page.waitForTimeout(80);
+    assert.equal(await page.locator(".edition").isVisible(), true);
+    assert.equal(await page.locator(".compact-tagline").innerText(), "SMALL GAME. BIG ONE-MORE-TRY ENERGY.");
     assert.equal(await page.evaluate(() => {
       const canvas = document.getElementById("game").getBoundingClientRect();
       const play = document.getElementById("play").getBoundingClientRect();

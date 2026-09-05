@@ -9,7 +9,7 @@ const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const hooks = `
   window.__flight = {
     start, pause, step, draw, flap, die, tone, scoreSound, crashSound, silence,
-    sound() { return { muted, count: voices.size, state: audio?.state, types: [...voices].map(v => v.oscillator.type) }; },
+    sound() { return { muted, count: voices.size, fading: fadingVoices.size, state: audio?.state, types: [...voices].map(v => v.oscillator.type) }; },
     suspendAudio() { return audio.suspend(); },
     get snapshot() { return { state, bird: {...bird}, score, best, pipes: pipes.map(p => ({...p})) }; },
     scenario(y, obstacles = [], points = 0) { bird = {y, vy: 0}; pipes = obstacles; score = points; },
@@ -232,7 +232,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
                 return box.width > 0 && box.height > 0 && box.left >= 0 && box.top >= 0 &&
                   box.right <= innerWidth + .5 && box.bottom <= innerHeight + .5;
               };
-              const selectors = ["#game", "#score", "#best", "#pause", "#sound", "#manual-open", "#theme-switch"];
+              const selectors = ["#game", "#score", "#best", "#pause", "#sound", "#manual-open", "#theme-switch",
+                ".brand", ".edition", ".compact-tagline .eyebrow"];
               if (state !== "playing") selectors.push("#play", "#title");
               if (state === "over") selectors.push("#crash-image");
               const canvas = document.getElementById("game").getBoundingClientRect();
@@ -255,12 +256,14 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
             if (!installed && state !== "playing") await page.screenshot({ path: `test-results/fit-${viewport.width}-${state}.png` });
           }
           await page.evaluate(() => window.__flight.start());
+          assert.equal(await page.locator(".edition").innerText(), "POCKET ARCADE / NO. 001");
+          assert.equal(await page.locator(".compact-tagline").innerText(), "SMALL GAME. BIG ONE-MORE-TRY ENERGY.");
           await page.locator("#manual-open").click();
           assert.equal(await page.evaluate(() => window.__flight.snapshot.state), "paused");
           assert.equal(await page.locator("#manual").evaluate(dialog => dialog.open), true);
           const copy = await page.locator("#manual").innerText();
           for (const text of ["Big brass.", "Big dreams.", "A very different kind of air solo.", "take a breather",
-            "Less panic. More rhythm.", "BUILT FOR THE JOY", "NO ACCOUNTS. NO QUARTERS.", "POCKET ARCADE"]) {
+            "Less panic. More rhythm.", "BUILT FOR THE JOY", "NO ACCOUNTS. NO QUARTERS."]) {
             assert.ok(copy.includes(text), `Manual lost ${text}`);
           }
           for (let i = 0; i < 12; i++) {
@@ -295,6 +298,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         await page.locator("#manual-close").click();
         await page.waitForFunction(() => document.querySelector("main > .intro-panel"), null, { polling: 50 });
         assert.equal(await page.locator("main > .intro-panel").isVisible(), true);
+        assert.equal(await page.locator("main > .intro-panel > .eyebrow").isVisible(), true);
         assert.equal(await page.evaluate(() => {
           const ids = [...document.querySelectorAll("[id]")].map(node => node.id);
           return ids.length === new Set(ids).size;
@@ -526,6 +530,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         return window.__flight.sound();
       });
       assert.equal(rapid.count, 1);
+      assert.ok(rapid.fading <= 1);
       assert.deepEqual(rapid.types, ["custom"]);
       await page.evaluate(() => window.__flight.scoreSound());
       assert.equal(await page.evaluate(() => window.__flight.sound().count), 3);
@@ -550,12 +555,12 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       const rendered = await page.evaluate(async synthesis => {
         const audio = new OfflineAudioContext(1, 9600, 48000);
         Object.defineProperty(audio, "state", { get: () => "running" });
-        new Function("audio", `let muted = false, brassWave = null; const voices = new Set(); ${synthesis}; tone(294, .12);`)(audio);
+        new Function("audio", `let muted = false, brassWave = null; const voices = new Set(), fadingVoices = new Set(); ${synthesis}; tone(392, .16);`)(audio);
         const pcm = (await audio.startRendering()).getChannelData(0);
         return {
           peak: Math.max(...pcm.map(Math.abs)),
           nonzero: pcm.slice(200, 4500).some(sample => Math.abs(sample) > .001),
-          silentTail: pcm.slice(6500).every(sample => Math.abs(sample) < .00001)
+          silentTail: pcm.slice(8500).every(sample => Math.abs(sample) < .00001)
         };
       }, synthesis);
       assert.ok(rendered.peak > .005 && rendered.peak < .04, JSON.stringify(rendered));

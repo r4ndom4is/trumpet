@@ -4,7 +4,7 @@
 
 A small, polished, installable arcade game: a miniature Trump-inspired rider, a golden backward-facing trumpet, a windswept comb-over, and a fluttering tie. Dodge pipes, find your rhythm, and chase your personal best. Original pixel artwork and synthesized sound; no accounts, analytics, external assets, or runtime dependencies.
 
-The sound stays proudly 8-bit: short pulse-wave trumpet toots, stepped pitch and brass-like filtering, a tiny score fanfare, and a descending arcade wah-wah. Low-volume voices replace previous notes during rapid tapping; mute, pause, and backgrounding silence them. Audio starts only after you enable sound and resumes on a fresh gesture when required by mobile browsers.
+The sound stays proudly 8-bit: rounded pulse-wave trumpet toots, stepped pitch and brass-like filtering, a little major-key score fanfare, and a descending arcade wah-wah. Soft note endings and a tiny crossfade between taps avoid sharp clicks. Low-volume voices replace previous notes during rapid tapping; mute, pause, and backgrounding silence them. Audio starts only after you enable sound and resumes on a fresh gesture when required by mobile browsers.
 
 This is an original, unofficial caricature game. It is not affiliated with or endorsed by Donald Trump, any campaign, or any organization. No license is asserted by this repository.
 
@@ -23,6 +23,8 @@ The visible **Light / Dark** button switches the palette and remembers your choi
 ## A pocket-sized, screen-fitting arcade
 
 On phones and short landscape screens, the complete game canvas fits the available viewport, including browser chrome and safe-area insets. Scores, sound, pause, start, and retry stay within reach without scrolling the page. Landscape moves score and sound/pause controls beside the game; the canvas keeps its original aspect ratio, physics, and collision boxes. Installed standalone windows use their extra available height automatically. This does not request native fullscreen or assume iOS supports the Fullscreen API.
+
+The **trumpet flight.** title, **POCKET ARCADE / NO. 001** edition, and **SMALL GAME. BIG ONE-MORE-TRY ENERGY.** tagline stay visible above the mobile game.
 
 **Flight manual** keeps every line of the original introduction, tips, controls, installation details, and footer in an accessible, scrollable dialog. Opening it pauses an active flight. Close it with **Close**, Escape, or the backdrop; keyboard focus returns to the opener, and the game stays paused until you resume. Desktop keeps the spacious original layout.
 
