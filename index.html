@@ -389,7 +389,7 @@ a { color: var(--cp-link); }
     }
     voices.clear();
   }
-  function tone(frequency, duration, endFrequency = frequency, delay = 0, append = false) {
+  function tone(frequency, duration, endFrequency = frequency, delay = 0, append = false, shape = "brass") {
     if (muted || !audio || audio.state !== "running" || document.hidden) return;
     if (!append) silence();
     if (!brassWave) {
@@ -399,7 +399,8 @@ a { color: var(--cp-link); }
       brassWave = audio.createPeriodicWave(real, imaginary);
     }
     const oscillator = audio.createOscillator(), gain = audio.createGain(), filter = audio.createBiquadFilter();
-    oscillator.setPeriodicWave(brassWave);
+    if (shape === "brass") oscillator.setPeriodicWave(brassWave);
+    else oscillator.type = shape;
     const at = audio.currentTime + delay;
     oscillator.frequency.setValueAtTime(frequency * .985, at);
     oscillator.frequency.setValueAtTime(frequency, at + .016);
@@ -426,7 +427,7 @@ a { color: var(--cp-link); }
   }
   function scoreSound() {
     silence();
-    [523.25, 659.25, 784].forEach((note, i) => tone(note, .11, note, i * .09, true));
+    tone(330, .11, 370, 0, true, "sine");
   }
   function crashSound() {
     silence();
@@ -443,7 +444,11 @@ a { color: var(--cp-link); }
         return;
       }
     }
-    if (state === "playing") tone(392, .16);
+    if (state === "playing") {
+      silence();
+      tone(294, .034, 294, 0, true);
+      tone(349, .044, 349, .03, true);
+    }
   }
   async function toggleSound() {
     if (muted) {
@@ -623,37 +628,47 @@ a { color: var(--cp-link); }
     p(-16, 4, 29, 1, "surface", .55);
     p(-6, 12, 13, 1, "surface", .4);
     painter.restore(); pixelWidth = 1;
+    // Compact two-hand grip: both elbows stay close to the body and trumpet.
     p(-8, -7, 12, 11, "text");
     p(-4, -7, 6, 5, "surface");
     p(-7, 2, 13, 4, "text");
     p(4, 3, 3, 6, "text");
     p(5, 8, 5, 3, "text");
-    p(2, -7, 3, 5, "text");
-    p(4, -4, 6, 3, "warning");
-    p(4, -4, 6, 2, "surface", .45);
+    p(1, -8, 3, 4, "text");
+    p(3, -5, 4, 2, "text");
+    p(6, -4, 3, 2, "warning");
+    p(-1, -7, 3, 3, "text");
+    p(0, -5, 3, 2, "warning");
     // The knot stays fixed while the free end flutters by one pixel in the breeze.
     const flutter = reducedMotion ? 0 : Math.round(Math.sin(time * 9 + .6));
     p(-1, -5, 2, 3, "accent");
     p(-2, -2, 3, 2, "accent");
     p(-4, -1 + flutter, 3, 2, "accent");
     p(-5, flutter, 2, 2, "accent");
-    p(-10, -22, 17, 13, "warning");
-    p(-9, -20, 15, 10, "surface", .5);
-    p(-8, -10, 13, 2, "warning");
-    p(-8, -10, 13, 1, "surface", .5);
-    p(6, -16, 4, 3, "warning");
-    p(6, -16, 4, 2, "surface", .4);
-    p(3, -18, 3, 1, "warning");
+    // Short, blunt profile; recognition comes from brow, cheek, chin, and hair.
+    p(-9, -22, 16, 13, "warning");
+    p(-7, -10, 14, 2, "warning");
+    p(-10, -17, 3, 5, "warning");
+    p(7, -19, 1, 5, "warning");
+    p(8, -16, 1, 2, "warning");
+    p(6, -12, 2, 3, "warning");
+    p(-8, -20, 14, 10, "surface", .5);
+    p(-7, -10, 14, 1, "surface", .5);
+    p(3, -19, 5, 1, "text", .42);
     p(4, -17, 2, 2, "text");
-    p(4, -12, 3, 1, "accent-hover");
-    p(-11, -17, 3, 5, "warning");
+    p(2, -15, 4, 2, "accent-hover", .2);
+    p(7, -15, 2, 1, "accent-hover", .4);
+    p(5, -13, 2, 1, "accent-hover");
+    p(-4, -11, 9, 1, "accent-hover", .16);
     p(-11, -26, 18, 5, "warning");
     const heights = [3, 5, 7, 9, 8];
     for (let i = 0; i < heights.length; i++) {
       const h = heights[i] + Math.round(2 * (i + 1) / 3), hx = -10 + i * 4;
-      p(hx, -22 - h, 5, h + 1, "warning");
-      p(hx, -21 - h, 4, 1, "surface", .6);
-      if (i < 4) p(hx, -22 - Math.round(h / 2), 4, 1, "accent-hover", .23);
+      // The front lock lifts first, then the one-pixel ripple travels backward.
+      const ripple = reducedMotion ? 0 : Math.round(Math.sin(time * 5.2 - (10 - hx) * .48));
+      p(hx, -22 - h + ripple, 5, h + 1, "warning");
+      p(hx, -21 - h + ripple, 4, 1, "surface", .6);
+      if (i < 4) p(hx, -22 - Math.round(h / 2) + ripple, 4, 1, "accent-hover", .23);
     }
     p(6, -26, 4, 4, "warning");
     p(-15, -27 + wave(), 6, 3, "warning");

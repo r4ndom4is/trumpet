@@ -565,11 +565,14 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         for (let i = 0; i < 100; i++) window.__flight.flap();
         return window.__flight.sound();
       });
-      assert.equal(rapid.count, 1);
-      assert.ok(rapid.fading <= 1);
-      assert.deepEqual(rapid.types, ["custom"]);
+      assert.equal(rapid.count, 2);
+      assert.ok(rapid.fading <= 2);
+      assert.deepEqual(rapid.types, ["custom", "custom"]);
       await page.evaluate(() => window.__flight.scoreSound());
-      assert.equal(await page.evaluate(() => window.__flight.sound().count), 3);
+      assert.deepEqual(await page.evaluate(() => {
+        const sound = window.__flight.sound();
+        return [sound.count, sound.types];
+      }), [1, ["sine"]]);
       await page.waitForFunction(() => window.__flight.sound().count === 0, null, { polling: 25, timeout: 3000 });
       assert.equal(await page.evaluate(() => window.__flight.sound().count), 0);
       await page.evaluate(() => { window.__flight.crashSound(); window.__flight.pause(); });
