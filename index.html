@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A tiny, original caricature arcade game. Fly a golden trumpet, dodge pipes, and chase your personal best. Install and play offline.">
+<meta name="theme-color" content="#f7f4ef">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Trumpet Flight">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-180.png">
+<title>Trumpet Flight | A tiny air solo</title>
+<script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const preference = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const theme = param === "dark" || param === "light" ? param : (preference.matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+      document.querySelector('meta[name="theme-color"]').content = theme === "dark" ? "#3d3b3a" : "#f7f4ef";
+    };
+    apply();
+    preference.addEventListener("change", apply);
+  })();
+</script>
+<style>
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--cp-bg); color: var(--cp-text); font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible, .screen:focus-visible { outline: 3px solid var(--cp-accent); outline-offset: 5px; }
+button:disabled { opacity: .4; cursor: default; }
+.mono, kbd { font-family: Consolas, "Courier New", Courier, monospace; }
+.shell { max-width: 1080px; margin: auto; padding: 28px 40px 20px; padding-top: max(28px, env(safe-area-inset-top)); padding-bottom: max(20px, env(safe-area-inset-bottom)); padding-left: max(40px, env(safe-area-inset-left)); padding-right: max(40px, env(safe-area-inset-right)); }
+header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--cp-border); padding-bottom: 22px; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: -.5px; }
+.brand-icon { width: 28px; height: 28px; color: var(--cp-accent); }
+.edition { color: var(--cp-text-soft); font-size: 11px; letter-spacing: 2px; text-align: right; }
+main { display: grid; grid-template-columns: 1fr 480px; gap: 64px; align-items: center; padding: 40px 0; }
+.eyebrow { color: var(--cp-accent); font-size: 11px; letter-spacing: 2px; font-weight: 700; }
+.eyebrow::before { content: ""; display: inline-block; width: 7px; height: 7px; background: var(--cp-accent); margin-right: 10px; }
+h1 { font-size: clamp(44px, 5.4vw, 64px); letter-spacing: -3px; line-height: .98; margin: 24px 0; font-weight: 900; }
+h1 span { color: var(--cp-accent); }
+.intro { color: var(--cp-text-muted); line-height: 1.75; font-size: 15px; max-width: 290px; }
+.instructions { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--cp-border); }
+.small-heading { font-size: 10px; letter-spacing: 2px; color: var(--cp-text-soft); margin-bottom: 18px; }
+.control-row { display: flex; align-items: center; gap: 12px; margin: 12px 0; font-size: 13px; color: var(--cp-text-muted); }
+kbd { min-width: 34px; padding: 5px 9px; background: var(--cp-bg-elevated); border: 1px solid var(--cp-border); border-bottom: 3px solid var(--cp-border); border-radius: 5px; color: var(--cp-text); font-size: 11px; text-align: center; }
+.tip { font-size: 12px; color: var(--cp-text-soft); line-height: 1.7; margin-top: 30px; }
+.cabinet { background: var(--cp-surface); padding: 12px; border: 1px solid var(--cp-border); border-radius: 16px; }
+.scorebar { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 16px; gap: 8px; }
+.stat-label { font-size: 9px; letter-spacing: 1.6px; color: var(--cp-text-soft); }
+.stat-number { font-size: 24px; font-weight: 800; margin-top: 2px; }
+.best .stat-number { color: var(--cp-accent); }
+.tools { display: flex; gap: 8px; }
+.tool { background: var(--cp-bg); color: var(--cp-text-muted); border: 1px solid var(--cp-border); border-radius: 10px; width: 36px; height: 36px; display: grid; place-items: center; }
+.tool svg { width: 17px; height: 17px; }
+.tool:hover:not(:disabled) { color: var(--cp-accent); border-color: var(--cp-accent); }
+.screen { position: relative; border: 2px solid var(--cp-text); border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; }
+canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 24px; text-align: center; background: var(--cp-accent-soft); }
+.overlay[hidden] { display: none; }
+.dialog { background: var(--cp-panel-strong); border: 2px solid var(--cp-text); padding: 28px 24px; width: min(100%, 316px); box-shadow: 6px 6px 0 var(--cp-highlight); }
+.pixel-title { font-family: Consolas, "Courier New", Courier, monospace; font-size: 30px; line-height: 1.05; font-weight: 900; letter-spacing: -1px; margin: 14px 0 12px; text-shadow: 2px 2px var(--cp-highlight); }
+.dialog p { color: var(--cp-text-muted); font-size: 12px; line-height: 1.7; margin: 12px 0 20px; }
+.primary { width: 100%; border: 2px solid var(--cp-accent-hover); border-bottom-width: 5px; background: var(--cp-accent); color: var(--cp-accent-fg); padding: 13px 12px; border-radius: 4px; font-weight: 800; letter-spacing: 1px; font-size: 12px; }
+.primary:hover { background: var(--cp-accent-hover); }
+.primary:active { transform: translateY(2px); }
+.prompt { margin-top: 14px; font-size: 9px; color: var(--cp-text-soft); letter-spacing: 1px; }
+.cabinet-footer { display: flex; justify-content: space-between; align-items: center; padding: 13px 6px 1px; color: var(--cp-text-soft); font-size: 9px; letter-spacing: 1px; }
+.status-dot { display: inline-block; width: 6px; height: 6px; background: var(--cp-success); margin-right: 6px; }
+footer { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--cp-border); padding-top: 18px; font-size: 10px; color: var(--cp-text-soft); }
+.notice { color: var(--cp-danger); font-size: 12px; }
+.rider-preview { width: 136px; height: 120px; margin: -12px auto -8px; }
+.rider-preview[hidden] { display: none; }
+.dialog { max-height: 100%; overflow-y: auto; touch-action: pan-y; }
+.crash-shot { margin: 0 0 12px; }
+.crash-shot[hidden] { display: none; }
+.crash-shot canvas { width: 100%; height: auto; max-width: 100%; margin: auto; border: 1px solid var(--cp-border); border-radius: 4px; }
+.crash-shot figcaption { margin-top: 6px; font-size: 9px; letter-spacing: 1px; color: var(--cp-text-soft); }
+.dialog.crashed { padding: 16px; }
+.dialog.crashed .pixel-title { margin: 8px 0; font-size: 24px; }
+.dialog.crashed p { margin: 8px 0 12px; }
+.app-tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 24px; }
+.secondary { border: 1px solid var(--cp-border); border-radius: 10px; background: var(--cp-bg-elevated); color: var(--cp-text); padding: 12px 16px; font-weight: 600; }
+.secondary:hover { border-color: var(--cp-accent); color: var(--cp-accent); }
+[hidden] { display: none !important; }
+.app-status, .install-help { color: var(--cp-text-muted); font-size: 12px; line-height: 1.7; }
+.install-help { margin-top: 12px; padding: 16px; border: 1px solid var(--cp-border); border-radius: 10px; background: var(--cp-bg-elevated); }
+.install-help p { margin: 0 0 8px; }
+.install-help p:last-child { margin: 0; }
+a { color: var(--cp-link); }
+.unofficial { max-width: 1080px; font-size: 11px; line-height: 1.6; color: var(--cp-text-soft); margin-top: 16px; }
+@media (max-width: 900px) { main { gap: 32px; grid-template-columns: 1fr 420px; } .shell { padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); } }
+@media (max-width: 720px) {
+  .shell { max-width: 504px; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); } header { padding-bottom: 16px; } .edition { font-size: 9px; }
+  main { display: block; padding: 24px 0; } .intro-panel { margin-bottom: 22px; } h1 { font-size: 40px; margin: 12px 0; letter-spacing: -2px; }
+  h1 br { display: none; } .intro { max-width: none; margin: 0; font-size: 13px; } .instructions, .tip { display: none; }
+  .eyebrow { font-size: 9px; } .dialog { padding: 20px; } footer { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .primary:active { transform: none; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 4h8v6H2zM14 4h8v6h-8zM2 14h8v6H2zM14 14h8v6h-8z"/></svg>
+      trumpet flight<span class="mono" style="color:var(--cp-accent)">.</span>
+    </div>
+    <div class="edition mono">POCKET ARCADE / NO. 001</div>
+  </header>
+  <main>
+    <section class="intro-panel">
+      <div class="eyebrow mono">SMALL GAME. BIG ONE-MORE-TRY ENERGY.</div>
+      <h1><span id="headline" style="color:var(--cp-text)">Big brass.</span><br> <span>Big dreams.</span></h1>
+      <p class="intro" id="intro">A miniature Trump-inspired rider, a golden flying trumpet, and a windswept swoop of hair. A very different kind of air solo.</p>
+      <div class="instructions">
+        <div class="small-heading mono">FLIGHT MANUAL</div>
+        <div class="control-row"><kbd>SPACE</kbd><span>or click / tap to flap</span></div>
+        <div class="control-row"><kbd>P</kbd><span>take a breather</span></div>
+        <div class="control-row"><kbd>M</kbd><span>toggle 8-bit sound</span></div>
+      </div>
+      <p class="tip"><strong>Less panic. More rhythm.</strong><br>Short, steady taps beat frantic tapping.<br>One point for every pair of pipes.</p>
+      <div class="app-tools">
+        <button class="secondary" id="install" aria-controls="install-help" aria-expanded="false">Install game</button>
+        <button class="secondary" id="update" hidden>Update game</button>
+      </div>
+      <p class="app-status" id="app-status" role="status">Preparing offline play...</p>
+      <div class="install-help" id="install-help" hidden>
+        <p><strong>Your own pocket arcade.</strong> Install Trumpet Flight for a standalone window. No account needed.</p>
+        <p id="install-instructions">Use your browser's install icon or menu and choose Install app. If installation isn't offered, you can still play here.</p>
+        <p>On iPhone or iPad, open this page in Safari, tap Share, then Add to Home Screen (enable Open as Web App if offered).</p>
+        <p>Wait for "Ready for offline play" before going offline. Browser data cleanup can remove the offline copy and personal best.</p>
+      </div>
+    </section>
+    <section class="cabinet" aria-label="Trumpet Flight arcade game">
+      <div class="scorebar">
+        <div><div class="stat-label mono">SCORE</div><div class="stat-number mono" id="score">00</div></div>
+        <div class="best"><div class="stat-label mono">PERSONAL BEST</div><div class="stat-number mono" id="best">00</div></div>
+        <div class="tools">
+          <button class="tool" id="sound" aria-label="Enable sound" aria-pressed="false" title="Sound (M)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4 5 9H2v6h3l6 5z"/><path id="sound-mark" d="m16 9 6 6m0-6-6 6"/></svg>
+          </button>
+          <button class="tool" id="pause" disabled aria-label="Pause game" title="Pause (P)">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="screen" id="screen" tabindex="0" role="group" aria-label="Game area. Space, Arrow Up, click or tap to flap. P to pause.">
+        <canvas id="game" width="448" height="512" aria-label="Trumpet Flight: miniature Trump-inspired rider on a flying trumpet, dodging pipes">Use a browser with HTML canvas support to play.</canvas>
+        <div class="overlay" id="overlay">
+          <div class="dialog">
+            <canvas id="rider-preview" class="rider-preview" width="136" height="120" aria-label="Pocket Trump-inspired rider on a backward-facing golden trumpet, with a full comb-over and fluttering tie"></canvas>
+            <div class="pixel-title" id="title">TRUMPET FLIGHT</div>
+            <figure class="crash-shot" id="crash-shot" hidden>
+              <canvas id="crash-image" width="280" height="180" role="img" aria-label="Zoomed-in frozen screenshot of the rider and collision"></canvas>
+              <figcaption class="mono">CRASH CLOSE-UP / 2X ZOOM</figcaption>
+            </figure>
+            <p id="message">Stay airborne. Dodge the pipes.<br>Your next high score starts here.</p>
+            <button class="primary mono" id="play">LET'S FLY &gt;</button>
+            <div class="prompt mono" id="prompt">OR PRESS SPACE TO START</div>
+          </div>
+        </div>
+      </div>
+      <div class="cabinet-footer mono"><span><i class="status-dot"></i><span id="status">READY WHEN YOU ARE</span></span><span>1 PLAYER / ENDLESS</span></div>
+      <p class="notice" id="notice" role="status" hidden></p>
+      <div id="announcement" role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)"></div>
+    </section>
+  </main>
+  <footer class="mono"><span>BUILT FOR THE JOY OF JUST PLAYING.</span><span>NO ACCOUNTS. NO QUARTERS.</span></footer>
+  <p class="unofficial">An original, unofficial caricature game. Not affiliated with or endorsed by Donald Trump or any campaign or organization. <a href="https://github.com/r4ndom4is/trumpet">Source on GitHub</a>.</p>
+</div>
+<noscript><p class="notice">Trumpet Flight needs JavaScript enabled to play and prepare its offline copy.</p></noscript>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const canvas = $("game"), ctx = canvas.getContext("2d");
+  const portrait = $("rider-preview"), portraitCtx = portrait.getContext("2d");
+  const crashCtx = $("crash-image").getContext("2d");
+  const W = canvas.width, H = canvas.height, FLOOR = 468, X = 108;
+  const colors = {};
+  function palette() {
+    const style = getComputedStyle(document.documentElement);
+    for (const key of ["bg", "bg-elevated", "surface", "border", "border-strong", "text", "text-soft", "accent", "accent-hover", "accent-soft", "warning", "highlight"]) {
+      colors[key] = style.getPropertyValue("--cp-" + key).trim();
+    }
+  }
+  palette();
+  new MutationObserver(palette).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let state = "ready", bird = { y: 210, vy: 0 }, pipes = [], particles = [];
+  let score = 0, best = 0, distance = 0, spawn = 0, time = 0, last = 0, accumulator = 0, deadAt = 0;
+  let muted = true, audio = null, storageAvailable = true;
+  function notifyState() {
+    document.dispatchEvent(new CustomEvent("flightstate", { detail: state }));
+  }
+  function storageError(error) {
+    storageAvailable = false;
+    $("notice").hidden = false;
+    $("notice").textContent = "Browser storage is unavailable. Your best score will last for this visit only.";
+    console.warn("High-score storage unavailable:", error);
+  }
+  try {
+    const saved = Number(localStorage.getItem("trumpet-flight-best") ?? localStorage.getItem("pixel-flap-best"));
+    best = Number.isSafeInteger(saved) && saved >= 0 ? saved : 0;
+  } catch (error) { storageError(error); }
+  function updateScore() {
+    $("score").textContent = String(score).padStart(2, "0");
+    $("best").textContent = String(best).padStart(2, "0");
+  }
+  updateScore();
+  function tone(frequency, duration, endFrequency = frequency) {
+    if (muted || !audio || audio.state !== "running") return;
+    const oscillator = audio.createOscillator(), gain = audio.createGain();
+    oscillator.type = "square";
+    oscillator.frequency.setValueAtTime(frequency, audio.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(endFrequency, audio.currentTime + duration);
+    gain.gain.setValueAtTime(.035, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001, audio.currentTime + duration);
+    oscillator.connect(gain); gain.connect(audio.destination);
+    oscillator.start(); oscillator.stop(audio.currentTime + duration);
+    oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+  }
+  async function toggleSound() {
+    if (muted) {
+      const Audio = window.AudioContext || window.webkitAudioContext;
+      if (!Audio) {
+        $("notice").hidden = false;
+        $("notice").textContent = "This browser does not support synthesized audio.";
+        return;
+      }
+      try {
+        audio ||= new Audio();
+        await audio.resume();
+      } catch (error) {
+        $("notice").hidden = false;
+        $("notice").textContent = "Sound could not start. You can still play without audio.";
+        console.warn("Audio unavailable:", error);
+        return;
+      }
+    }
+    muted = !muted;
+    $("sound").setAttribute("aria-pressed", String(!muted));
+    $("sound").setAttribute("aria-label", muted ? "Enable sound" : "Mute sound");
+    $("sound-mark").setAttribute("d", muted ? "m16 9 6 6m0-6-6 6" : "M15 8q5 4 0 8M18 4q9 8 0 16");
+    tone(540, .09, 810);
+  }
+  function overlay(title, message, button, prompt) {
+    const crashed = state === "over";
+    $("crash-shot").hidden = !crashed;
+    $("crash-shot").parentElement.classList.toggle("crashed", crashed);
+    portrait.hidden = crashed;
+    $("title").textContent = title;
+    $("message").textContent = message;
+    $("play").textContent = button;
+    $("prompt").textContent = prompt;
+    $("overlay").hidden = false;
+  }
+  function flap() { bird.vy = -310; tone(294, .09, 392); }
+  function start() {
+    state = "playing"; bird = { y: 210, vy: 0 }; pipes = []; particles = [];
+    notifyState();
+    score = 0; distance = 0; spawn = .95; accumulator = 0;
+    updateScore(); $("overlay").hidden = true; $("pause").disabled = false;
+    $("pause").setAttribute("aria-label", "Pause game");
+    $("status").textContent = "FIND YOUR RHYTHM";
+    $("announcement").textContent = "Game started.";
+    $("screen").focus({ preventScroll: true });
+    flap();
+  }
+  function action() {
+    if (state === "playing") flap();
+    else if (state === "paused") pause();
+    else if (state === "ready" || performance.now() - deadAt > 450) start();
+  }
+  function pause() {
+    if (state === "playing") {
+      state = "paused";
+      overlay("TAKE A BREATHER", "Your tiny adventure can wait.", "KEEP FLYING >", "P OR SPACE TO RESUME");
+      $("status").textContent = "FLIGHT ON HOLD";
+      $("pause").setAttribute("aria-label", "Resume game");
+    } else if (state === "paused") {
+      state = "playing"; accumulator = 0;
+      $("overlay").hidden = true; $("status").textContent = "FIND YOUR RHYTHM";
+      $("pause").setAttribute("aria-label", "Pause game");
+      $("screen").focus({ preventScroll: true });
+    }
+    notifyState();
+  }
+  function die() {
+    if (state !== "playing") return;
+    // Render the collision step, not the previous animation frame, before copying it.
+    draw();
+    const snapshot = $("crash-image");
+    const cropWidth = snapshot.width / 2, cropHeight = snapshot.height / 2;
+    const cropX = Math.max(0, Math.min(W - cropWidth, X - cropWidth / 2));
+    const cropY = Math.max(0, Math.min(H - cropHeight, bird.y - 10 - cropHeight / 2));
+    crashCtx.imageSmoothingEnabled = false;
+    crashCtx.clearRect(0, 0, snapshot.width, snapshot.height);
+    crashCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, snapshot.width, snapshot.height);
+    state = "over"; deadAt = performance.now(); $("pause").disabled = true;
+    tone(180, .23, 45);
+    const record = score > best;
+    if (record) {
+      best = score;
+      if (storageAvailable) {
+        try { localStorage.setItem("trumpet-flight-best", String(best)); }
+        catch (error) { storageError(error); }
+      }
+    }
+    updateScore();
+    overlay(record ? "NEW HIGH SCORE!" : "ONE MORE TRY?", "You cleared " + score + (score === 1 ? " pipe. " : " pipes. ") + (record ? "A golden performance." : "A little rhythm goes a long way."), "FLY AGAIN >", "SPACE OR TAP TO TRY AGAIN");
+    $("status").textContent = record ? "PERSONAL BEST. NICELY FLOWN." : "EVERY FLIGHT IS A FRESH START";
+    $("announcement").textContent = "Game over. Score " + score + ". Personal best " + best + ".";
+    notifyState();
+  }
+  function step(dt) {
+    if (state !== "playing") return;
+    const speed = 142 + Math.min(score * 2, 54);
+    distance += speed * dt;
+    bird.vy = Math.min(bird.vy + 940 * dt, 470);
+    bird.y += bird.vy * dt;
+    spawn -= dt;
+    if (spawn <= 0) {
+      const gap = 158 - Math.min(score, 24);
+      pipes.push({ x: W + 12, top: 70 + Math.random() * (FLOOR - gap - 140), gap, passed: false });
+      spawn += 1.65;
+    }
+    for (const pipe of pipes) pipe.x -= speed * dt;
+    const hit = { x: 14, top: 30, bottom: 12 };
+    if (bird.y - hit.top <= 0 || bird.y + hit.bottom >= FLOOR) { die(); return; }
+    for (const pipe of pipes) {
+      // Keep the collision box slightly inside each character's pixel silhouette.
+      if (X + hit.x > pipe.x - 4 && X - hit.x < pipe.x + 62 &&
+          (bird.y - hit.top < pipe.top || bird.y + hit.bottom > pipe.top + pipe.gap)) { die(); return; }
+    }
+    for (const pipe of pipes) {
+      if (!pipe.passed && pipe.x + 62 < X - hit.x) {
+        pipe.passed = true; score++; updateScore(); tone(880, .12, 1320);
+        if (!reducedMotion) for (let i = 0; i < 8; i++) particles.push({ x: X, y: bird.y, vx: -30 - Math.random() * 80, vy: (Math.random() - .5) * 110, life: .45 });
+      }
+    }
+    pipes = pipes.filter(pipe => pipe.x > -70);
+    for (const p of particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
+    particles = particles.filter(p => p.life > 0);
+  }
+  function rect(x, y, w, h, color) {
+    ctx.fillStyle = colors[color]; ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+  }
+  function cloud(x, y, size) {
+    rect(x + 12 * size, y, 24 * size, 8 * size, "surface");
+    rect(x + 4 * size, y + 8 * size, 44 * size, 8 * size, "surface");
+    rect(x, y + 16 * size, 58 * size, 8 * size, "surface");
+    rect(x + 8 * size, y + 24 * size, 44 * size, 3 * size, "border");
+  }
+  function pipe(x, y, height, top) {
+    rect(x, y, 58, height, "accent-hover");
+    rect(x + 4, y, 50, height, "accent");
+    rect(x + 8, y, 6, height, "warning");
+    const capY = top ? y + height - 20 : y;
+    rect(x - 4, capY, 66, 20, "accent-hover");
+    rect(x, capY + 4, 58, 10, "accent");
+    rect(x + 4, capY + 4, 6, 10, "warning");
+  }
+  function drawTrumpet(painter, x, y, scale, tilt) {
+    painter.save();
+    painter.translate(Math.round(x), Math.round(y));
+    painter.rotate(tilt);
+    painter.scale(scale, scale);
+    let pixelWidth = 1;
+    const p = (a, b, w, h, color, alpha = 1) => {
+      painter.globalAlpha = alpha;
+      painter.fillStyle = colors[color];
+      painter.fillRect(Math.round(a * pixelWidth), b, Math.max(1, Math.round(w * pixelWidth)), h);
+      painter.globalAlpha = 1;
+    };
+    const wave = (phase = 0) => reducedMotion ? 0 : Math.round(Math.sin(time * 6 + phase));
+    // D-H1-T1-V2: reflect only the pocket trumpet, keeping the rider facing forward.
+    painter.save(); painter.scale(-1, 1);
+    pixelWidth = .8;
+    p(-16, 4, 29, 4, "accent-hover");
+    p(-17, 4, 30, 3, "warning");
+    p(-19, 3, 3, 5, "warning");
+    p(-10, 7, 3, 7, "warning");
+    p(-7, 12, 16, 3, "warning");
+    p(7, 7, 3, 7, "warning");
+    p(-7, 14, 15, 1, "accent-hover");
+    for (let i = 0; i < 3; i++) {
+      p(-7 + i * 5, 0, 2, 11, "warning");
+      p(-8 + i * 5, -1, 4, 2, "warning");
+    }
+    p(10, 2, 4, 8, "warning");
+    p(14, 0, 3, 12, "warning");
+    p(17, -3, 4, 18, "accent-hover");
+    p(17, -2, 3, 16, "warning");
+    p(19, 1, 2, 10, "accent-hover");
+    p(-16, 4, 29, 1, "surface", .55);
+    p(-6, 12, 13, 1, "surface", .4);
+    painter.restore(); pixelWidth = 1;
+    p(-8, -7, 12, 11, "text");
+    p(-4, -7, 6, 5, "surface");
+    p(-7, 2, 13, 4, "text");
+    p(4, 3, 3, 6, "text");
+    p(5, 8, 5, 3, "text");
+    p(2, -7, 3, 5, "text");
+    p(4, -4, 6, 3, "warning");
+    p(4, -4, 6, 2, "surface", .45);
+    // The knot stays fixed while the free end flutters by one pixel in the breeze.
+    const flutter = reducedMotion ? 0 : Math.round(Math.sin(time * 9 + .6));
+    p(-1, -5, 2, 3, "accent");
+    p(-2, -2, 3, 2, "accent");
+    p(-4, -1 + flutter, 3, 2, "accent");
+    p(-5, flutter, 2, 2, "accent");
+    p(-10, -22, 17, 13, "warning");
+    p(-9, -20, 15, 10, "surface", .5);
+    p(-8, -10, 13, 2, "warning");
+    p(-8, -10, 13, 1, "surface", .5);
+    p(6, -16, 4, 3, "warning");
+    p(6, -16, 4, 2, "surface", .4);
+    p(3, -18, 3, 1, "warning");
+    p(4, -17, 2, 2, "text");
+    p(4, -12, 3, 1, "accent-hover");
+    p(-11, -17, 3, 5, "warning");
+    p(-11, -26, 18, 5, "warning");
+    const heights = [3, 5, 7, 9, 8];
+    for (let i = 0; i < heights.length; i++) {
+      const h = heights[i] + Math.round(2 * (i + 1) / 3), hx = -10 + i * 4;
+      p(hx, -22 - h, 5, h + 1, "warning");
+      p(hx, -21 - h, 4, 1, "surface", .6);
+      if (i < 4) p(hx, -22 - Math.round(h / 2), 4, 1, "accent-hover", .23);
+    }
+    p(6, -26, 4, 4, "warning");
+    p(-15, -27 + wave(), 6, 3, "warning");
+    p(-17, -26 + wave(), 3, 2, "warning");
+    p(-14, -23 + wave(1.4), 4, 3, "warning");
+    p(-14, -27 + wave(), 5, 1, "surface", .45);
+    painter.restore();
+  }
+  function drawCharacter(y) {
+    const tilt = state === "playing" ? Math.max(-.16, Math.min(.3, bird.vy / 1400)) : -.04;
+    drawTrumpet(ctx, X, y, 1, tilt);
+    if (!reducedMotion && (state === "ready" || state === "playing")) {
+      for (let i = 0; i < 3; i++) {
+        const phase = (time * 1.6 + i * .33) % 1;
+        const nx = X - 30 - phase * 42, ny = y + 10 - phase * 14;
+        ctx.globalAlpha = (1 - phase) * .65;
+        rect(nx, ny, 4, 3, "warning");
+        rect(nx + 3, ny - 7, 2, 9, "warning");
+        rect(nx + 5, ny - 7, 3, 2, "warning");
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+  function draw() {
+    ctx.imageSmoothingEnabled = false;
+    rect(0, 0, W, H, "bg-elevated");
+    rect(0, 0, W, 330, "accent-soft");
+    rect(352, 42, 40, 40, "warning");
+    rect(344, 50, 56, 24, "warning");
+    const drift = state === "ready" ? (reducedMotion ? 0 : time * 12) : distance * .16;
+    for (let i = 0; i < 5; i++) cloud(((i * 123 - drift) % 610 + 610) % 610 - 90, 66 + (i % 3) * 58, 1 + (i % 2) * .35);
+    for (let i = 0; i < 12; i++) {
+      const x = i * 48 - (distance * .08 % 48), h = 24 + (i % 4) * 14;
+      rect(x, FLOOR - h - 30, 40, h + 30, "border");
+      rect(x + 8, FLOOR - h - 22, 5, 7, "bg-elevated");
+      rect(x + 23, FLOOR - h - 22, 5, 7, "bg-elevated");
+    }
+    for (let i = 0; i < 10; i++) {
+      const x = i * 58 - (distance * .3 % 58);
+      rect(x, FLOOR - 20, 58, 20, "border-strong");
+      rect(x + 8, FLOOR - 30, 34, 12, "border-strong");
+    }
+    for (const p of pipes) { pipe(p.x, 0, p.top, true); pipe(p.x, p.top + p.gap, FLOOR - p.top - p.gap, false); }
+    for (const p of particles) rect(p.x, p.y, 4, 4, "warning");
+    if (state !== "ready") drawCharacter(bird.y);
+    else drawCharacter(340 + (reducedMotion ? 0 : Math.sin(time * 3) * 6));
+    if (!portrait.hidden && !$("overlay").hidden) {
+      portraitCtx.clearRect(0, 0, portrait.width, portrait.height);
+      portraitCtx.imageSmoothingEnabled = false;
+      drawTrumpet(portraitCtx, 68, 80, 2, 0);
+    }
+    rect(0, FLOOR, W, 4, "text");
+    rect(0, FLOOR + 4, W, 8, "accent");
+    rect(0, FLOOR + 12, W, H - FLOOR - 12, "bg");
+    for (let i = 0; i < 25; i++) rect(i * 20 - distance % 20, FLOOR + 5, 10, 3, "warning");
+    for (let i = 0; i < 30; i++) rect(i * 19 - distance % 19, FLOOR + 22 + (i % 2) * 8, 4, 3, "border");
+  }
+  function frame(now) {
+    const elapsed = Math.min((now - (last || now)) / 1000, .05);
+    last = now;
+    if (state === "playing" || state === "ready") time += elapsed;
+    accumulator += elapsed;
+    // Fixed steps keep gravity and collision behavior consistent across refresh rates.
+    while (accumulator >= 1 / 120) { step(1 / 120); accumulator -= 1 / 120; }
+    draw(); requestAnimationFrame(frame);
+  }
+  $("screen").addEventListener("pointerdown", event => {
+    if (event.target.closest("button, .dialog") || (event.pointerType === "mouse" && event.button !== 0)) return;
+    event.preventDefault(); action();
+  });
+  $("play").addEventListener("click", action);
+  $("pause").addEventListener("click", pause);
+  $("sound").addEventListener("click", toggleSound);
+  window.addEventListener("keydown", event => {
+    if (event.ctrlKey || event.altKey || event.metaKey || event.target.matches("input, textarea, select, [contenteditable]")) return;
+    if (event.code === "Space" || event.code === "ArrowUp") {
+      if (event.target.closest("button")) return;
+      event.preventDefault(); if (!event.repeat) action();
+    } else if (event.code === "KeyP" || event.code === "Escape") {
+      if (!event.repeat) pause();
+    } else if (event.code === "KeyM" && !event.repeat) toggleSound();
+  });
+  document.addEventListener("visibilitychange", () => { if (document.hidden && state === "playing") pause(); });
+  window.addEventListener("blur", () => { if (state === "playing") pause(); });
+  overlay("TRUMPET FLIGHT", "Golden brass. Windswept hair. Keep this tiny air solo in the sky.", "LET'S TOOT >", "OR PRESS SPACE TO START");
+  requestAnimationFrame(frame);
+})();
+</script>
+<script src="./pwa.js"></script>
+</body>
+</html>
