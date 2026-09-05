@@ -444,11 +444,7 @@ a { color: var(--cp-link); }
         return;
       }
     }
-    if (state === "playing") {
-      silence();
-      tone(294, .034, 294, 0, true);
-      tone(349, .044, 349, .03, true);
-    }
+    if (state === "playing") tone(247, .07, 220);
   }
   async function toggleSound() {
     if (muted) {
