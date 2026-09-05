@@ -9,7 +9,7 @@ const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const hooks = `
   window.__flight = {
     start, pause, step, draw, flap, die, tone, scoreSound, crashSound, silence,
-    sound() { return { muted, count: voices.size, fading: fadingVoices.size, state: audio?.state, types: [...voices].map(v => v.oscillator.type) }; },
+    sound() { return { muted, count: voices.size, fading: fadingVoices.size, state: audio?.state, types: [...voices].map(v => v.kind || v.oscillator.type) }; },
     suspendAudio() { return audio.suspend(); },
     get snapshot() { return { state, bird: {...bird}, score, best, pipes: pipes.map(p => ({...p})) }; },
     scenario(y, obstacles = [], points = 0) { bird = {y, vy: 0}; pipes = obstacles; score = points; },
@@ -567,7 +567,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       });
       assert.equal(rapid.count, 1);
       assert.ok(rapid.fading <= 1);
-      assert.deepEqual(rapid.types, ["custom"]);
+      assert.deepEqual(rapid.types, ["noise"]);
       await page.evaluate(() => window.__flight.scoreSound());
       assert.deepEqual(await page.evaluate(() => {
         const sound = window.__flight.sound();
