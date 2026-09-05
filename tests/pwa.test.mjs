@@ -243,6 +243,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
               const dialog = document.querySelector(".dialog");
               const button = document.getElementById("play").getBoundingClientRect();
               const dialogBox = dialog.getBoundingClientRect();
+              const fontSize = selector => Number.parseFloat(getComputedStyle(document.querySelector(selector)).fontSize);
               return {
                 overflow: document.documentElement.scrollHeight > innerHeight || document.documentElement.scrollWidth > innerWidth,
                 outside: selectors.filter(selector => !inside(selector)),
@@ -250,7 +251,14 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
                 headerSides: brand.right <= edition.left && Math.abs((brand.top + brand.height / 2) - (edition.top + edition.height / 2)) < 2,
                 toolbarFits: buttons.every((box, index) => box.width >= 44 && box.height >= 44 && (index === 0 || buttons[index - 1].right <= box.left)),
                 clipped: state !== "playing" && (button.bottom > dialogBox.bottom + .5 || dialog.scrollHeight > dialog.clientHeight + 1),
-                intrinsic: [document.getElementById("game").width, document.getElementById("game").height]
+                intrinsic: [document.getElementById("game").width, document.getElementById("game").height],
+                typography: {
+                  brand: fontSize(".brand"),
+                  edition: fontSize(".edition"),
+                  tagline: fontSize(".compact-tagline .eyebrow"),
+                  score: fontSize(".stat-number"),
+                  footer: fontSize(".cabinet-footer")
+                }
               };
             }, state);
             assert.equal(geometry.overflow, false, JSON.stringify({ viewport, state, installed, geometry }));
@@ -258,6 +266,11 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
             assert.equal(geometry.clipped, false, JSON.stringify({ viewport, state, installed, geometry }));
             assert.equal(geometry.headerSides, true, JSON.stringify({ viewport, geometry }));
             assert.equal(geometry.toolbarFits, true, JSON.stringify({ viewport, geometry }));
+            assert.ok(geometry.typography.brand >= 18, JSON.stringify({ viewport, geometry }));
+            assert.ok(geometry.typography.edition >= 9, JSON.stringify({ viewport, geometry }));
+            assert.ok(geometry.typography.tagline >= 10, JSON.stringify({ viewport, geometry }));
+            assert.ok(geometry.typography.score >= 26, JSON.stringify({ viewport, geometry }));
+            assert.ok(geometry.typography.footer >= 9, JSON.stringify({ viewport, geometry }));
             assert.ok(Math.abs(geometry.ratio - 448 / 512) < .002);
             assert.deepEqual(geometry.intrinsic, [448, 512]);
             if (!installed && state !== "playing") await page.screenshot({ path: `test-results/fit-${viewport.width}-${state}.png` });
