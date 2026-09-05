@@ -2,12 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
+import { execFileSync } from "node:child_process";
 import { serve } from "../scripts/serve.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const hooks = `
   window.__flight = {
-    start, pause, step, draw, flap, die,
+    start, pause, step, draw, flap, die, tone, scoreSound, crashSound, silence,
+    sound() { return { muted, count: voices.size, state: audio?.state, types: [...voices].map(v => v.oscillator.type) }; },
+    suspendAudio() { return audio.suspend(); },
     get snapshot() { return { state, bird: {...bird}, score, best, pipes: pipes.map(p => ({...p})) }; },
     scenario(y, obstacles = [], points = 0) { bird = {y, vy: 0}; pipes = obstacles; score = points; },
     tickTime(t) { time = t; },
@@ -25,6 +28,14 @@ const hooks = `
 const listen = server => new Promise(resolve => server.listen(0, "127.0.0.1", () =>
   resolve(`http://127.0.0.1:${server.address().port}/trumpet/`)));
 const close = server => new Promise(resolve => server.close(resolve));
+async function waitForAsync(page, predicate) {
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    if (await page.evaluate(predicate)) return;
+    await page.waitForTimeout(50);
+  }
+  throw new Error("Timed out waiting for asynchronous service-worker state");
+}
 
 test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeout: 120000 }, async t => {
   let revision = "v1";
@@ -47,6 +58,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
     await t.test("local manifest, PNG dimensions and single approved renderer", async () => {
       assert.ok(!html.includes("drawBird") && !html.includes('id="theme"') && !html.includes("PIXEL FLAP"));
       assert.match(html, /D-H1-T1-V2/);
+      assert.doesNotMatch(html, /<script\s+src=/);
+      assert.doesNotMatch(html, /id="update"/);
       const manifest = await (await fetch(url + "manifest.webmanifest")).json();
       for (const key of ["id", "start_url", "scope"]) assert.equal(new URL(manifest[key], url).href, url);
       assert.equal(manifest.display, "standalone");
@@ -341,7 +354,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         const cache = await caches.open(keys[0]);
         return { keys, urls: (await cache.keys()).map(request => request.url) };
       });
-      assert.equal(cacheInfo.urls.length, 11);
+      assert.equal(cacheInfo.urls.length, 9);
       assert.ok(cacheInfo.urls.every(asset => asset.startsWith(url)));
       await context.setOffline(true);
       await page.goto(url + "?scoutTheme=dark");
@@ -372,38 +385,182 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.equal(await page.locator("#title").innerText(), "TRUMPET FLIGHT");
       await context.setOffline(false);
 
-      // Keep a second flight paused: no tab is allowed to force an update over it.
+      // Refresh obtains the new coherent shell; another loaded flight never reloads.
       const second = await context.newPage();
       await second.goto(url);
       await second.locator("#play").click();
       await second.keyboard.press("KeyP");
-      const controller = await second.evaluate(() => navigator.serviceWorker.controller.scriptURL);
+      await second.evaluate(() => { window.keepFlight = "untouched"; });
       revision = "v2";
       failInstall = false;
-      await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
-      await page.waitForFunction(async () => Boolean((await navigator.serviceWorker.getRegistration()).waiting));
-      await page.waitForFunction(() => !document.getElementById("update").hidden);
-      await page.locator("#update").click();
-      assert.match(await page.locator("#app-status").innerText(), /close every/);
-      assert.equal(await second.locator("#title").innerText(), "TAKE A BREATHER");
-      assert.equal(await second.locator("#update").isDisabled(), true);
-      assert.equal(await second.evaluate(() => navigator.serviceWorker.controller.scriptURL), controller);
-      assert.ok(await page.evaluate(async () => Boolean((await navigator.serviceWorker.getRegistration()).waiting)));
       await page.evaluate(() => localStorage.setItem("trumpet-flight-best", "9"));
-      await page.close();
+      await page.reload();
+      await waitForAsync(page, async () => (await caches.keys()).some(key => key.endsWith(":v2")));
+      await waitForAsync(page, async () => {
+        const reg = await navigator.serviceWorker.getRegistration();
+        return reg.active?.state === "activated" && !reg.waiting;
+      });
       assert.equal(await second.locator("#title").innerText(), "TAKE A BREATHER");
-      await second.goto("about:blank");
-      await second.waitForTimeout(250);
-      await second.goto(url);
-      await second.waitForFunction(async () => {
+      assert.equal(await second.evaluate(() => window.keepFlight), "untouched");
+      await waitForAsync(page, async () => {
         const keys = await caches.keys();
         return keys.some(key => key.endsWith(":v2")) && !keys.some(key => key.endsWith(":v1") || key.endsWith(":broken"));
       });
-      assert.equal(Number(await second.locator("#best").innerText()), 9);
+      assert.equal(Number(await page.locator("#best").innerText()), 9);
       await context.setOffline(true);
-      await second.reload();
-      assert.equal(await second.locator("#title").innerText(), "TRUMPET FLIGHT");
+      await page.reload();
+      assert.equal(await page.locator("#title").innerText(), "TRUMPET FLIGHT");
+      assert.equal(await page.locator("#update").count(), 0);
       assert.deepEqual(errors, []);
+      await context.close();
+    });
+
+    await t.test("real deployed v3 migrates without closing other games; future refreshes update atomically", async () => {
+      const oldFiles = Object.fromEntries(["index.html", "ui.js", "pwa.js", "sw.js"].map(file =>
+        [file, execFileSync("git", ["show", `440cfd9:${file}`], { encoding: "utf8" })]));
+      let legacy = true, release = "v4", failNavigation = false;
+      const migrationServer = serve({
+        load: file => {
+          if (failNavigation && file === "index.html") {
+            return Promise.reject(Object.assign(new Error("Simulated missing navigation"), { code: "ENOENT" }));
+          }
+          return legacy && oldFiles[file] ? oldFiles[file] : readFile(new URL("../" + file, import.meta.url));
+        },
+        transform(file, content) {
+          if (legacy) return content;
+          if (file === "sw.js") return content.toString().replace(/const VERSION = "[^"]+"/, `const VERSION = "${release}"`);
+          if (file === "index.html") {
+            return content.toString().replace("<body>", `<body data-release="${release}">`);
+          }
+          return content;
+        }
+      });
+      const migrationURL = await listen(migrationServer);
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      try {
+        const page = await context.newPage();
+        await page.goto(migrationURL);
+        await page.waitForFunction(() => navigator.serviceWorker.controller);
+        await page.evaluate(() => {
+          localStorage.setItem("trumpet-flight-best", "17");
+          localStorage.setItem("trumpet-flight-theme", "light");
+          window.oldPage = true;
+          window.oldController = navigator.serviceWorker.controller;
+        });
+        const other = await context.newPage();
+        await other.goto(migrationURL);
+        await other.locator("#play").click();
+        await other.keyboard.press("KeyP");
+        await other.evaluate(() => { window.preservedFlight = true; });
+        legacy = false;
+        // What the v3 startup registration check does on an online visit.
+        await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
+        await waitForAsync(page, async () => {
+          const keys = await caches.keys();
+          return keys.some(key => key.endsWith(":v4")) && !keys.some(key => key.endsWith(":v3")) &&
+            navigator.serviceWorker.controller !== window.oldController &&
+            (await navigator.serviceWorker.getRegistration()).active?.state === "activated";
+        });
+        assert.equal(await page.evaluate(() => window.oldPage), true);
+        assert.equal(await other.evaluate(() => window.preservedFlight), true);
+        assert.equal(await other.locator("#title").innerText(), "TAKE A BREATHER");
+        const migrated = await page.reload();
+        assert.equal(await page.locator("body").getAttribute("data-release"), "v4", JSON.stringify({
+          body: (await migrated.text()).match(/<body[^>]*>/)?.[0],
+          cache: await page.evaluate(async () => {
+            const keys = await caches.keys();
+            return Promise.all(keys.map(async key => [key, (await (await (await caches.open(key)).match(location.href))?.text())?.match(/<body[^>]*>/)?.[0]]));
+          })
+        }));
+        assert.equal(await page.locator("#update").count(), 0);
+        assert.equal(Number(await page.locator("#best").innerText()), 17);
+        assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+        await page.locator("#manual-open").click();
+        assert.equal(await page.locator("#manual").evaluate(dialog => dialog.open), true);
+        release = "v5";
+        await page.reload();
+        assert.equal(await page.locator("body").getAttribute("data-release"), "v5");
+        assert.equal(await page.locator("#manual").evaluate(dialog => dialog.open), false);
+        await waitForAsync(page, async () => {
+          const reg = await navigator.serviceWorker.getRegistration();
+          return !reg.installing && !reg.waiting && reg.active?.state === "activated";
+        });
+        assert.equal(await other.evaluate(() => window.preservedFlight), true);
+        assert.equal(await other.locator("#title").innerText(), "TAKE A BREATHER");
+        // No external runtime scripts can be served from an older cache.
+        assert.equal(await page.locator("script[src]").count(), 0);
+        await context.setOffline(true);
+        await page.reload();
+        assert.equal(await page.locator("body").getAttribute("data-release"), "v5");
+        assert.equal(Number(await page.locator("#best").innerText()), 17);
+        await page.locator("#play").click();
+        await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?");
+        await context.setOffline(false);
+        // A failed online navigation must not replace a healthy offline shell with an error page.
+        failNavigation = true;
+        await page.reload();
+        assert.equal(await page.locator("body").getAttribute("data-release"), "v5");
+      } finally { await context.close(); await close(migrationServer); }
+    });
+
+    await t.test("retro brass synthesis is gesture-gated, quiet, bounded and silenced on pause/mute", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => {
+        window.requestAnimationFrame = () => 1;
+        const NativeAudio = window.AudioContext;
+        window.audioCreated = 0;
+        window.AudioContext = class extends NativeAudio {
+          constructor(...args) { super(...args); window.audioCreated++; }
+        };
+      });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      assert.equal(await page.evaluate(() => window.audioCreated), 0);
+      await page.locator("#play").click();
+      assert.equal(await page.evaluate(() => window.audioCreated), 0);
+      await page.locator("#sound").click();
+      assert.equal(await page.evaluate(() => window.audioCreated), 1);
+      assert.equal(await page.evaluate(() => window.__flight.sound().state), "running");
+      const rapid = await page.evaluate(() => {
+        for (let i = 0; i < 100; i++) window.__flight.flap();
+        return window.__flight.sound();
+      });
+      assert.equal(rapid.count, 1);
+      assert.deepEqual(rapid.types, ["custom"]);
+      await page.evaluate(() => window.__flight.scoreSound());
+      assert.equal(await page.evaluate(() => window.__flight.sound().count), 3);
+      await page.waitForFunction(() => window.__flight.sound().count === 0, null, { polling: 25, timeout: 3000 });
+      assert.equal(await page.evaluate(() => window.__flight.sound().count), 0);
+      await page.evaluate(() => { window.__flight.crashSound(); window.__flight.pause(); });
+      assert.equal(await page.evaluate(() => window.__flight.sound().count), 0);
+      await page.evaluate(() => window.__flight.start());
+      await page.evaluate(() => window.__flight.suspendAudio());
+      await page.locator("#screen").focus();
+      await page.keyboard.press("ArrowUp");
+      await page.waitForFunction(() => window.__flight.sound().state === "running", null, { polling: 25 });
+      await page.locator("#sound").click();
+      assert.deepEqual(await page.evaluate(() => {
+        window.__flight.scoreSound(); window.__flight.crashSound();
+        return [window.__flight.sound().muted, window.__flight.sound().count];
+      }), [true, 0]);
+      await page.locator("#sound").click();
+      await page.evaluate(() => { window.__flight.crashSound(); window.dispatchEvent(new Event("blur")); });
+      assert.equal(await page.evaluate(() => window.__flight.sound().count), 0);
+      const synthesis = html.slice(html.indexOf("  function silence()"), html.indexOf("  async function flapSound()"));
+      const rendered = await page.evaluate(async synthesis => {
+        const audio = new OfflineAudioContext(1, 9600, 48000);
+        Object.defineProperty(audio, "state", { get: () => "running" });
+        new Function("audio", `let muted = false, brassWave = null; const voices = new Set(); ${synthesis}; tone(294, .12);`)(audio);
+        const pcm = (await audio.startRendering()).getChannelData(0);
+        return {
+          peak: Math.max(...pcm.map(Math.abs)),
+          nonzero: pcm.slice(200, 4500).some(sample => Math.abs(sample) > .001),
+          silentTail: pcm.slice(6500).every(sample => Math.abs(sample) < .00001)
+        };
+      }, synthesis);
+      assert.ok(rendered.peak > .005 && rendered.peak < .04, JSON.stringify(rendered));
+      assert.equal(rendered.nonzero, true);
+      assert.equal(rendered.silentTail, true);
       await context.close();
     });
   } finally {

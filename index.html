@@ -270,7 +270,6 @@ a { color: var(--cp-link); }
       <p class="tip"><strong>Less panic. More rhythm.</strong><br>Short, steady taps beat frantic tapping.<br>One point for every pair of pipes.</p>
       <div class="app-tools">
         <button class="secondary" id="install" aria-controls="install-help" aria-expanded="false">Install game</button>
-        <button class="secondary" id="update" hidden>Update game</button>
       </div>
       <p class="app-status" id="app-status" role="status">Preparing offline play...</p>
       <div class="install-help" id="install-help" hidden>
@@ -348,7 +347,8 @@ a { color: var(--cp-link); }
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let state = "ready", bird = { y: 210, vy: 0 }, pipes = [], particles = [];
   let score = 0, best = 0, distance = 0, spawn = 0, time = 0, last = 0, accumulator = 0, deadAt = 0;
-  let muted = true, audio = null, storageAvailable = true;
+  let muted = true, audio = null, storageAvailable = true, brassWave = null;
+  const voices = new Set();
   function notifyState() {
     document.dispatchEvent(new CustomEvent("flightstate", { detail: state }));
   }
@@ -367,17 +367,69 @@ a { color: var(--cp-link); }
     $("best").textContent = String(best).padStart(2, "0");
   }
   updateScore();
-  function tone(frequency, duration, endFrequency = frequency) {
-    if (muted || !audio || audio.state !== "running") return;
-    const oscillator = audio.createOscillator(), gain = audio.createGain();
-    oscillator.type = "square";
-    oscillator.frequency.setValueAtTime(frequency, audio.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(endFrequency, audio.currentTime + duration);
-    gain.gain.setValueAtTime(.035, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.001, audio.currentTime + duration);
-    oscillator.connect(gain); gain.connect(audio.destination);
-    oscillator.start(); oscillator.stop(audio.currentTime + duration);
-    oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+  function silence() {
+    if (!audio) return;
+    for (const voice of voices) {
+      voice.gain.gain.cancelScheduledValues(audio.currentTime);
+      voice.gain.gain.setValueAtTime(0, audio.currentTime);
+      voice.oscillator.stop(audio.currentTime);
+    }
+    voices.clear();
+  }
+  function tone(frequency, duration, endFrequency = frequency, delay = 0, append = false) {
+    if (muted || !audio || audio.state !== "running" || document.hidden) return;
+    if (!append) silence();
+    if (!brassWave) {
+      // A 25% pulse with twelve harmonics: chip-like brass, not a realistic sampled horn.
+      const real = new Float32Array(13), imaginary = new Float32Array(13);
+      for (let n = 1; n < imaginary.length; n++) imaginary[n] = 2 * Math.sin(Math.PI * n / 4) / (Math.PI * n);
+      brassWave = audio.createPeriodicWave(real, imaginary);
+    }
+    const oscillator = audio.createOscillator(), gain = audio.createGain(), filter = audio.createBiquadFilter();
+    oscillator.setPeriodicWave(brassWave);
+    const at = audio.currentTime + delay;
+    oscillator.frequency.setValueAtTime(frequency * 1.03, at);
+    oscillator.frequency.setValueAtTime(frequency, at + .012);
+    oscillator.frequency.setValueAtTime(endFrequency, at + duration * .6);
+    filter.type = "lowpass";
+    filter.Q.value = .7;
+    filter.frequency.setValueAtTime(Math.min(5000, frequency * 7), at);
+    filter.frequency.setValueAtTime(frequency * 4, at + .025);
+    filter.frequency.setValueAtTime(frequency * 2.5, at + duration * .65);
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(.028, at + .004);
+    gain.gain.setValueAtTime(.021, at + .025);
+    gain.gain.setValueAtTime(.012, at + duration * .65);
+    gain.gain.linearRampToValueAtTime(0, at + duration);
+    oscillator.connect(filter); filter.connect(gain); gain.connect(audio.destination);
+    const voice = { oscillator, gain };
+    voices.add(voice);
+    oscillator.onended = () => {
+      voices.delete(voice);
+      oscillator.disconnect(); filter.disconnect(); gain.disconnect();
+    };
+    oscillator.start(at); oscillator.stop(at + duration);
+  }
+  function scoreSound() {
+    silence();
+    [784, 988, 1175].forEach((note, i) => tone(note, .085, note, i * .085, true));
+  }
+  function crashSound() {
+    silence();
+    [392, 311, 196].forEach((note, i) => tone(note, .1, note / 2, i * .1, true));
+  }
+  async function flapSound() {
+    if (muted || !audio) return;
+    if (audio.state !== "running") {
+      try { await audio.resume(); }
+      catch (error) {
+        $("notice").hidden = false;
+        $("notice").textContent = "Sound could not resume. Toggle sound to retry; you can still play silently.";
+        console.warn("Audio resume failed:", error);
+        return;
+      }
+    }
+    if (state === "playing") tone(294, .12);
   }
   async function toggleSound() {
     if (muted) {
@@ -398,10 +450,11 @@ a { color: var(--cp-link); }
       }
     }
     muted = !muted;
+    if (muted) silence();
     $("sound").setAttribute("aria-pressed", String(!muted));
     $("sound").setAttribute("aria-label", muted ? "Enable sound" : "Mute sound");
     $("sound-mark").setAttribute("d", muted ? "m16 9 6 6m0-6-6 6" : "M15 8q5 4 0 8M18 4q9 8 0 16");
-    tone(540, .09, 810);
+    tone(392, .12);
   }
   function overlay(title, message, button, prompt) {
     const crashed = state === "over";
@@ -414,7 +467,7 @@ a { color: var(--cp-link); }
     $("prompt").textContent = prompt;
     $("overlay").hidden = false;
   }
-  function flap() { bird.vy = -310; tone(294, .09, 392); }
+  function flap() { bird.vy = -310; flapSound(); }
   function start() {
     state = "playing"; bird = { y: 210, vy: 0 }; pipes = []; particles = [];
     notifyState();
@@ -434,6 +487,7 @@ a { color: var(--cp-link); }
   function pause() {
     if (state === "playing") {
       state = "paused";
+      silence();
       overlay("TAKE A BREATHER", "Your tiny adventure can wait.", "KEEP FLYING >", "P OR SPACE TO RESUME");
       $("status").textContent = "FLIGHT ON HOLD";
       $("pause").setAttribute("aria-label", "Resume game");
@@ -457,7 +511,7 @@ a { color: var(--cp-link); }
     crashCtx.clearRect(0, 0, snapshot.width, snapshot.height);
     crashCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, snapshot.width, snapshot.height);
     state = "over"; deadAt = performance.now(); $("pause").disabled = true;
-    tone(180, .23, 45);
+    crashSound();
     const record = score > best;
     if (record) {
       best = score;
@@ -494,7 +548,7 @@ a { color: var(--cp-link); }
     }
     for (const pipe of pipes) {
       if (!pipe.passed && pipe.x + 62 < X - hit.x) {
-        pipe.passed = true; score++; updateScore(); tone(880, .12, 1320);
+        pipe.passed = true; score++; updateScore(); scoreSound();
         if (!reducedMotion) for (let i = 0; i < 8; i++) particles.push({ x: X, y: bird.y, vx: -30 - Math.random() * 80, vy: (Math.random() - .5) * 110, life: .45 });
       }
     }
@@ -669,14 +723,187 @@ a { color: var(--cp-link); }
       if (!event.repeat) pause();
     } else if (event.code === "KeyM" && !event.repeat) toggleSound();
   });
-  document.addEventListener("visibilitychange", () => { if (document.hidden && state === "playing") pause(); });
-  window.addEventListener("blur", () => { if (state === "playing") pause(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { silence(); if (state === "playing") pause(); }
+  });
+  window.addEventListener("blur", () => { silence(); if (state === "playing") pause(); });
   document.addEventListener("flightmanualopen", () => { if (state === "playing") pause(); });
   overlay("TRUMPET FLIGHT", "Golden brass. Windswept hair. Keep this tiny air solo in the sky.", "LET'S TOOT >", "OR PRESS SPACE TO START");
   requestAnimationFrame(frame);
 })();
 </script>
-<script src="./ui.js"></script>
-<script src="./pwa.js"></script>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const compact = matchMedia("(max-width: 900px), (max-width: 1100px) and (max-height: 560px)");
+  const manual = $("manual");
+  const content = manual.querySelector(".manual-content");
+  // Move the originals, not copies: IDs, install state, links and all of the copy remain intact.
+  const sections = [".edition", ".intro-panel", "footer", ".unofficial"].map(selector => {
+    const node = document.querySelector(selector);
+    const anchor = document.createComment("Flight manual content position");
+    node.before(anchor);
+    return { node, anchor };
+  });
+  function placeCopy() {
+    for (const { node, anchor } of sections) {
+      if (compact.matches || manual.open) content.append(node);
+      else anchor.after(node);
+    }
+  }
+  $("manual-open").addEventListener("click", () => {
+    document.dispatchEvent(new Event("flightmanualopen"));
+    manual.showModal();
+    placeCopy();
+    manual.scrollTop = 0;
+    $("manual-close").focus({ preventScroll: true });
+  });
+  $("manual-close").addEventListener("click", () => manual.close());
+  manual.addEventListener("keydown", event => {
+    if (event.key !== "Tab") return;
+    const controls = [...manual.querySelectorAll('button:not(:disabled), a[href], [tabindex="0"]')]
+      .filter(node => node.getClientRects().length > 0);
+    const first = controls[0], last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault(); first.focus();
+    }
+  });
+  manual.addEventListener("close", () => {
+    placeCopy();
+    $("manual-open").focus({ preventScroll: true });
+  });
+  let backdropDown = false;
+  const outside = event => {
+    const box = manual.getBoundingClientRect();
+    return event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
+  };
+  manual.addEventListener("pointerdown", event => { backdropDown = event.target === manual && outside(event); });
+  manual.addEventListener("click", event => {
+    if (backdropDown && event.target === manual && outside(event)) manual.close();
+    backdropDown = false;
+  });
+  function themeButton() {
+    const dark = document.documentElement.dataset.theme === "dark";
+    $("theme-switch").textContent = dark ? "Dark" : "Light";
+    $("theme-switch").setAttribute("aria-pressed", String(dark));
+    $("theme-switch").title = dark ? "Switch to light theme" : "Switch to dark theme";
+  }
+  let noticeTimer;
+  function themeNotice() {
+    $("theme-notice").textContent = "Theme changes last for this visit only. Browser storage is unavailable.";
+    $("theme-notice").hidden = false;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => { $("theme-notice").hidden = true; }, 8000);
+  }
+  $("theme-switch").addEventListener("click", () => {
+    document.dispatchEvent(new CustomEvent("themechoice", {
+      detail: document.documentElement.dataset.theme === "dark" ? "light" : "dark"
+    }));
+  });
+  new MutationObserver(themeButton).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  document.addEventListener("themestorageerror", themeNotice);
+  if (document.documentElement.dataset.themeStorage === "unavailable") themeNotice();
+  themeButton();
+  const field = document.querySelector(".playfield");
+  function fitGame() {
+    const screen = $("screen");
+    if (!compact.matches) {
+      screen.style.removeProperty("width");
+      screen.style.removeProperty("height");
+      return;
+    }
+    const width = Math.max(0, Math.min(field.clientWidth - 4, (field.clientHeight - 4) * 448 / 512));
+    screen.style.width = `${width + 4}px`;
+    screen.style.height = `${width * 512 / 448 + 4}px`;
+  }
+  function viewportHeight() {
+    if (!window.visualViewport || window.visualViewport.scale === 1) {
+      document.documentElement.style.setProperty("--app-height", `${window.visualViewport?.height ?? innerHeight}px`);
+    }
+  }
+  new ResizeObserver(fitGame).observe(field);
+  compact.addEventListener("change", () => { placeCopy(); fitGame(); });
+  window.visualViewport?.addEventListener("resize", viewportHeight);
+  window.addEventListener("resize", viewportHeight);
+  viewportHeight(); placeCopy(); fitGame();
+})();
+</script>
+<script>
+(() => {
+  "use strict";
+  const install = document.getElementById("install");
+  const help = document.getElementById("install-help");
+  const status = document.getElementById("app-status");
+  const standalone = matchMedia("(display-mode: standalone)");
+  let deferredPrompt = null, offlineReady = false;
+  function installedUI() { install.hidden = standalone.matches || navigator.standalone === true; }
+  installedUI();
+  standalone.addEventListener("change", installedUI);
+  function renderStatus() {
+    if (offlineReady) status.textContent = navigator.onLine ? "Ready for offline play." : "Offline. Ready to fly.";
+  }
+  window.addEventListener("online", renderStatus);
+  window.addEventListener("offline", renderStatus);
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    deferredPrompt = event;
+  });
+  window.addEventListener("appinstalled", () => {
+    deferredPrompt = null;
+    install.hidden = true;
+    help.hidden = true;
+    status.textContent = "Installation accepted. Ready for your next flight.";
+  });
+  install.addEventListener("click", async () => {
+    help.hidden = !help.hidden;
+    install.setAttribute("aria-expanded", String(!help.hidden));
+    if (!deferredPrompt) return;
+    const prompt = deferredPrompt;
+    deferredPrompt = null;
+    try {
+      await prompt.prompt();
+      if ((await prompt.userChoice).outcome !== "accepted") status.textContent = "Installation dismissed. You can keep playing in this browser.";
+    } catch (error) {
+      status.textContent = "The install prompt could not open. Use your browser's install menu instead.";
+      console.warn("Install prompt unavailable:", error);
+    }
+  });
+  if (!("serviceWorker" in navigator) || !window.isSecureContext) {
+    status.textContent = "Offline play needs a supported browser on HTTPS or localhost. You can still play this page.";
+    return;
+  }
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    offlineReady = true;
+    renderStatus();
+    // A new worker never reloads an open game. Only a normal user navigation changes the app.
+  });
+  (async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("./sw.js", { scope: "./", updateViaCache: "none" });
+      const watch = worker => {
+        if (!worker) return;
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "redundant") {
+            status.textContent = offlineReady
+              ? "The new offline copy could not be saved. Your current game still works; refresh online to retry."
+              : "Offline setup did not finish. Reconnect and refresh to retry.";
+          }
+        });
+      };
+      registration.addEventListener("updatefound", () => watch(registration.installing));
+      watch(registration.installing);
+      await navigator.serviceWorker.ready;
+      offlineReady = true;
+      renderStatus();
+    } catch (error) {
+      status.textContent = "Offline setup is unavailable. Stay connected to play, and refresh to retry.";
+      console.warn("Offline setup failed:", error);
+    }
+  })();
+})();
+</script>
 </body>
 </html>

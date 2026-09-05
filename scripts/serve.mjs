@@ -7,7 +7,10 @@ export const root = fileURLToPath(new URL("../", import.meta.url));
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".webmanifest": "application/manifest+json", ".png": "image/png" };
 const allowed = /^(index\.html|pwa\.js|ui\.js|sw\.js|manifest\.webmanifest|icons\/[a-z0-9-]+\.png)$/;
 
-export function serve({ transform = (_, content) => content } = {}) {
+export function serve({
+  transform = (_, content) => content,
+  load = file => readFile(resolve(root, ...file.split("/")))
+} = {}) {
   return createServer(async (req, res) => {
     const path = new URL(req.url, "http://localhost").pathname;
     if (path === "/trumpet") { res.writeHead(301, { Location: "/trumpet/" }); res.end(); return; }
@@ -16,7 +19,7 @@ export function serve({ transform = (_, content) => content } = {}) {
       res.writeHead(404); res.end("Not found"); return;
     }
     try {
-      const content = await readFile(resolve(root, ...file.split("/")));
+      const content = await load(file);
       res.writeHead(200, { "Content-Type": types[extname(file)], "Cache-Control": "no-store" });
       res.end(transform(file, content));
     } catch (error) {

@@ -4,6 +4,8 @@
 
 A small, polished, installable arcade game: a miniature Trump-inspired rider, a golden backward-facing trumpet, a windswept comb-over, and a fluttering tie. Dodge pipes, find your rhythm, and chase your personal best. Original pixel artwork and synthesized sound; no accounts, analytics, external assets, or runtime dependencies.
 
+The sound stays proudly 8-bit: short pulse-wave trumpet toots, stepped pitch and brass-like filtering, a tiny score fanfare, and a descending arcade wah-wah. Low-volume voices replace previous notes during rapid tapping; mute, pause, and backgrounding silence them. Audio starts only after you enable sound and resumes on a fresh gesture when required by mobile browsers.
+
 This is an original, unofficial caricature game. It is not affiliated with or endorsed by Donald Trump, any campaign, or any organization. No license is asserted by this repository.
 
 ## Play
@@ -38,11 +40,13 @@ Offline data and scores belong to this origin/browser profile. Private browsing,
 
 ## Updates
 
-Updates are downloaded in a separate, versioned, scope-specific cache. Incomplete downloads never replace a working version. A waiting update shows an in-app notice; **Update game** explains how to apply it and is disabled during playing or paused flights.
+**Just open or refresh the game online. There is no Update game button.** Each navigation requests the latest published HTML, then saves it for offline play. The complete runtime is inline in that HTML, so a new page cannot mix new markup with old cached JavaScript. When the network is unavailable or the server returns an error, the saved game loads instead.
 
-**Finish your flight, close every Trumpet Flight tab/app window, then reopen.** The browser activates the waiting version once no old window is using it. There is no forced reload or `skipWaiting`, so a second window cannot interrupt your active game. Personal bests survive app updates.
+Background updates activate only after their offline assets have downloaded successfully. They never reload an open game, even if another tab or installed window is playing. Your current run keeps its loaded code; a refresh or new launch gets the new version. Personal bests and theme choices survive.
 
-For every release that changes app assets, bump `VERSION` in `sw.js`. Keep the manifest, service-worker asset list, and generated icons consistent. Pages may take a few minutes to publish; existing clients may need another online visit to discover the update.
+**Migrating from the original v3 app:** its cache-first worker may show the old page on your first online visit while the replacement downloads. Wait a moment and refresh once more if the old update button is still visible. There is no need to close other games, clear site data, or reinstall.
+
+For every release that changes app assets, bump `VERSION` in `sw.js`. Keep the manifest, service-worker asset list, and generated icons consistent. Pages may take a few minutes to publish; refreshing cannot fetch a deployment that the server has not published yet.
 
 ## Local development
 
@@ -65,3 +69,5 @@ npm run test:live
 ```
 
 Playwright is only a development dependency; nothing from `node_modules` is requested by the app. Icons are real PNGs rendered from the same `drawTrumpet` function used in the game, including separate padded maskable variants.
+
+The migration regression reads the actual v3 release (`440cfd9`) from Git history; use a full clone rather than a shallow checkout when running it.

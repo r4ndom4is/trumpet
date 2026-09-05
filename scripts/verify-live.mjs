@@ -15,6 +15,8 @@ try {
   const source = (await readFile(new URL("../index.html", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
   assert.equal(published, source, "Published HTML must match the checkout, ignoring Git line-ending normalization");
   await page.waitForFunction(() => navigator.serviceWorker.controller && document.getElementById("app-status").textContent === "Ready for offline play.");
+  assert.equal(await page.locator("#update").count(), 0);
+  assert.equal(await page.locator("script[src]").count(), 0);
   const registration = await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).scope);
   assert.equal(registration, url);
   const manifestResponse = await context.request.get(url + "manifest.webmanifest");
@@ -57,6 +59,8 @@ try {
   assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
   await page.locator("#play").tap();
   assert.equal(await page.locator("#overlay").isHidden(), true);
+  await page.locator("#sound").tap();
+  assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "true");
   await page.locator("#manual-open").tap();
   assert.equal(await page.locator("#title").innerText(), "TAKE A BREATHER");
   assert.match(await page.locator("#manual").innerText(), /Less panic. More rhythm./);
