@@ -18,11 +18,26 @@ This is an original, unofficial caricature game. It is not affiliated with or en
 
 One point per pipe pair. The personal best is saved in this browser, not synced between devices. If browser storage is blocked, the game explains that the best lasts only for the current visit. Switching windows or hiding the page pauses a flight. Reduced-motion preferences suppress decorative animation.
 
+The rider uses two independently fitted capsule hitboxes, rotating with the artwork: a body capsule (21px centreline, 18px diameter, 90 degrees) and a trumpet capsule (27px centreline, 10px diameter, -25 degrees). Their centres relative to the live rider anchor are (-2, -8) and (3, 3). The imported studio fit is translated up 8px before rotation because the studio centres the sprite at y=-21 while the live renderer starts it at y=-29; the fit against the artwork is preserved. Rounded ends determine contact with pipes, ceiling, and floor; scoring waits until both capsules clear a pipe. Flight physics, artwork, and sounds are unchanged.
+
+## Six environments
+
+| Cleared obstacles | Environment |
+| --- | --- |
+| 0-9 | The Gilded Mile |
+| 10-19 | Marble Forum |
+| 20-29 | Executive Atrium |
+| 30-39 | Links & Lightning |
+| 40-49 | Penthouse Row |
+| 50 onward | Gantry Nine |
+
+Scenery crossfades for one second at each threshold; reduced-motion mode switches instantly. Obstacles already in flight retain their spawn-time environment, while subsequent spawns use the new one. Their 66px caps and narrower shafts have matching collision rectangles; decorative outliers are non-lethal. Light/dark mode selects each environment's day/night palette. Speed and gap difficulty continue on the same score-based curve, and pausing freezes the transition. Gantry Nine stays indefinitely; retry starts again at The Gilded Mile.
+
 The single **sun/moon icon beside mute** switches light/dark appearance and remembers your choice, including offline. Its icon and accessible label describe the theme you can switch to. Your saved choice takes precedence over system appearance and the optional `?scoutTheme=light` / `?scoutTheme=dark` preview parameter. Until you choose, the parameter or system appearance sets the initial theme. If storage is denied, the palette still switches and an explicit notice explains that it cannot be remembered.
 
 ## A pocket-sized, screen-fitting arcade
 
-On phones and short landscape screens, the complete game canvas fits the available viewport, including browser chrome and safe-area insets. Scores, sound, pause, start, and retry stay within reach without scrolling the page. Landscape moves score and sound/pause controls beside the game; the canvas keeps its original aspect ratio, physics, and collision boxes. Installed standalone windows use their extra available height automatically. This does not request native fullscreen or assume iOS supports the Fullscreen API.
+On phones and short landscape screens, the complete game canvas fits the available viewport, including browser chrome and safe-area insets. Scores, sound, pause, start, and retry stay within reach without scrolling the page. Landscape moves score and sound/pause controls beside the game; resizing preserves its aspect ratio, physics, and collision shapes. Installed standalone windows use their extra available height automatically. This does not request native fullscreen or assume iOS supports the Fullscreen API.
 
 The header keeps **trumpet flight.** on the left and **POCKET ARCADE / NO. 001** on the right. **SMALL GAME. BIG ONE-MORE-TRY ENERGY.** stays visible below it on mobile. The Flight manual button sits beneath the game, separate from the mute, theme, and pause controls.
 
@@ -71,5 +86,7 @@ npm run test:live
 ```
 
 Playwright is only a development dependency; nothing from `node_modules` is requested by the app. Icons are real PNGs rendered from the same `drawTrumpet` function used in the game, including separate padded maskable variants.
+
+Environment artwork lives in `scripts/environments.js`. After editing it, run `npm run embed:environments` and commit the regenerated `index.html` as well. The published file already contains the complete environment module, so hosting and offline launches still require no build or external runtime scripts.
 
 The migration regression reads the actual v3 release (`440cfd9`) from Git history; use a full clone rather than a shallow checkout when running it.

@@ -1,7 +1,7 @@
 "use strict";
 
 // The runtime is entirely inline in index.html, so each navigation gets one coherent release.
-const VERSION = "v7";
+const VERSION = "v8";
 const PREFIX = `trumpet-flight:${self.registration.scope}:`;
 const CACHE = PREFIX + VERSION;
 const local = path => new URL(path, self.registration.scope).href;

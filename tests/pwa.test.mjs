@@ -9,6 +9,34 @@ const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const hooks = `
   window.__flight = {
     start, pause, step, draw, flap, die, tone, scoreSound, crashSound, silence,
+    riderCapsules, riderTilt, capsuleHitsRect, pipeHitboxes,
+    environment() {
+      return { id: currentEnvironment().id, transition: structuredClone(environmentTransition), time, distance, spawn };
+    },
+    spawnIn(seconds) { spawn = seconds; },
+    position(y, vy = 0) { bird = { y, vy }; },
+    renderTrace() {
+      const calls = [];
+      const scene = environments.drawScene, pair = environments.drawPair, image = ctx.drawImage;
+      environments.drawScene = (painter, options) => {
+        calls.push({ kind: "scene", env: typeof options.env === "string" ? options.env : options.env.id,
+          gaps: options.gaps, theme: options.theme, main: painter === ctx });
+        return scene(painter, options);
+      };
+      environments.drawPair = (painter, options) => {
+        calls.push({ kind: "pair", ...options, alpha: painter.globalAlpha });
+        return pair(painter, options);
+      };
+      ctx.drawImage = function(...args) {
+        if (args[0] === environmentLayer) calls.push({ kind: "blend", alpha: this.globalAlpha });
+        return image.apply(this, args);
+      };
+      try { draw(); } finally {
+        environments.drawScene = scene; environments.drawPair = pair; ctx.drawImage = image;
+      }
+      return calls;
+    },
+    collisionConfig() { return structuredClone(riderCollision); },
     sound() { return { muted, count: voices.size, fading: fadingVoices.size, state: audio?.state, types: [...voices].map(v => v.kind || v.oscillator.type) }; },
     sprite() {
       return {
@@ -28,7 +56,11 @@ const hooks = `
     },
     suspendAudio() { return audio.suspend(); },
     get snapshot() { return { state, bird: {...bird}, score, best, pipes: pipes.map(p => ({...p})) }; },
-    scenario(y, obstacles = [], points = 0) { bird = {y, vy: 0}; pipes = obstacles; score = points; },
+    scenario(y, obstacles = [], points = 0, vy = 0) {
+      bird = {y, vy}; score = points;
+      syncEnvironment(); environmentTransition = null;
+      pipes = obstacles.map(pipe => ({ environmentId: currentEnvironment().id, ...pipe }));
+    },
     tickTime(t) { time = t; },
     crop() {
       draw();
@@ -197,6 +229,316 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         game.step(1 / 120);
         if (game.snapshot.state !== "over") throw new Error("Pipe collision missed");
       });
+      await context.close();
+    });
+
+    await t.test("approved dual capsules rotate exactly with the rider and use rounded contacts", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      const config = await page.evaluate(() => window.__flight.collisionConfig());
+      assert.deepEqual(config, {
+        localCentre: { x: 0, y: -1 },
+        capsules: [
+          { x: -2, y: 1, length: 21, angle: 90, thickness: 18 },
+          { x: 3, y: 12, length: 27, angle: -25, thickness: 10 }
+        ]
+      });
+      const local = [
+        { a: [-2, -10.5], b: [-2, 10.5], r: 9 },
+        { a: [-9.235155124994774, 16.705346533499444], b: [15.235155124994774, 5.294653466500558], r: 5 }
+      ];
+      for (const [vy, tilt] of [[-310, -.16], [0, 0], [210, .15], [470, .3]]) {
+        const result = await page.evaluate(vy => {
+          const g = window.__flight;
+          g.start(); g.scenario(210.4, [], 0, vy);
+          return { tilt: g.riderTilt(), capsules: g.riderCapsules() };
+        }, vy);
+        assert.equal(result.tilt, tilt);
+        for (let i = 0; i < 2; i++) {
+          assert.equal(result.capsules[i].r, local[i].r);
+          for (const endpoint of ["a", "b"]) {
+            const [x, studioY] = local[i][endpoint];
+            // The approved fit uses the studio's -21 sprite origin; live artwork uses -29.
+            const y = studioY - 8;
+            assert.ok(Math.abs(result.capsules[i][endpoint].x - (108 + x * Math.cos(tilt) - y * Math.sin(tilt))) < 1e-9);
+            assert.ok(Math.abs(result.capsules[i][endpoint].y - (210 + x * Math.sin(tilt) + y * Math.cos(tilt))) < 1e-9);
+          }
+        }
+      }
+      const frozen = await page.evaluate(() => {
+        const g = window.__flight;
+        g.start(); g.scenario(210, [], 0, 470);
+        const playing = g.riderCapsules();
+        g.pause(); const paused = g.riderCapsules();
+        g.pause(); g.die();
+        return { playing, paused, dead: g.riderCapsules() };
+      });
+      assert.deepEqual(frozen.paused, frozen.playing);
+      assert.deepEqual(frozen.dead, frozen.playing);
+      const contacts = await page.evaluate(() => {
+        const hit = window.__flight.capsuleHitsRect;
+        const box = { left: 0, right: 10, top: 0, bottom: 10 };
+        return [
+          hit({ a: { x: -5, y: 5 }, b: { x: 15, y: 5 }, r: 1 }, box),
+          hit({ a: { x: 5, y: -5 }, b: { x: 5, y: 15 }, r: 1 }, box),
+          hit({ a: { x: -5, y: -5 }, b: { x: 15, y: 15 }, r: 1 }, box),
+          hit({ a: { x: -5, y: -2 }, b: { x: 15, y: -2 }, r: 1 }, box),
+          hit({ a: { x: -5, y: -1 }, b: { x: 15, y: -1 }, r: 1 }, box),
+          hit({ a: { x: -.8, y: -.8 }, b: { x: -.8, y: -.8 }, r: 1 }, box),
+          hit({ a: { x: -.6, y: -.6 }, b: { x: -.6, y: -.6 }, r: 1 }, box),
+          hit({ a: { x: 5, y: 5 }, b: { x: 5, y: 5 }, r: 1 }, box)
+        ];
+      });
+      assert.deepEqual(contacts, [true, true, true, false, true, false, true, true]);
+      await context.close();
+    });
+
+    await t.test("capsules govern ceiling, floor, pipe contact and full-clear scoring", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      const results = await page.evaluate(() => {
+        const g = window.__flight;
+        const run = (y, pipes = []) => {
+          g.start(); g.scenario(y, pipes); g.step(0);
+          return { state: g.snapshot.state, score: g.snapshot.score };
+        };
+        return {
+          ceilingSafe: run(28), ceilingHit: run(27),
+          floorSafe: run(454), floorHit: run(455),
+          oldRectangleCornerForgiven: run(188, [{ x: 100, top: 160, gap: 158, passed: false }]),
+          bodyHit: run(175, [{ x: 100, top: 160, gap: 158, passed: false }]),
+          trumpetHit: run(200, [{ x: 70, top: 54, gap: 158, passed: false }]),
+          trumpetSafe: run(200, [{ x: 70, top: 56, gap: 158, passed: false }]),
+          notFullyClear: run(200, [{ x: 32, top: 100, gap: 158, passed: false }]),
+          fullyClear: run(200, [{ x: 31, top: 100, gap: 158, passed: false }])
+        };
+      });
+      for (const key of ["ceilingSafe", "floorSafe", "oldRectangleCornerForgiven", "trumpetSafe", "notFullyClear"]) {
+        assert.deepEqual(results[key], { state: "playing", score: 0 }, key);
+      }
+      for (const key of ["ceilingHit", "floorHit", "bodyHit", "trumpetHit"]) {
+        assert.deepEqual(results[key], { state: "over", score: 0 }, key);
+      }
+      assert.deepEqual(results.fullyClear, { state: "playing", score: 1 });
+      await page.evaluate(() => window.__flight.step(0));
+      assert.equal(await page.evaluate(() => window.__flight.snapshot.score), 1);
+      await context.close();
+    });
+
+    await t.test("six production environments are embedded exactly and clamp every score threshold", async () => {
+      const source = (await readFile(new URL("../scripts/environments.js", import.meta.url), "utf8")).replace(/\r\n/g, "\n").trimEnd();
+      const begin = "// BEGIN GENERATED ENVIRONMENTS", end = "// END GENERATED ENVIRONMENTS";
+      const normalized = html.replace(/\r\n/g, "\n");
+      assert.equal(normalized.split(begin).length, 2);
+      assert.equal(normalized.split(end).length, 2);
+      assert.equal(normalized.slice(normalized.indexOf(begin) + begin.length, normalized.indexOf(end)).trim(), source.trim());
+      assert.doesNotMatch(html, /<script\s+[^>]*src=/i);
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      const stages = await page.evaluate(() => window.TRUMPET_ENVIRONMENTS.list.map(env => ({ id: env.id, name: env.name })));
+      assert.deepEqual(stages.map(env => env.name), [
+        "The Gilded Mile", "Marble Forum", "Executive Atrium", "Links & Lightning", "Penthouse Row", "Gantry Nine"
+      ]);
+      assert.equal(new Set(stages.map(env => env.id)).size, 6);
+      for (const [score, index] of [
+        [0, 0], [9, 0], [10, 1], [19, 1], [20, 2], [29, 2], [30, 3],
+        [39, 3], [40, 4], [49, 4], [50, 5], [59, 5], [60, 5], [999, 5]
+      ]) {
+        const result = await page.evaluate(score => {
+          const api = window.TRUMPET_ENVIRONMENTS, g = window.__flight;
+          g.start(); g.scenario(200, [{ x: 300, top: 100, gap: 158, passed: false }], score);
+          const level = api.levelAt(score);
+          return { mapped: level.environmentId, indexed: api.byId[level.environmentId].id,
+            current: g.environment().id, pipe: g.snapshot.pipes[0].environmentId,
+            label: document.getElementById("environment-name").textContent };
+        }, score);
+        assert.deepEqual(result, { mapped: stages[index].id, indexed: stages[index].id,
+          current: stages[index].id, pipe: stages[index].id, label: stages[index].name }, `score ${score}`);
+      }
+      await context.close();
+    });
+
+    await t.test("all environment hitboxes match rounded caps and transparent pairs render distinctly in both themes", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage(), errors = [];
+      page.on("pageerror", error => errors.push(error.message));
+      await page.goto(fixture);
+      const result = await page.evaluate(() => {
+        const api = window.TRUMPET_ENVIRONMENTS, g = window.__flight;
+        const surface = document.createElement("canvas");
+        surface.width = 448; surface.height = 512;
+        const painter = surface.getContext("2d");
+        const entries = api.list.map((env, index) => {
+          const obstacle = { x: 200.6, top: 160.6, gap: 158, environmentId: env.id };
+          g.start(); g.scenario(240, [obstacle], index * 10);
+          const boxes = g.pipeHitboxes(obstacle);
+          const expected = api.hitboxes(env.obstacleId, 197, 161, 158, 468);
+          const renders = ["day", "night"].map(theme => {
+            painter.clearRect(0, 0, 448, 512);
+            api.drawPair(painter, { env, theme, x: 197, top: 161, gap: 158, reduced: true });
+            const pairImage = surface.toDataURL();
+            const alpha = (x, y) => painter.getImageData(x, y, 1, 1).data[3];
+            const transparent = [[0, 0], [196, 150], [263, 150], [225, 240], [225, 470]].map(([x, y]) => alpha(x, y));
+            const solid = [[197, 160], [262, 160], [197, 319], [262, 319], [225, 50]].map(([x, y]) => alpha(x, y));
+            api.drawScene(painter, { env, theme, time: 0, scroll: 0, reduced: true, gaps: [] });
+            const backgroundImage = surface.toDataURL();
+            document.documentElement.dataset.theme = theme === "day" ? "light" : "dark";
+            const trace = g.renderTrace();
+            return { theme, pairImage, backgroundImage, transparent, solid, trace,
+              gameImage: document.getElementById("game").toDataURL() };
+          });
+          return { id: env.id, boxes, expected, renders };
+        });
+        return { world: { W: api.world.W, H: api.world.H, FLOOR: api.world.FLOOR, COLLIDE: api.world.COLLIDE }, entries };
+      });
+      assert.deepEqual(result.world, { W: 448, H: 512, FLOOR: 468, COLLIDE: 66 });
+      for (const [index, entry] of result.entries.entries()) {
+        const shaft = [56, 56, 54, 56, 56, 54][index], cap = [20, 20, 18, 20, 22, 16][index];
+        assert.deepEqual(entry.boxes, entry.expected, entry.id);
+        assert.deepEqual(entry.boxes, [
+          { x: 197 + (66 - shaft) / 2, y: 0, w: shaft, h: 161 - cap, part: "ceiling-shaft" },
+          { x: 197, y: 161 - cap, w: 66, h: cap, part: "ceiling-cap" },
+          { x: 197, y: 319, w: 66, h: cap, part: "floor-cap" },
+          { x: 197 + (66 - shaft) / 2, y: 319 + cap, w: shaft, h: 149 - cap, part: "floor-shaft" }
+        ], entry.id);
+        for (const render of entry.renders) {
+          assert.deepEqual(render.transparent, [0, 0, 0, 0, 0], `${entry.id} ${render.theme} transparency`);
+          assert.deepEqual(render.solid, [255, 255, 255, 255, 255], `${entry.id} ${render.theme} cap footprint`);
+          assert.deepEqual(render.trace.map(call => call.kind), ["scene", "pair"]);
+          assert.deepEqual(render.trace[0], { kind: "scene", env: entry.id, gaps: [], theme: render.theme, main: true });
+          assert.equal(render.trace[1].env, entry.id);
+          assert.equal(render.trace[1].x, 197);
+          assert.equal(render.trace[1].top, 161);
+          assert.equal(render.trace[1].gap, 158);
+          assert.equal(render.trace[1].alpha, 1);
+        }
+      }
+      for (const key of ["pairImage", "backgroundImage", "gameImage"]) {
+        assert.equal(new Set(result.entries.flatMap(entry => entry.renders.map(render => render[key]))).size, 12, key);
+      }
+      const contacts = await page.evaluate(() => {
+        const g = window.__flight;
+        return window.TRUMPET_ENVIRONMENTS.list.map((env, index) => {
+          const run = (x, top) => {
+            g.start(); g.scenario(200, [{ x, top, gap: 100, passed: false, environmentId: env.id }], index * 10);
+            g.step(0); return g.snapshot.state;
+          };
+          return { id: env.id, besideShaft: run(130, 300), shaftContact: run(124, 300), capContact: run(130, 210) };
+        });
+      });
+      for (const contact of contacts) {
+        assert.equal(contact.besideShaft, "playing", `${contact.id} narrow shaft forgiveness`);
+        assert.equal(contact.shaftContact, "over", `${contact.id} shaft collision`);
+        assert.equal(contact.capContact, "over", `${contact.id} full-width cap collision`);
+      }
+      assert.deepEqual(errors, []);
+      await context.close();
+    });
+
+    await t.test("real scoring changes only scenery; spawn ownership, one-second fades, pause, crash and reset stay deterministic", async () => {
+      for (const reducedMotion of ["no-preference", "reduce"]) {
+        const context = await browser.newContext({ serviceWorkers: "block", reducedMotion });
+        await context.addInitScript(() => { Math.random = () => .5; window.requestAnimationFrame = () => 1; });
+        const page = await context.newPage();
+        await page.goto(fixture);
+        for (const points of [9, 19, 29, 39, 49, 59, 999]) {
+          const result = await page.evaluate(points => {
+            const g = window.__flight, api = window.TRUMPET_ENVIRONMENTS;
+            g.start();
+            g.scenario(240, [
+              { x: 31, top: 160, gap: 158, passed: false },
+              { x: 300.6, top: 160.6, gap: 158, passed: false }
+            ], points);
+            const before = g.environment(), oldBoxes = g.pipeHitboxes(g.snapshot.pipes[1]);
+            g.step(0);
+            const scored = { ...g.snapshot, ...g.environment(), label: document.getElementById("environment-name").textContent,
+              announcement: document.getElementById("announcement").textContent, trace: g.renderTrace() };
+            g.tickTime(100); g.draw();
+            const afterDrawing = g.environment().transition;
+            g.pause(); const paused = { ...g.snapshot, ...g.environment() };
+            g.step(3); g.draw();
+            const afterPause = { ...g.snapshot, ...g.environment() };
+            g.pause(); g.position(200); g.step(.25);
+            const quarter = { ...g.environment(), trace: g.renderTrace() };
+            g.spawnIn(0); g.position(240); g.step(0);
+            const spawned = g.snapshot.pipes.at(-1);
+            const preservedBoxes = g.pipeHitboxes({ ...g.snapshot.pipes[1], x: 300.6 });
+            for (let i = 0; i < 3; i++) { g.position(200); g.step(.25); }
+            const finished = g.environment().transition;
+            g.start(); g.scenario(240, [{ x: 31, top: 160, gap: 158, passed: false }], points); g.step(0);
+            g.position(240); g.step(.125); g.die();
+            const crashed = g.environment().transition;
+            g.step(2); g.draw();
+            const afterCrash = g.environment().transition;
+            g.start();
+            return { before, scored, afterDrawing, paused, afterPause, quarter, spawned, oldBoxes, preservedBoxes,
+              finished, crashed, afterCrash, reset: { ...g.snapshot, ...g.environment(), label: document.getElementById("environment-name").textContent },
+              stages: api.list.map(env => ({ id: env.id, name: env.name })) };
+          }, points);
+          const old = result.stages[Math.min(5, Math.floor(points / 10))];
+          const next = result.stages[Math.min(5, Math.floor((points + 1) / 10))];
+          const transition = reducedMotion === "reduce" || old.id === next.id ? null : { from: old.id, to: next.id, elapsed: 0 };
+          const label = `${points} -> ${points + 1} (${reducedMotion})`;
+          assert.equal(result.scored.score, points + 1, label);
+          assert.equal(result.scored.state, "playing", label);
+          assert.equal(result.scored.id, next.id, label);
+          assert.equal(result.scored.label, next.name, label);
+          if (old.id !== next.id) assert.match(result.scored.announcement, new RegExp(next.name), label);
+          assert.deepEqual(result.scored.pipes.map(pipe => pipe.environmentId), [old.id, old.id], label);
+          assert.deepEqual(result.scored.transition, transition, label);
+          assert.deepEqual(result.afterDrawing, transition, label);
+          assert.deepEqual(result.afterPause, result.paused, label);
+          assert.deepEqual(result.quarter.transition, transition && { ...transition, elapsed: .25 }, label);
+          const trace = result.quarter.trace;
+          assert.deepEqual(trace.filter(call => call.kind === "scene").map(call => [call.env, call.gaps]),
+            transition ? [[old.id, []], [next.id, []]] : [[next.id, []]], label);
+          assert.deepEqual(trace.filter(call => call.kind === "blend").map(call => call.alpha), transition ? [.25] : [], label);
+          assert.ok(trace.filter(call => call.kind === "pair").every(call => call.env === old.id && call.alpha === 1), label);
+          assert.equal(result.spawned.environmentId, next.id, label);
+          assert.equal(result.spawned.gap, 158 - Math.min(points + 1, 24), label);
+          assert.deepEqual(result.preservedBoxes, result.oldBoxes, label);
+          assert.equal(result.finished, null, label);
+          assert.deepEqual(result.afterCrash, result.crashed, label);
+          assert.deepEqual(result.crashed, transition && { ...transition, elapsed: .125 }, label);
+          assert.equal(result.reset.score, 0, label);
+          assert.equal(result.reset.id, result.stages[0].id, label);
+          assert.equal(result.reset.label, result.stages[0].name, label);
+          assert.equal(result.reset.transition, null, label);
+          assert.deepEqual(result.reset.pipes, [], label);
+        }
+        await context.close();
+      }
+    });
+
+    await t.test("environment changes preserve the original speed, gap and spawn progression", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => { Math.random = () => .5; window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      for (const score of [0, 9, 10, 20, 24, 27, 30, 40, 50, 60, 999]) {
+        const result = await page.evaluate(score => {
+          const g = window.__flight;
+          g.start(); g.scenario(240, [{ x: 350, top: 100, gap: 158, passed: false }], score);
+          const distance = g.environment().distance;
+          g.spawnIn(.01); g.step(.02);
+          return { state: g.snapshot.state, pipes: g.snapshot.pipes, ...g.environment(), traveled: g.environment().distance - distance };
+        }, score);
+        const speed = 142 + Math.min(score * 2, 54);
+        assert.equal(result.state, "playing");
+        assert.equal(result.pipes.length, 2);
+        assert.ok(Math.abs(result.pipes[0].x - (350 - speed * .02)) < 1e-9, `speed at ${score}`);
+        assert.ok(Math.abs(result.traveled - speed * .02) < 1e-9);
+        assert.ok(Math.abs(result.spawn - 1.64) < 1e-9, `spawn interval at ${score}`);
+        assert.equal(result.pipes[1].gap, 158 - Math.min(score, 24));
+        assert.equal(result.pipes[1].environmentId, result.id);
+      }
       await context.close();
     });
 
@@ -438,8 +780,21 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.equal(cacheInfo.urls.length, 9);
       assert.ok(cacheInfo.urls.every(asset => asset.startsWith(url)));
       await context.setOffline(true);
-      await page.goto(url + "?scoutTheme=dark");
+      const offlineResponse = await page.goto(url + "?scoutTheme=dark");
+      assert.equal((await offlineResponse.text()).replace(/\r\n/g, "\n"), html.replace(/\r\n/g, "\n"));
       await page.waitForFunction(() => document.getElementById("app-status").textContent === "Offline. Ready to fly.");
+      assert.equal(await page.evaluate(() => {
+        const api = window.TRUMPET_ENVIRONMENTS;
+        const surface = document.createElement("canvas");
+        surface.width = api.world.W; surface.height = api.world.H;
+        const painter = surface.getContext("2d");
+        const images = api.list.flatMap(env => ["day", "night"].map(theme => {
+          api.drawScene(painter, { env, theme, time: 0, scroll: 0, reduced: true, gaps: [] });
+          api.drawPair(painter, { env, theme, x: 200, top: 160, gap: 158, reduced: true });
+          return surface.toDataURL();
+        }));
+        return new Set(images).size;
+      }), 12, "all six environment backgrounds and obstacles remain usable offline");
       await page.locator("#play").click();
       assert.equal(await page.locator("#overlay").isHidden(), true);
       await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?");
@@ -603,6 +958,13 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await page.locator("#sound").click();
       assert.equal(await page.evaluate(() => window.audioCreated), 1);
       assert.equal(await page.evaluate(() => window.__flight.sound().state), "running");
+      const scoringSounds = await page.evaluate(() => [8, 9, 19, 29, 39, 49, 59].map(points => {
+        const g = window.__flight;
+        g.start(); g.scenario(240, [{ x: 31, top: 160, gap: 158, passed: false }], points); g.step(0);
+        return { count: g.sound().count, types: g.sound().types };
+      }));
+      assert.deepEqual(scoringSounds, Array.from({ length: 7 }, () => ({ count: 2, types: ["sine", "sine"] })),
+        "stage unlocks must not add sounds to the original two-note score cue");
       const rapid = await page.evaluate(() => {
         for (let i = 0; i < 100; i++) window.__flight.flap();
         return window.__flight.sound();
