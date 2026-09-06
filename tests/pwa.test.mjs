@@ -306,7 +306,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           const initial = g.death(), hidden = document.getElementById("overlay").hidden;
           const samples = [];
           g.frame(performance.now());
-          for (let i = 1; i <= 16; i++) {
+          for (let i = 1; i <= 32; i++) {
             g.frame(window.advanceClock(50));
             samples.push({
               pose: g.death(), pixels: g.deathPixels(), frozen: { ...g.snapshot, ...g.environment() },
@@ -328,7 +328,6 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         assert.equal(result.impact, result.expected, `exact impact at y=${y}`);
         assert.equal(result.hidden, true);
         assert.equal(result.initial.fromY, y);
-        assert.ok(result.initial.y <= y);
         assert.equal(result.initial.tilt, .3);
         assert.equal(result.frozen.state, "over");
         assert.equal(result.frozen.score, 10);
@@ -338,14 +337,17 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           assert.equal(sample.image, result.impact);
           assert.deepEqual(sample.frozen, result.frozen);
         }
-        assert.ok(result.samples[4].pose.tilt > result.initial.tilt);
-        assert.notEqual(result.samples[4].pose.y, result.initial.y);
-        assert.ok(result.samples[8].hidden, "fall remains visible for at least 0.5 seconds");
-        assert.equal(result.samples[14].hidden, false, "retry appears within 0.75 seconds");
-        assert.equal(result.samples.at(-1).pose.tilt, Math.PI / 2);
-        assert.equal(result.samples.at(-1).pose.y, 444, "rotated 48px sprite rests on floor 468");
-        assert.equal(result.samples.at(-1).pixels.bottom, 467, "the actual sprite touches the ground without sinking");
-        assert.notEqual(result.samples[4].pixels.image, result.samples.at(-1).pixels.image, "the rendered rider actually moves");
+        if (!result.initial.landed) {
+          assert.ok(result.samples[4].pose.tilt > result.initial.tilt);
+          assert.notEqual(result.samples[4].pose.y, result.initial.y);
+          assert.notEqual(result.samples[4].pixels.image, result.samples.at(-1).pixels.image, "the rendered rider actually moves");
+        }
+        assert.equal(result.samples.at(-1).hidden, false, "natural fall and short hold finish within 1.6 seconds");
+        assert.ok(result.samples.at(-1).pose.tilt <= .65, "no forced right-angle nose dive");
+        assert.ok(result.samples.at(-1).pixels.bottom >= 466, "the actual sprite touches the ground without sinking");
+        const grounded = result.samples.filter(sample => sample.pose.landed);
+        assert.ok(grounded.every(sample => sample.pose.y === grounded[0].pose.y && sample.pose.tilt === grounded[0].pose.tilt),
+          "first ground contact freezes both translation and rotation");
         assert.ok(result.samples.every(sample => sample.pixels.bottom < 468), "visual fall stays above ground");
         assert.deepEqual(result.afterCapsules, result.capsules, "contact snapshot never follows the visual tumble");
         assert.equal(result.settled, result.later, "landing is stationary");
@@ -405,7 +407,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await context.close();
     });
 
-    await t.test("comic reaction only touches face pixels; one bounded landing puff settles inside the existing hold", async () => {
+    await t.test("comic reaction only touches face pixels; one landing puff accompanies a fully inelastic contact", async () => {
       const context = await browser.newContext({ serviceWorkers: "block" });
       await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
       const page = await context.newPage();
@@ -417,21 +419,23 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         g.die();
         const raw = document.getElementById("crash-image").toDataURL();
         const styled = document.getElementById("crash-closeup").toDataURL();
-        g.step(.54);
-        const before = { pose: g.death(), dust: g.dustPixels() };
-        g.step(.015);
+        let before;
+        for (let i = 0; i < 180 && !g.death().landed; i++) {
+          before = { pose: g.death(), dust: g.dustPixels() };
+          g.step(1 / 120);
+        }
         const contact = { pose: g.death(), dust: g.dustPixels() };
-        g.step(.02);
-        const compressed = { pose: g.death(), dust: g.dustPixels(), pixels: g.deathPixels() };
+        g.step(.025);
+        const early = { pose: g.death(), dust: g.dustPixels(), pixels: g.deathPixels() };
         g.die();
         g.step(.05);
-        const rebound = { pose: g.death(), dust: g.dustPixels(), pixels: g.deathPixels() };
+        const late = { pose: g.death(), dust: g.dustPixels(), pixels: g.deathPixels() };
         g.step(.025); g.draw();
         const settled = { pose: g.death(), dust: g.dustPixels(), pixels: g.deathPixels() };
         const rawLater = document.getElementById("crash-image").toDataURL();
         const styledLater = document.getElementById("crash-closeup").toDataURL();
         g.start();
-        return { normal, reaction, expected, raw, styled, rawLater, styledLater, before, contact, compressed, rebound,
+        return { normal, reaction, expected, raw, styled, rawLater, styledLater, before, contact, early, late,
           settled, flight, nextFlight: g.spriteFrame(0), reset: g.death(), source: g.sourceSprite(),
           closeupCleared: ![...document.getElementById("crash-closeup").getContext("2d").getImageData(0, 0, 280, 208).data].some(Boolean) };
       });
@@ -455,22 +459,22 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.deepEqual(result.before.dust, []);
       assert.equal(result.contact.pose.landed, true);
       assert.equal(result.contact.dust.length, 4);
-      assert.deepEqual(result.compressed.pose.dust, result.contact.pose.dust, "contact emits only once");
-      assert.deepEqual(result.rebound.pose.dust, result.contact.pose.dust, "repeated die does not emit again");
-      assert.ok(result.compressed.pose.squash > .079 && result.compressed.pose.squash <= .08);
-      assert.ok(result.rebound.pose.rebound > 1.24 && result.rebound.pose.rebound <= 1.25);
-      assert.ok(result.compressed.dust[0].alpha > result.rebound.dust[0].alpha);
-      assert.notEqual(result.compressed.dust[0].x, result.rebound.dust[0].x);
-      for (const sample of [result.contact, result.compressed, result.rebound]) {
+      assert.deepEqual(result.early.pose.dust, result.contact.pose.dust, "contact emits only once");
+      assert.deepEqual(result.late.pose.dust, result.contact.pose.dust, "repeated die does not emit again");
+      assert.ok(result.early.dust[0].alpha > result.late.dust[0].alpha);
+      assert.notEqual(result.early.dust[0].x, result.late.dust[0].x);
+      for (const sample of [result.contact, result.early, result.late, result.settled]) {
+        assert.equal(sample.pose.y, result.contact.pose.y);
+        assert.equal(sample.pose.tilt, result.contact.pose.tilt);
+        assert.equal(sample.pose.vy, 0);
         assert.ok(sample.dust.every(p => p.y + p.h < 468 && p.alpha > 0 && p.alpha <= .65));
       }
-      assert.ok(result.compressed.pixels.bottom < 468 && result.rebound.pixels.bottom < 467);
-      assert.equal(result.settled.pose.elapsed, .65);
-      assert.equal(result.settled.pose.squash, 0);
-      assert.equal(result.settled.pose.rebound, 0);
+      assert.equal(result.early.pixels.image, result.late.pixels.image, "no squash, rebound, or continuing turn");
+      assert.equal(result.late.pixels.image, result.settled.pixels.image);
+      assert.ok(Math.abs(result.settled.pose.elapsed - result.contact.pose.elapsed - .1) < 1e-8);
       assert.deepEqual(result.settled.pose.dust, []);
       assert.deepEqual(result.settled.dust, []);
-      assert.equal(result.settled.pixels.bottom, 467);
+      assert.ok(result.settled.pixels.bottom >= 466 && result.settled.pixels.bottom < 468);
       assert.equal(result.flight, result.nextFlight);
       assert.equal(result.reset, null);
       assert.equal(result.closeupCleared, true);
@@ -481,7 +485,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         const g = window.__flight, samples = [];
         for (const y of [27, 210, 464]) for (const vy of [-310, 0, 470]) {
           g.start(); g.scenario(y, [], 0, vy); g.die();
-          for (let i = 0; i <= 80; i++) {
+          for (let i = 0; i <= 180; i++) {
             samples.push(g.deathPixels().bottom);
             g.step(1 / 120);
           }
@@ -517,10 +521,64 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         if (viewport.width === 360 || viewport.width === 390) {
           assert.ok(layout.width >= 175 && layout.height >= 128, `enlarged close-up: ${JSON.stringify(layout)}`);
         }
-        assert.equal(layout.pose.squash, 0);
-        assert.equal(layout.pose.rebound, 0);
+        assert.equal(layout.pose.vy, 0);
+        assert.equal(layout.pose.finished, true);
         assert.deepEqual(layout.dust, []);
       }
+      await context.close();
+    });
+
+    await t.test("death preserves incoming vertical momentum and live gravity, then stops at the first floor contact", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      const runs = await page.evaluate(() => {
+        const g = window.__flight;
+        return [[27, -310], [210, -310], [210, 0], [210, 470], [464, 470]].map(([y, vy]) => {
+          g.start(); g.scenario(y, [], 0, vy); g.die();
+          const initial = g.death(), samples = [];
+          for (let i = 0; i < 200 && !g.death().finished; i++) {
+            g.step(1 / 120);
+            samples.push(g.death());
+          }
+          return { y, vy, initial, samples };
+        });
+      });
+      for (const run of runs) {
+        const { initial, samples } = run;
+        assert.equal(samples.at(-1).finished, true);
+        assert.ok(samples.at(-1).elapsed < 1.6, "natural fall remains short and skippable");
+        if (run.y === 210) {
+          const vy = Math.min(run.vy + 940 / 120, 470);
+          assert.ok(Math.abs(samples[0].vy - vy) < 1e-9);
+          assert.ok(Math.abs(samples[0].y - (run.y + vy / 120)) < 1e-9,
+            "collision does not reset upward/downward momentum to a canned trajectory");
+        }
+        if (run.y === 27) {
+          assert.ok(samples[0].vy >= 0, "ceiling contact cancels upward velocity");
+          assert.ok(samples.every(s => s.y >= initial.y), "ceiling fall never escapes above the canvas");
+        }
+        if (run.y === 464) {
+          assert.equal(initial.landed, true, "direct floor collision lands immediately, not 550ms later");
+          assert.equal(initial.vy, 0);
+          assert.ok(samples.at(-1).elapsed <= .101);
+        }
+        let previous = initial;
+        for (const sample of samples) {
+          assert.ok(sample.vy <= 470);
+          assert.ok(Math.abs(sample.tilt - previous.tilt) <= 1.8 / 120 + 1e-9);
+          assert.ok(sample.tilt >= -.16 && sample.tilt <= .65);
+          if (previous.landed) {
+            assert.equal(sample.y, previous.y);
+            assert.equal(sample.tilt, previous.tilt);
+            assert.equal(sample.vy, 0, "zero restitution: never re-launch after contact");
+          }
+          previous = sample;
+        }
+      }
+      assert.ok(runs[1].samples.at(-1).elapsed > runs[3].samples.at(-1).elapsed,
+        "upward and downward pipe impacts cannot have the same predetermined landing time");
       await context.close();
     });
 
