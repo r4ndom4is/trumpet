@@ -25,15 +25,17 @@ The 42px source sprite is displayed at 48px (scale 48/42, about 14% larger), wit
 | Cleared obstacles | Environment |
 | --- | --- |
 | 0-9 | The Gilded Mile |
-| 10-19 | Marble Forum |
-| 20-29 | Executive Atrium |
-| 30-39 | Links & Lightning |
+| 10-19 | White House Grounds |
+| 20-29 | Records Room |
+| 30-39 | Palm Beach Links |
 | 40-49 | Penthouse Row |
 | 50 onward | Gantry Nine |
 
 Scenery crossfades for one second at each threshold; reduced-motion mode switches instantly. Obstacles already in flight retain their spawn-time environment, while subsequent spawns use the new one. Their 66px caps and narrower shafts have matching collision rectangles; decorative outliers are non-lethal. Light/dark mode selects each environment's day/night palette. Speed and gap difficulty continue on the same score-based curve, and pausing freezes the transition. Gantry Nine stays indefinitely; retry starts again at The Gilded Mile.
 
-Each stage has a named architectural landmark in the background. It holds for eight seconds after entry, then slowly passes out of view without repeating. Reduced-motion mode keeps it stationary. Signs sit behind obstacles and the rider; stage clocks freeze on pause and impact.
+Each stage has a mounted entry sign in the background. It holds for eight seconds after entry, then slowly passes out of view without repeating. Reduced-motion mode keeps it stationary. Signs sit behind obstacles and the rider; stage clocks freeze on pause and impact.
+
+White House Grounds has a stylized residence with a six-column portico, attached wings, lawn and iron fence, with DC's distant obelisk beyond. Records Room replaces the former atrium with archive shelves, a sorting desk and obstacles made of paper bundles, tabbed folders and labelled file boxes. Palm Beach Links is a fictional Mar-a-Lago-inspired Florida golf resort with cream/pink arcades, terracotta roofs, palms, curved fairways, bunkers and water. Long scenery segments retain supporting wings and grounds after entry signs leave; the hero buildings are not repeated every screen. Broad tonal sky bands replace checkerboard dithering across all six stages. Original environment and obstacle IDs remain stable for saved selections.
 
 The single **sun/moon icon beside mute** switches light/dark appearance and remembers your choice, including offline. Its icon and accessible label describe the theme you can switch to. Your saved choice takes precedence over system appearance and the optional `?scoutTheme=light` / `?scoutTheme=dark` preview parameter. Until you choose, the parameter or system appearance sets the initial theme. If storage is denied, the palette still switches and an explicit notice explains that it cannot be remembered.
 

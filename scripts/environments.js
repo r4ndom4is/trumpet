@@ -1,8 +1,6 @@
-/* Trumpet Flight - approved six-environment artwork.
- *
- * Six ENV-16 concepts from the art-direction brief. Every ramp is the brief's exact
- * sixteen hexes in slot order; restrained scenery stays behind the unchanged
- * obstacle artwork. Embedded into index.html for atomic offline updates.
+/* Trumpet Flight - six original pixel-art scenes. Stable environment/obstacle IDs
+ * retain saved selections; palettes and scenery evolve independently of collision.
+ * Embedded into index.html for atomic offline updates.
  */
 (() => {
   "use strict";
@@ -58,7 +56,7 @@
   const RATES = { haze: 0.015, clouds: 0.025, far: 0.055, mid: 0.12, world: 1.0, fore: 1.7 };
   const LANDMARK = { x: 194, width: 224, hold: 8, speed: 12 };
 
-  /* Sky structure: two dithered transitions replace the hard y=330 seam. */
+  /* Broad tonal transitions, without a high-contrast checkerboard behind the rider. */
   const SKY = { hiTo: 168, d1: 36, loTo: 292, d2: 36 };
   const HAZE_TOP = SKY.loTo + SKY.d2;   // 328
 
@@ -77,17 +75,11 @@
         ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
         ctx.globalAlpha = 1;
       },
-      /* 2 px ordered-dither band; the replacement for the hard seam. */
+      /* Four-pixel tonal steps keep the pixel-art scale without patterned noise. */
       dither(x0, y0, w, h, from, to) {
         g.px(x0, y0, w, h, from);
-        const rows = Math.max(1, Math.floor(h / 2));
-        const bayer = [[0, 2], [3, 1]];
-        ctx.fillStyle = P[to] || to;
-        for (let r = 0; r < rows; r++) {
-          const density = (r + 0.5) / rows;
-          for (let c = 0; c * 2 < w; c++) {
-            if (density > (bayer[r & 1][c & 1] + 0.5) / 4) ctx.fillRect(x0 + c * 2, y0 + r * 2, 2, 2);
-          }
+        for (let y = 0; y < h; y += 4) {
+          g.px(x0, y0 + y, w, Math.min(4, h - y), to, (y + 2) / h);
         }
       },
       /* Decorative pixels. Drawn like any other, but recorded so the validator can
@@ -231,23 +223,13 @@
       cap(g, x, top + gap, true, ch, sw, abacus);
     },
 
-    /* Stacked drums under a chamfered coping course. */
+    /* White House portico columns. Legacy drum ID preserves saved selections. */
     "obst-broken-drum-66": (g, x, top, gap, floorY) => {
       const sw = SHAFT["obst-broken-drum-66"], ch = CAP_H["obst-broken-drum-66"];
-      const drums = (y0, h, key, gapAtEnd) => {
-        const o = body(g, x, y0, h, sw, [[0, 8, "OBST-LIT"], [-9, 9, "OBST-SHADE"]]);
+      const column = (y0, h) => {
+        const o = body(g, x, y0, h, sw, [[1, 10, "OBST-LIT"], [-10, 9, "OBST-SHADE"]]);
         if (o === null) return;
-        for (let y = y0 + 14; y < y0 + h; y += 14) {
-          g.px(o + 1, y, sw - 2, 1, "OBST-SHADE");
-          g.px(o + 1, y + 1, sw - 2, 1, "OBST-LIT", .35);
-        }
-        // Spalled course ends. Cut into the decorative margin, never into the shaft,
-        // so no chip can ever open a hole in the lethal body.
-        for (const r of decorRows(y0, h, gapAtEnd, 3, 5, key)) {
-          const bh = 3 + Math.floor(hash(key + r.y * .13) * 3);
-          outlier(g, x, r.y, 3, bh, r.side, sw, "OBST-BASE");
-          outlier(g, x, r.y, 3, 1, r.side, sw, "OBST-SHADE");
-        }
+        for (let i = 0; i < 4; i++) g.px(o + 13 + i * 8, y0, 2, h, "OBST-SHADE", .35);
       };
       const coping = band => {
         band(2, 2, "OBST-LIT");        // chamfer
@@ -257,38 +239,50 @@
         band(16, 4, "OBST-BASE");
         band(19, 1, "OBST-SHADE");
       };
-      drums(0, top - ch, x * .07, true);
+      column(0, top - ch);
       cap(g, x, top, false, ch, sw, coping);
-      drums(top + gap + ch, floorY - top - gap - ch, x * .07 + 40, false);
+      column(top + gap + ch, floorY - top - gap - ch);
       cap(g, x, top + gap, true, ch, sw, coping);
     },
 
-    /* Mirrored pylon under a machined collar with a bolt row. */
+    /* Paper bundles, tabbed folders and archive boxes inside the original envelope.
+     * Tabs and labels are inlaid, not protrusions: every opaque pixel is lethal. */
     "obst-elevator-pylon-66": (g, x, top, gap, floorY) => {
       const sw = SHAFT["obst-elevator-pylon-66"], ch = CAP_H["obst-elevator-pylon-66"];
-      const mirror = (y0, h, key, gapAtEnd) => {
-        // Specular stripe sits off-centre so it never reads as a gap.
-        const o = body(g, x, y0, h, sw, [[0, 8, "OBST-SHADE"], [-10, 10, "OBST-SHADE"],
-          [16, 6, "OBST-LIT"], [24, 2, "OBST-LIT", .45]]);
+      const papers = (y0, h) => {
+        const o = body(g, x, y0, h, sw, [[1, 43, "OBST-LIT"], [-9, 8, "OBST-SHADE"]]);
         if (o === null) return;
-        // Cable guides: 3 px clips under the collar. Decorative, never lethal.
-        for (const r of decorRows(y0, h, gapAtEnd, 3, 3, key)) {
-          outlier(g, x, r.y, 3, 3, r.side, sw, "OBST-SHADE");
-          outlier(g, x, r.y + 1, 3, 1, r.side, sw, "OBST-LIT");
+        const row = (y, height, ix, width, slot) => {
+          g.px(o + ix, y, width, Math.min(height, y0 + h - y), slot);
+        };
+        for (let y = y0, bundle = 0; y < y0 + h; y += 36, bundle++) {
+          if (bundle % 3 === 1) {
+            row(y, 30, 1, sw - 2, "OBST-BASE");
+            row(y, 4, 1, sw - 2, "OBST-SHADE");
+            row(y + 10, 12, 13, 25, "OBST-LIT");
+            row(y + 14, 2, 19, 13, "OBST-SHADE");
+            row(y + 26, 2, 1, sw - 2, "OBST-SHADE");
+          } else {
+            for (let line = 5; line < 28; line += 5) row(y + line, 1, 3, sw - 6, "OBST-SHADE");
+            row(y + 2, 25, bundle % 2 ? 35 : 12, 3, "OBST-BASE");
+          }
+          row(y + 29, 7, 1, sw - 2, "OBST-BASE");
+          row(y + 27, 3, bundle % 2 ? 30 : 6, 15, "TRIM");
+          row(y + 35, 1, 1, sw - 2, "OBST-SHADE");
         }
       };
-      const collar = (band, inlay) => {
-        band(2, 2, "OBST-LIT");        // machined lip
-        band(4, 3, "OBST-SHADE");      // recess
-        band(7, 5, "OBST-BASE");       // flange face
-        for (let i = 0; i < 5; i++) inlay(8, 3, 9 + i * 12, 3, "OBST-SHADE");
-        band(12, 3, "OBST-LIT");
-        band(15, 3, "OBST-SHADE");
+      const folder = (band, inlay) => {
+        band(2, 13, "OBST-LIT");
+        band(6, 1, "OBST-SHADE");
+        band(10, 1, "OBST-SHADE");
+        band(15, 3, "OBST-BASE");
+        inlay(2, 13, 46, 3, "OBST-BASE");
+        inlay(13, 4, 8, 17, "TRIM");
       };
-      mirror(0, top - ch, x * .05, true);
-      cap(g, x, top, false, ch, sw, collar);
-      mirror(top + gap + ch, floorY - top - gap - ch, x * .05 + 40, false);
-      cap(g, x, top + gap, true, ch, sw, collar);
+      papers(0, top - ch);
+      cap(g, x, top, false, ch, sw, folder);
+      papers(top + gap + ch, floorY - top - gap - ch);
+      cap(g, x, top + gap, true, ch, sw, folder);
     },
 
     /* Clipped yew under a crown at the ceiling and over a planter base at the floor. */
@@ -455,12 +449,119 @@
     return { text, x: Math.round(x), y, width, height };
   }
 
-  function pitchedRoof(g, x, y, width, rise) {
+  function pitchedRoof(g, x, y, width, rise, face = "MID-1", edge = "MID-2") {
     for (let row = 0; row < rise; row += 2) {
       const inset = Math.round((1 - row / rise) * width / 2);
-      g.px(x + inset, y + row, width - inset * 2, 2, "MID-1");
+      g.px(x + inset, y + row, width - inset * 2, 2, face);
     }
-    g.px(x - 4, y + rise, width + 8, 4, "MID-2");
+    g.px(x - 4, y + rise, width + 8, 4, edge);
+  }
+
+  function oval(g, x, y, width, height, slot) {
+    for (let row = 0; row < height; row += 2) {
+      const half = Math.sqrt(Math.max(0, 1 - ((row + 1) / height * 2 - 1) ** 2)) * width / 2;
+      g.px(x + width / 2 - half, y + row, half * 2, 2, slot);
+    }
+  }
+
+  function palm(g, x, groundY, height) {
+    const crown = groundY - height;
+    for (let y = 0; y < height; y += 4) {
+      g.px(x + Math.round((1 - y / height) ** 2 * 8), crown + y, 4, Math.min(4, height - y), "MID-2");
+    }
+    for (const side of [-1, 1]) {
+      for (let step = 0; step < 5; step++) {
+        g.px(x + 8 + side * step * 7 - (side < 0 ? 8 : 0),
+          crown - 4 + step * step, 11, 5, "MID-1");
+        if (step < 3) g.px(x + 8 + side * step * 5, crown - 10 + step * 3, 7, 5, "MID-1");
+      }
+    }
+  }
+
+  function lawnSign(g, text, x) {
+    g.px(x + 22, 449, 4, 19, "MID-2");
+    g.px(x + 194, 449, 4, 19, "MID-2");
+    return scenicSign(g, text, x + 8, 422);
+  }
+
+  function whiteHouse(g, x) {
+    // Two long wings, central residence, a pediment carried by six columns.
+    for (const wing of [0, 246]) {
+      g.px(x + wing, 344, 106, 49, "FAR-1");
+      g.px(x + wing - 2, 340, 110, 5, "FAR-2");
+      g.px(x + wing, 346, 106, 3, "SKY-GLOW");
+      for (let i = 0; i < 5; i++) {
+        g.px(x + wing + 9 + i * 19, 359, 8, 19, "MID-2");
+        g.px(x + wing + 9 + i * 19, 369, 8, 2, "FAR-1");
+      }
+    }
+    g.px(x + 84, 292, 184, 102, "FAR-1");
+    g.px(x + 80, 288, 192, 5, "FAR-2");
+    g.px(x + 85, 296, 182, 3, "SKY-GLOW");
+    g.px(x + 92, 282, 168, 6, "FAR-1");
+    for (const side of [98, 236]) {
+      for (let y = 310; y <= 352; y += 34) {
+        g.px(x + side, y, 12, 22, "MID-2");
+        g.px(x + side, y + 9, 12, 2, "FAR-1");
+      }
+    }
+    g.px(x + 127, 325, 98, 66, "FAR-2");
+    g.px(x + 166, 350, 21, 40, "MID-2");
+    pitchedRoof(g, x + 116, 295, 120, 28, "SKY-GLOW", "FAR-2");
+    pitchedRoof(g, x + 139, 306, 74, 13, "FAR-1", "FAR-1");
+    g.px(x + 116, 326, 120, 5, "SKY-GLOW");
+    for (let i = 0; i < 6; i++) {
+      const cx = x + 121 + i * 20;
+      g.px(cx, 331, 9, 58, "SKY-GLOW");
+      g.px(cx + 7, 331, 2, 58, "FAR-1");
+      g.px(cx - 2, 329, 13, 4, "FAR-1");
+      g.px(cx - 2, 387, 13, 4, "FAR-1");
+    }
+    for (let step = 0; step < 3; step++) {
+      g.px(x + 108 - step * 6, 392 + step * 4, 136 + step * 12, 4, step % 2 ? "FAR-2" : "FAR-1");
+    }
+    g.px(x + 175, 260, 2, 23, "FAR-2");
+    g.px(x + 177, 261, 17, 9, "FAR-1");
+    g.px(x + 177, 261, 6, 5, "MID-2");
+    g.px(x + 183, 264, 11, 2, "FAR-2");
+  }
+
+  function archiveShelf(g, x, y, width) {
+    g.px(x, y, width, 134, "FAR-2");
+    g.px(x + 6, y + 6, width - 12, 128, "MID-2");
+    for (let shelf = 0; shelf < 3; shelf++) {
+      const sy = y + 10 + shelf * 41;
+      for (let box = 0; box < 3; box++) {
+        const bx = x + 12 + box * 49, bh = 24 + ((box + shelf) % 2) * 6;
+        g.px(bx, sy + 30 - bh, 41, bh, (box + shelf) % 2 ? "FAR-1" : "FAR-2");
+        g.px(bx - 1, sy + 30 - bh, 43, 3, "HAZE");
+        g.px(bx + 13, sy + 17, 16, 8, "SKY-LO");
+        g.px(bx + 17, sy + 20, 8, 2, "FAR-2");
+      }
+      g.px(x + 4, sy + 32, width - 8, 4, "FAR-2");
+    }
+  }
+
+  function resortClubhouse(g, x) {
+    // A low Mediterranean Revival clubhouse and offset belvedere tower.
+    g.px(x, 324, 302, 70, "FAR-1");
+    pitchedRoof(g, x - 4, 299, 310, 25, "FAR-2", "FAR-2");
+    g.px(x + 190, 275, 47, 110, "FAR-1");
+    g.px(x + 186, 273, 55, 6, "FAR-2");
+    pitchedRoof(g, x + 184, 252, 59, 21, "FAR-2", "FAR-2");
+    g.px(x + 197, 285, 10, 22, "MID-2");
+    g.px(x + 220, 285, 10, 22, "MID-2");
+    g.px(x + 188, 311, 51, 5, "SKY-GLOW");
+    g.px(x + 12, 334, 273, 4, "SKY-GLOW");
+    for (let i = 0; i < 7; i++) {
+      const ax = x + 17 + i * 39;
+      g.px(ax, 353, 23, 32, "MID-2");
+      g.px(ax + 3, 348, 17, 5, "MID-2");
+      g.px(ax + 7, 345, 9, 3, "MID-2");
+      g.px(ax - 3, 351, 3, 36, "SKY-GLOW");
+    }
+    g.px(x - 5, 390, 312, 5, "FAR-2");
+    g.px(x - 11, 395, 324, 4, "FAR-1");
   }
 
   function waterTank(g, x, roofY) {
@@ -545,209 +646,188 @@
     },
     {
       id: "env-b-marble-forum-16",
-      name: "Marble Forum",
-      levelName: "The Art of the Column",
+      name: "White House Grounds",
+      levelName: "The White House",
       level: 2,
       obstacleId: "obst-broken-drum-66",
-      obstacleName: "Broken drum",
-      premise: "Sunbaked classical ruins on a dry hillside. Invented capitals and proportions only - no traceable real structure.",
-      obstacleNote: "A 56 px drum stack under a 66 px chamfered coping with a drip groove. Seams every 14 px give a rhythm the eye can count; spalled course ends are 3 px blocks in the 5 px margin, so a chip can never open a hole in the lethal body.",
-      readability: "Warmest stone of the six and so the weakest separator for the face. Only safe if the 2 px OBST-EDGE is enforced on every gap-facing surface and the mid layer stays below L 55.",
+      obstacleName: "Portico column",
+      premise: "A stylized Washington DC exterior: the White House residence, six-column north portico and long wings, beyond a broad lawn and iron fence.",
+      obstacleNote: "An unbroken 56 px fluted column under the original 66 by 20 px capital. No ruin chips or ornamental protrusions; every opaque obstacle pixel belongs to the stepped hitbox.",
+      readability: "Cool white columns have a dark daytime gap edge and a pale night rim. The residence is smaller, softer and grounded beyond the lawn, never another floating obstacle.",
       scores: { separation: "Fair", charm: "High", clutter: "Medium", themeRange: "Good" },
       nightLabel: "Night",
       ramps: {
-        day: ramp("#7fc3d9", "#bfe2e8", "#f2ead4", "#cfe3e2", "#9fb9a6", "#7e9c8a", "#6d8a76", "#4f6a5b",
-          "#efe7d6", "#d3c8b4", "#9c8f79", "#3d3428", "#35604a", "#b9a98f", "#8f7f68", "#221c14"),
+        day: ramp("#91c8df", "#c8e3ed", "#f7f5ed", "#c5d9d8", "#e2e5df", "#99acb2", "#73916c", "#45634e",
+          "#f3f2ea", "#daddd6", "#9ba7a5", "#344441", "#35604a", "#779369", "#5c7954", "#192b24"),
         night: ramp("#151d2e", "#293650", "#dfe4f0", "#33405c", "#3a4a5e", "#4a5d72", "#2c3a4a", "#1f2a37",
           "#8f95a0", "#6b7280", "#474e5c", "#d6dbe4", "#4f9c78", "#232b33", "#343d47", "#0a0f14")
       },
       glow: [346, 72, 20],
       clouds: [[0, 82, 0, .8]],
       far(g, off) {
-        g.repeat(off, 336, 90, x => {
-          for (let i = 0; i < 2; i++) {
-            const bx = x + i * 168, peak = 306 + i * 14;
-            for (let s = 0; s < 40; s++) {
-              const hh = Math.round(Math.sin((s / 40) * Math.PI) * (56 - i * 12));
-              g.px(bx + s * 4, peak + (56 - hh), 4, 372 - peak - (56 - hh), i ? "FAR-2" : "FAR-1");
-            }
-          }
+        g.repeat(off - 18, 860, 70, x => {
+          // One restrained obelisk beyond the tree line, not a competing skyline.
+          g.px(x + 8, 254, 11, 117, "FAR-2", .5);
+          for (let i = 0; i < 5; i++) g.px(x + 13 - i, 244 + i * 2, 1 + i * 2, 2, "FAR-2", .5);
         });
+        g.px(0, 374, W, 94, "MID-1");
       },
       mid(g, off) {
-        // An arched arcade, not another row of gap-shaped floating lintels.
-        g.repeat(off, 144, 50, x => {
-          g.px(x, 402, 144, 10, "MID-1");
-          g.px(x, 412, 18, FLOOR - 412, "MID-1");
-          g.px(x + 126, 412, 18, FLOOR - 412, "MID-1");
-          for (let i = 0; i < 5; i++) {
-            g.px(x + 18 + i * 8, 412, 8, 20 - i * 4, "MID-1");
-            g.px(x + 118 - i * 8, 412, 8, 20 - i * 4, "MID-1");
-          }
+        // The residence travels with distant grounds, independently of the one-pass
+        // entry sign. A long estate segment avoids a White House on every screen.
+        g.repeat(off * .45 - 62, 1040, 780, x => {
+          oval(g, x - 92, 322, 90, 84, "MID-1");
+          oval(g, x + 356, 314, 115, 96, "MID-1");
+          whiteHouse(g, x);
+          g.px(x + 544, 345, 235, 49, "FAR-1");
+          g.px(x + 538, 341, 247, 5, "FAR-2");
+          g.px(x + 550, 349, 222, 3, "SKY-GLOW");
+          for (let i = 0; i < 8; i++) g.px(x + 557 + i * 28, 363, 10, 21, "MID-2");
+          oval(g, x + 810, 323, 130, 83, "MID-1");
+          oval(g, x + 64, 411, 222, 18, "GROUND");
+          g.px(x + 144, 406, 63, 4, "FAR-1");
+          g.px(x + 134, 410, 83, 5, "FAR-1");
+        });
+        g.px(0, 442, W, 2, "MID-2");
+        g.px(0, 456, W, 2, "MID-2");
+        g.repeat(off * 1.3, 24, 24, x => {
+          g.px(x + 2, 438, 2, 30, "MID-2");
+          g.px(x + 1, 436, 4, 3, "MID-2");
         });
       },
       landmark(g, x) {
-        // Low museum pavilion with a pediment and a named frieze.
-        pitchedRoof(g, x, 330, 224, 28);
-        g.px(x, 358, 224, 40, "MID-1");
-        for (let i = 0; i < 5; i++) {
-          g.px(x + 8 + i * 48, 398, 16, 62, "MID-1");
-          g.px(x + 5 + i * 48, 398, 22, 4, "MID-2");
-        }
-        g.px(x - 4, 460, 232, 8, "MID-2");
-        return scenicSign(g, this.levelName, x + 8, 365);
+        return lawnSign(g, this.levelName, x);
       },
       ground(g, off) {
         g.px(0, FLOOR, W, H - FLOOR, "GROUND");
-        g.repeat(off, 26, 26, x => g.px(x, FLOOR + 8, 4, 3, "GROUND-DETAIL"));
-        g.repeat(off * .8, 61, 61, x => g.px(x, FLOOR + 18, 9, 3, "GROUND-DETAIL"));
-      },
-      fore(g, off, t) {
-        // Heat shimmer: a 1 px horizontal jitter on the bottom band only.
-        for (let y = H - 10; y < H; y++) {
-          const j = g.reduced ? 0 : Math.round(Math.sin(t * 3 + y * .9));
-          g.px(wrap(-off, 40) + j, y, W, 1, "GROUND-DETAIL", .25);
-        }
+        g.px(0, FLOOR + 17, W, 27, "GROUND-DETAIL");
+        g.repeat(off, 128, 128, x => g.px(x, FLOOR + 10, 42, 2, "GROUND-DETAIL"));
       }
     },
     {
       id: "env-c-executive-atrium-16",
-      name: "Executive Atrium",
-      levelName: "Executive Airspace",
+      name: "Records Room",
+      levelName: "Paperwork, Please",
       level: 3,
       obstacleId: "obst-elevator-pylon-66",
-      obstacleName: "Elevator pylon",
-      premise: "He never left the building. A marble corporate lobby with a glass roof, flown at mezzanine height while the planters go by.",
-      obstacleNote: "A 54 px mirrored shaft under a machined 66 px collar, 18 px tall, with a five-bolt flange row. The 6 px specular stripe is off-centre so it never reads as a gap; 3 px cable clips ride the margin as tagged decoration.",
-      readability: "Cleanest of the six. Cool neutral steel against a warm character is the textbook separation, and the interior justifies a flat, uncluttered background.",
+      obstacleName: "Paperwork stack",
+      premise: "An after-hours records office: boxed files on deep shelves, a sorting desk, tabbed folders and towers of paperwork instead of elevator machinery.",
+      obstacleNote: "Paper bundles and labelled archive boxes fill the original 54 px shaft; a broad folder with visible page edges fills the 66 by 18 px cap. Tabs are inlaid inside the solid envelope, never invisible lethal protrusions.",
+      readability: "Ivory paper and muted manila folders stand forward of blue-grey shelving. Large box labels and sparse page seams read at phone size without a fine grid.",
       scores: { separation: "Excellent", charm: "Medium", clutter: "Low", themeRange: "Good" },
       nightLabel: "After hours",
       ramps: {
-        day: ramp("#dfe7ee", "#f2f6f8", "#ffffff", "#e6ecf1", "#c3ced8", "#a3b2bf", "#8b9aa8", "#6b7a89",
-          "#cfd8e0", "#9fb0be", "#6a7e8e", "#2b3640", "#1f7a5c", "#b7bfc6", "#93a0a9", "#12181d"),
-        night: ramp("#171d24", "#222a33", "#c2d2dd", "#2a333d", "#38434f", "#47545f", "#2e3843", "#232b34",
-          "#7f8d99", "#5c6a76", "#3f4a55", "#dae3ea", "#38b98c", "#1c232a", "#2b343d", "#0a0e12")
+        day: ramp("#d8e0e2", "#edf0eb", "#fffaf0", "#bdcacc", "#9eaca9", "#7b9295", "#697f81", "#435e66",
+          "#f4f0df", "#c6b798", "#8c8371", "#343934", "#9b6961", "#a5aaa1", "#888f87", "#182626"),
+        night: ramp("#171d24", "#222a33", "#c2d2dd", "#2a333d", "#566266", "#404f59", "#34454b", "#232f38",
+          "#b6b8b1", "#908d7e", "#60655f", "#e4e7df", "#a9877c", "#222c31", "#323c40", "#0a0e12")
       },
       sky(g, t) {
-        // The "sky" is a coffered skylight: the scale joke is that this is indoors.
-        sky(g, t);
-        for (let x = 0; x < W; x += 112) g.px(x, 0, 2, HAZE_TOP, "FAR-2", .22);
-        for (let y = 24; y < HAZE_TOP; y += 92) g.px(0, y, W, 2, "FAR-2", .22);
+        g.px(0, 0, W, FLOOR, "SKY-HI");
+        g.px(0, 122, W, 346, "SKY-LO");
+        g.px(0, 120, W, 3, "HAZE");
+        g.px(0, 242, W, 226, "HAZE");
       },
       glow: null,
       clouds: null,
       far(g, off) {
-        g.px(0, 336, W, 30, "FAR-1");
-        g.repeat(off, 72, 20, x => g.px(x + 6, 340, 3, 22, "FAR-2"));
-        g.px(0, 332, W, 5, "FAR-2");
+        g.repeat(off - 28, 370, 200, x => {
+          g.px(x + 30, 0, 2, 61, "HAZE");
+          g.px(x, 60, 104, 6, "FAR-2");
+          g.px(x + 5, 66, 94, 4, "SKY-GLOW");
+          archiveShelf(g, x, 270, 166);
+          g.px(x + 197, 254, 107, 162, "FAR-2");
+          g.px(x + 203, 260, 95, 156, "FAR-1");
+          g.px(x + 217, 273, 65, 54, "SKY-HI");
+          g.px(x + 248, 273, 3, 54, "FAR-2");
+          g.px(x + 280, 348, 6, 3, "MID-2");
+        });
       },
       mid(g, off) {
-        g.px(0, 450, W, 18, "MID-1");
-        g.repeat(off, 264, 70, x => {
-          g.px(x + 8, 430, 38, 38, "MID-2");
-          g.px(x + 4, 425, 46, 6, "MID-1");
-          g.px(x + 25, 390, 4, 35, "MID-2");
-          g.px(x + 14, 384, 26, 20, "MID-1");
-          g.px(x + 20, 378, 14, 8, "MID-1");
-          // Upholstered bench on a continuous mezzanine floor.
-          g.px(x + 94, 430, 64, 18, "MID-2");
-          g.px(x + 98, 448, 4, 20, "MID-2");
-          g.px(x + 150, 448, 4, 20, "MID-2");
+        g.px(0, 414, W, 54, "FAR-1");
+        g.repeat(off - 34, 490, 180, x => {
+          g.px(x, 419, 180, 8, "MID-1");
+          g.px(x + 8, 427, 7, 41, "MID-2");
+          g.px(x + 164, 427, 7, 41, "MID-2");
+          g.px(x + 17, 390, 46, 29, "HAZE");
+          for (let y = 395; y < 419; y += 6) g.px(x + 18, y, 44, 1, "FAR-2");
+          g.px(x + 91, 400, 64, 19, "FAR-2");
+          g.px(x + 95, 395, 25, 5, "MID-1");
+          g.px(x + 109, 407, 23, 7, "SKY-LO");
         });
       },
       landmark(g, x) {
-        // Elevator-bank directory mounted on the lintel, over recessed doors.
-        g.px(x, 346, 224, 122, "MID-1");
-        g.px(x + 6, 352, 212, 7, "FAR-2");
-        for (let i = 0; i < 3; i++) {
-          g.px(x + 14 + i * 68, 402, 60, 66, "MID-2");
-          g.px(x + 20 + i * 68, 408, 48, 60, "FAR-2");
-          g.px(x + 43 + i * 68, 408, 2, 60, "MID-1");
-        }
-        return scenicSign(g, this.levelName, x + 8, 368);
+        // Label on the front of a low sorting cabinet, below the shelf contents.
+        g.px(x, 418, 224, 50, "MID-1");
+        g.px(x - 3, 414, 230, 5, "FAR-2");
+        return scenicSign(g, this.levelName, x + 8, 427);
       },
       ground(g, off) {
         g.px(0, FLOOR, W, H - FLOOR, "GROUND");
-        // Polished floor: the reflected band scrolls at half the ground rate.
-        g.px(0, FLOOR + 4, W, 9, "GROUND-DETAIL", .8);
-        g.repeat(off * .5, 74, 74, x => g.px(x, FLOOR + 4, 34, 9, "SKY-GLOW", .18));
-        g.repeat(off, 74, 74, x => g.px(x, FLOOR, 2, H - FLOOR, "GROUND-DETAIL"));
-      },
-      fore(g, off) {
-        g.px(0, FLOOR + 28, W, 5, "TRIM", .9);
-        g.repeat(off, 120, 60, x => g.px(x, FLOOR + 28, 40, 16, "TRIM", .35));
+        g.px(0, FLOOR + 23, W, 2, "GROUND-DETAIL");
+        g.repeat(off, 148, 148, x => g.px(x, FLOOR + 4, 2, 18, "GROUND-DETAIL"));
       }
     },
     {
       id: "env-d-links-and-lightning-16",
-      name: "Links & Lightning",
-      levelName: "The Back Nine",
+      name: "Palm Beach Links",
+      levelName: "The Mar-a-Lago Nine",
       level: 4,
       obstacleId: "obst-topiary-pillar-66",
       obstacleName: "Topiary pillar",
       fallback: true,
-      premise: "A coastal golf links in a squall, and he is not going in. Sport is the most plausible answer to \"where would this man be\" and needs zero political scaffolding.",
+      premise: "A fictional Mar-a-Lago-inspired Florida resort golf course: cream and dusty-pink arcades, terracotta roofs, a belvedere tower and palms beyond sweeping fairways, pale bunkers and blue water.",
       obstacleNote: "A 56 px clipped yew under a 66 px crown at the ceiling and over a 66 px planter base at the floor. Vines are 1 px meanders on the outer faces with 1-3 px leaves, all inside the solid body; the only things that break the silhouette are 2-4 px leaf clumps in the margin, tagged decorative and excluded from collision.",
       readability: "The strongest separation of the six. Green is the direct complement of the rider's gold comb-over, so the most identity-bearing pixels on the character sit at maximum hue distance from the most dangerous pixels in the world.",
       scores: { separation: "Excellent", charm: "High", clutter: "Low", themeRange: "Good" },
       nightLabel: "Night",
-      exceptions: [
-        { rule: 2, theme: "day", slot: "SKY-HI", why: "The premise is a squall, so the day ceiling is deliberately a storm value rather than a bright sky." }
-      ],
       ramps: {
-        day: ramp("#4d6a86", "#8ea6b8", "#e8f0f5", "#b6c6d1", "#9aa987", "#7b8b6a", "#5f7f4f", "#46603a",
+        day: ramp("#8bcad9", "#c5e4df", "#f8ead7", "#b8d5c7", "#e5cfb6", "#b57870", "#72995d", "#466d4b",
           "#6f9455", "#4f7340", "#33502d", "#1b2c1a", "#8fd6ff", "#7a7f63", "#5c6149", "#131a12"),
-        night: ramp("#101a26", "#1e2c3a", "#c8d6e2", "#27384a", "#2f4340", "#3c5450", "#26382f", "#1b2a23",
+        night: ramp("#101a26", "#1e2c3a", "#c8d6e2", "#27384a", "#827a79", "#725963", "#385842", "#213a31",
           "#4a6b48", "#35503a", "#22362a", "#b9d8ae", "#5fc8f0", "#1a221c", "#28322a", "#080d09")
       },
       glow: [88, 58, 17],
-      clouds: [[0, 58, 0, 1.2], [110, 96, 0, .9]],
-      weather(g, off, t) {
-        // Sparse diagonal rain on the haze layer.
-        if (g.reduced) return;
-        for (let i = 0; i < 22; i++) {
-          const x = wrap(i * 61 - t * 190, W + 60) - 30;
-          const y = wrap(i * 37 + t * 300, FLOOR);
-          g.px(x, y, 1, 5, "HAZE", .5);
-          g.px(x + 1, y + 5, 1, 3, "SKY-GLOW", .22);
-        }
-      },
+      clouds: [[0, 88, 0, .9]],
       far(g, off) {
-        g.repeat(off, 296, 80, x => {
-          for (let s = 0; s < 74; s++) {
-            const hh = Math.round(Math.sin((s / 74) * Math.PI) * 34) + 8;
-            g.px(x + s * 4, 372 - hh, 4, hh + 6, "FAR-1");
-          }
+        g.px(0, 354, W, 114, "MID-1");
+        g.repeat(off - 55, 1040, 800, x => {
+          resortClubhouse(g, x);
+          palm(g, x - 27, 401, 120);
+          palm(g, x + 326, 405, 104);
+          // Low guest wing and palm grove sustain the resort between hero views.
+          g.px(x + 542, 349, 192, 45, "FAR-1");
+          pitchedRoof(g, x + 538, 332, 200, 17, "FAR-2", "FAR-2");
+          for (let i = 0; i < 5; i++) g.px(x + 552 + i * 37, 361, 21, 27, "MID-2");
+          palm(g, x + 470, 405, 84);
+          palm(g, x + 782, 407, 112);
         });
       },
       mid(g, off) {
-        g.px(0, 396, W, FLOOR - 396, "MID-1");
-        g.repeat(off, 292, 70, x => {
-          g.px(x + 4, 420, 90, 5, "FAR-1");
-          g.px(x + 14, 416, 70, 4, "FAR-1");
-          g.px(x + 42, 380, 2, 36, "MID-2");
-          g.px(x + 44, 380, 16, 7, "FAR-2");
-          g.px(x + 112, 444, 78, 5, "MID-2");
+        g.repeat(off - 12, 530, 220, x => {
+          // Wide ribbons curve into a putting green; no checkerboard mowing stripes.
+          oval(g, x - 106, 424, 348, 82, "MID-2");
+          oval(g, x - 36, 408, 262, 63, "GROUND");
+          oval(g, x + 3, 413, 149, 34, "MID-1");
+          oval(g, x + 170, 436, 144, 40, "SKY-HI");
+          oval(g, x + 190, 440, 118, 28, "SKY-LO");
+          oval(g, x + 93, 444, 72, 17, "FAR-1");
+          oval(g, x - 31, 414, 47, 13, "FAR-1");
+          g.px(x + 86, 395, 2, 37, "MID-2");
+          g.px(x + 88, 395, 17, 9, "FAR-2");
+          g.px(x + 80, 431, 13, 2, "MID-2");
         });
       },
       landmark(g, x) {
-        // Clubhouse porch: one broad roof, fascia and open veranda.
-        pitchedRoof(g, x, 320, 224, 40);
-        g.px(x, 364, 224, 38, "MID-1");
-        g.px(x + 32, 402, 160, 66, "MID-2");
-        for (let i = 0; i < 4; i++) g.px(x + 42 + i * 38, 416, 26, 36, "FAR-2");
-        g.px(x + 8, 402, 8, 66, "MID-1");
-        g.px(x + 208, 402, 8, 66, "MID-1");
-        g.px(x, 460, 224, 8, "MID-1");
-        return scenicSign(g, this.levelName, x + 8, 369);
+        return lawnSign(g, this.levelName, x);
       },
       ground(g, off) {
         g.px(0, FLOOR, W, H - FLOOR, "GROUND");
-        g.px(0, FLOOR + 10, W, 7, "GROUND-DETAIL");
-        g.repeat(off, 58, 58, x => g.px(x, FLOOR + 11, 12, 2, "TRIM", .55));
+        g.px(0, FLOOR + 26, W, 18, "GROUND-DETAIL");
+        g.repeat(off, 138, 138, x => g.px(x, FLOOR + 15, 28, 2, "GROUND-DETAIL"));
       },
       fore(g, off, t) {
-        g.repeat(off, 22, 22, x => {
+        g.repeat(off, 82, 82, x => {
           const lean = g.reduced ? 0 : Math.round(Math.sin(t * 4 + x * .3) * 2);
           g.px(x + lean, FLOOR + 24, 2, 18, "MID-2");
           g.px(x + 6 - lean, FLOOR + 30, 2, 12, "MID-2");

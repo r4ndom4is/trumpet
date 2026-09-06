@@ -12,8 +12,8 @@ const window = {};
 runInNewContext(source, { window });
 const art = window.TRUMPET_ENVIRONMENTS;
 const names = [
-  "The Gilded Mile", "The Art of the Column", "Executive Airspace",
-  "The Back Nine", "Penthouse Peril", "The Biggest Launch"
+  "The Gilded Mile", "The White House", "Paperwork, Please",
+  "The Mar-a-Lago Nine", "Penthouse Peril", "The Biggest Launch"
 ];
 
 function recorder() {
@@ -34,7 +34,7 @@ const render = (env, options = {}) => {
   return { calls: ctx.calls, result: plain(result.sign) };
 };
 
-test("all six campaign names are mounted signs, not renamed environment identities", () => {
+test("all six campaign names are mounted signs distinct from environment display names", () => {
   for (const [i, env] of art.list.entries()) {
     for (const theme of ["day", "night"]) {
       const { calls, result } = render(env, { theme });
@@ -46,7 +46,7 @@ test("all six campaign names are mounted signs, not renamed environment identiti
     }
   }
   assert.equal(art.list[4].name, "Penthouse Row");
-  assert.equal(art.list[3].name, "Links & Lightning");
+  assert.equal(art.list[3].name, "Palm Beach Links");
 });
 
 test("entry landmark holds eight seconds, drifts once, and never wraps at 50+", () => {
@@ -109,11 +109,11 @@ test("campaign still advances by ten cleared obstacles and never wraps stage six
   assert.equal(art.campaign[5].clearAt, null);
 });
 
-test("approved obstacle pixels, decoration and collision geometry remain unchanged", () => {
-  // Captured from approved main 783091b; independent of the regenerated HTML.
-  const expected = "74730f88dff539c461b5c80f026c6c344a63b4901faffe9e6c6e39e6d0d83c20";
+test("four retained obstacle sets keep their approved pixels, decoration and collision", () => {
+  // Stages 1, 4, 5, 6 from main 21fc6bd, not a blessing of the replacement artwork.
+  const expected = "8fb85e5e0ee1fa0307318d67bbc1d15353bdbc3973b28989d74c90d008c61f3d";
   const snapshots = [];
-  for (const env of art.list) {
+  for (const env of [art.list[0], ...art.list.slice(3)]) {
     for (const theme of ["day", "night"]) {
       for (const [x, top, gap] of [[0, 96, 158], [113, 174, 144], [326, 212, 132]]) {
         const ctx = recorder();
@@ -123,6 +123,102 @@ test("approved obstacle pixels, decoration and collision geometry remain unchang
     }
   }
   assert.equal(createHash("sha256").update(JSON.stringify(snapshots)).digest("hex"), expected);
+});
+
+test("replacement columns and paperwork fill exactly the original stepped collision envelope", () => {
+  const inside = (x, y, box) => x >= box.x && x < box.x + box.w && y >= box.y && y < box.y + box.h;
+  for (const index of [1, 2]) for (const theme of ["day", "night"]) {
+    const env = art.list[index], sw = index === 1 ? 56 : 54, ch = index === 1 ? 20 : 18;
+    for (const [x, top, gap] of [[0, 96, 158], [113, 174, 144], [326, 212, 132], [100, 20, 428]]) {
+      const ctx = recorder();
+      const result = art.drawPair(ctx, { env, theme, x, top, gap, reduced: true });
+      assert.deepEqual(plain(result.decor), [], "no non-lethal paper tabs or stone chips");
+      const expected = [
+        { x: x + (66 - sw) / 2, y: 0, w: sw, h: top - ch, part: "ceiling-shaft" },
+        { x, y: top - ch, w: 66, h: ch, part: "ceiling-cap" },
+        { x, y: top + gap, w: 66, h: ch, part: "floor-cap" },
+        { x: x + (66 - sw) / 2, y: top + gap + ch, w: sw, h: 468 - top - gap - ch, part: "floor-shaft" }
+      ].filter(box => box.h > 0);
+      assert.deepEqual(plain(result.hitboxes), expected);
+      const coverage = new Uint8Array(448 * 512);
+      for (const [, rx, ry, rw, rh, , alpha] of ctx.calls) {
+        assert.ok(rx >= x && rx + rw <= x + 66 && ry >= 0 && ry + rh <= 468);
+        for (let py = ry; py < ry + rh; py++) for (let px = rx; px < rx + rw; px++) {
+          assert.ok(expected.some(box => inside(px, py, box)), `paint outside hitbox: ${env.id} ${px},${py}`);
+          if (alpha === 1) coverage[py * 448 + px] = 1;
+        }
+      }
+      for (let py = 0; py < 512; py++) for (let px = x; px < x + 66; px++) {
+        assert.equal(coverage[py * 448 + px], Number(expected.some(box => inside(px, py, box))),
+          `${env.id} ${theme} pixel ${px},${py}`);
+      }
+    }
+  }
+});
+
+test("paperwork has page seams, inset folder tabs and archive-box labels, including the cap", () => {
+  const env = art.list[2];
+  assert.equal(env.id, "env-c-executive-atrium-16");
+  assert.equal(env.obstacleId, "obst-elevator-pylon-66");
+  assert.equal(env.obstacleName, "Paperwork stack");
+  assert.doesNotMatch([env.name, env.levelName, env.premise, env.obstacleNote].join(" "), /mirrored|machined|pylon|flange|bolt/);
+  for (const theme of ["day", "night"]) {
+    const ctx = recorder(), P = env.ramps[theme];
+    art.drawPair(ctx, { env, theme, x: 100, top: 174, gap: 144 });
+    const has = (x, y, w, h, slot) => ctx.calls.some(c =>
+      c[1] === x && c[2] === y && c[3] === w && c[4] === h && c[5] === P[slot]);
+    assert.ok(has(109, 5, 48, 1, "OBST-SHADE"), "page edges across the paper bundle");
+    assert.ok(has(119, 46, 25, 12, "OBST-LIT"), "large label in a cardboard box");
+    assert.ok(has(112, 27, 15, 3, "TRIM"), "tab inside shaft, not a lethal protrusion");
+    assert.ok(has(100, 159, 66, 13, "OBST-LIT"), "cap is pages, not a stone collar");
+    assert.ok(has(108, 157, 17, 4, "TRIM"), "folder tab on the outward cover");
+  }
+});
+
+test("scene identities live in architecture and grounds, independently of one-pass signs", () => {
+  const [dc, records, golf] = art.list.slice(1, 4);
+  assert.deepEqual([dc.id, records.id, golf.id], [
+    "env-b-marble-forum-16", "env-c-executive-atrium-16", "env-d-links-and-lightning-16"
+  ]);
+  for (const theme of ["day", "night"]) {
+    const rects = env => render(env, { theme, scroll: 0, stageTime: 60 }).calls.filter(c => c[0] === "rect");
+    const dcRects = rects(dc), files = rects(records), club = rects(golf);
+    const has = (calls, width, height, color) => calls.some(c => c[3] === width && c[4] === height && c[5] === color);
+    assert.ok(has(dcRects, 184, 102, dc.ramps[theme]["FAR-1"]), "central residence");
+    assert.ok(has(dcRects, 106, 49, dc.ramps[theme]["FAR-1"]), "attached wings");
+    assert.ok(has(dcRects, 9, 58, dc.ramps[theme]["SKY-GLOW"]), "columns carry the pediment");
+    assert.ok(has(dcRects, 235, 49, dc.ramps[theme]["FAR-1"]), "supporting executive wing between hero views");
+    assert.ok(has(dcRects, 2, 30, dc.ramps[theme]["MID-2"]), "iron fence rooted at the lawn");
+    assert.ok(has(files, 166, 134, records.ramps[theme]["FAR-2"]), "three-tier archive shelving");
+    assert.ok(has(files, 16, 8, records.ramps[theme]["SKY-LO"]), "legible boxed-file labels");
+    assert.ok(has(club, 302, 70, golf.ramps[theme]["FAR-1"]), "broad cream clubhouse");
+    assert.ok(has(club, 47, 110, golf.ramps[theme]["FAR-1"]), "offset belvedere tower");
+    assert.ok(has(club, 23, 32, golf.ramps[theme]["MID-2"]), "shaded arcades");
+    assert.ok(has(club, 192, 45, golf.ramps[theme]["FAR-1"]), "guest wing between hero views");
+    assert.ok(has(club, 2, 37, golf.ramps[theme]["MID-2"]), "flag on the putting green");
+    for (const env of [dc, records, golf]) {
+      const speed = 142 + Math.min((env.level - 1) * 20, 54);
+      const boundary = env === dc ? 1102 / (speed * .054) :
+        env === records ? 398 / (speed * .055) : 1095 / (speed * .055);
+      for (const seconds of [0, 15, 45, 60, boundary - .1, boundary + .1, 120]) {
+        const frame = render(env, { theme, scroll: seconds * speed, stageTime: seconds });
+        if (seconds >= 45) assert.equal(frame.result, null);
+        // Long estate loops always retain visible architecture, not just offscreen calls.
+        assert.ok(frame.calls.some(c => c[0] === "rect" && c[1] < 448 && c[1] + c[3] > 0 &&
+          c[2] >= 250 && c[2] < 400 && c[3] >= 90 && c[4] >= 40 &&
+          [env.ramps[theme]["FAR-1"], env.ramps[theme]["FAR-2"]].includes(c[5])), `${env.id} at ${seconds}s`);
+      }
+    }
+  }
+});
+
+test("sky transitions are broad tonal bands, not checkerboards", () => {
+  for (const env of art.list) {
+    const calls = render(env, { scroll: 0, stageTime: 60 }).calls;
+    const bands = calls.filter(c => c[0] === "rect" && c[2] >= 168 && c[2] < 204);
+    assert.ok(bands.every(c => c[1] === 0 && c[3] === 448));
+    assert.ok(calls.length < 2500, "restrained background draw count");
+  }
 });
 
 test("phone-size day/night contact sheets render with readable signs", { timeout: 60000 }, async () => {
@@ -187,12 +283,31 @@ test("phone-size day/night contact sheets render with readable signs", { timeout
         document.querySelectorAll("#scenery-sheet canvas").forEach((canvas, i) => {
           const ctx = canvas.getContext("2d");
           art.drawPair(ctx, { env: art.list[i], theme, x: 312, top: 164, gap: 158 });
-          window.__drawSceneryRider(ctx, 108, 250, 1, 0);
+          window.__drawSceneryRider(ctx, 108, 250, 48 / 42, 0);
         });
       }, theme);
       if (process.env.SCENERY_ARTIFACT_DIR) {
         await page.screenshot({ path: resolve(process.env.SCENERY_ARTIFACT_DIR, `scenery-gameplay-${theme}.png`), fullPage: true });
       }
+      const seams = await page.evaluate(theme => {
+        const art = window.TRUMPET_ENVIRONMENTS, canvas = document.createElement("canvas");
+        canvas.width = 448; canvas.height = 512;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        return [[1, 1102 / .054], [2, 398 / .055], [3, 1095 / .055]].map(([index, boundary]) => {
+          const sample = scroll => {
+            art.drawScene(ctx, { env: art.list[index], theme, time: 120, stageTime: 120, scroll, gaps: [] });
+            return ctx.getImageData(0, 250, 448, 218).data;
+          };
+          const before = sample(boundary - 1), after = sample(boundary + 1);
+          let changed = 0;
+          for (let i = 0; i < before.length; i += 4) {
+            if (before[i] !== after[i] || before[i + 1] !== after[i + 1] || before[i + 2] !== after[i + 2]) changed++;
+          }
+          return { env: art.list[index].id, fraction: changed / (448 * 218) };
+        });
+      }, theme);
+      for (const seam of seams) assert.ok(seam.fraction < .035,
+        `${seam.env} ${theme}: long scenery loop must scroll through, not pop (${seam.fraction})`);
     }
     assert.deepEqual(errors, []);
   } finally {
