@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile, mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { serve } from "../scripts/serve.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
@@ -11,16 +12,31 @@ const hooks = `
     start, pause, step, draw, flap, die, tone, scoreSound, crashSound, silence, action, frame,
     death() { return structuredClone(death); },
     deathPixels() {
-      const copy = document.createElement("canvas");
-      copy.width = W; copy.height = H;
-      const painter = copy.getContext("2d");
-      drawTrumpet(painter, X, death.y, RIDER_SCALE, death.tilt);
-      const pixels = painter.getImageData(0, 0, W, H).data;
+      const saved = ctx.getImageData(0, 0, W, H);
+      ctx.clearRect(0, 0, W, H);
+      drawCharacter(death.y);
+      const pixels = ctx.getImageData(0, 0, W, H).data;
       let bottom = -1;
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         if (pixels[(y * W + x) * 4 + 3]) bottom = y;
       }
-      return { bottom, image: copy.toDataURL() };
+      const image = canvas.toDataURL();
+      ctx.putImageData(saved, 0, 0);
+      return { bottom, image };
+    },
+    facePixels(reaction) {
+      const copy = document.createElement("canvas");
+      copy.width = 42; copy.height = 42;
+      const painter = copy.getContext("2d");
+      drawTrumpet(painter, 21, 29, 1, 0, reaction);
+      return { pixels: [...painter.getImageData(0, 0, 42, 42).data], layers: [...riderLayers] };
+    },
+    sourceSprite() { return JSON.stringify(riderSprite); },
+    dustPixels() {
+      const calls = [], original = ctx.fillRect;
+      ctx.fillRect = function(x, y, w, h) { calls.push({ x, y, w, h, alpha: this.globalAlpha }); };
+      try { drawLandingDust(); } finally { ctx.fillRect = original; }
+      return calls;
     },
     riderCapsules, riderTilt, capsuleHitsRect, pipeHitboxes,
     environment() {
@@ -240,12 +256,13 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         await page.waitForTimeout(60);
         const fits = await page.evaluate(() => {
           document.querySelector(".dialog").scrollTop = 0;
-          const image = document.getElementById("crash-image").getBoundingClientRect();
+          const image = document.getElementById("crash-closeup").getBoundingClientRect();
           const dialog = document.querySelector(".dialog").getBoundingClientRect();
           const title = document.getElementById("title").getBoundingClientRect();
           const retry = document.getElementById("play").getBoundingClientRect();
           return document.documentElement.scrollWidth <= innerWidth && image.left >= dialog.left && image.right <= dialog.right &&
-            title.top >= dialog.top && retry.bottom <= dialog.bottom;
+            title.top >= dialog.top && retry.bottom <= dialog.bottom &&
+            document.querySelector(".dialog").scrollHeight <= document.querySelector(".dialog").clientHeight;
         });
         assert.equal(fits, true);
         await page.locator("#play").scrollIntoViewIfNeeded();
@@ -310,7 +327,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         }, y);
         assert.equal(result.impact, result.expected, `exact impact at y=${y}`);
         assert.equal(result.hidden, true);
-        assert.equal(result.initial.y, y);
+        assert.equal(result.initial.fromY, y);
+        assert.ok(result.initial.y <= y);
         assert.equal(result.initial.tilt, .3);
         assert.equal(result.frozen.state, "over");
         assert.equal(result.frozen.score, 10);
@@ -384,6 +402,125 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.deepEqual(result.after, {
         state: result.atImpact.state, bird: result.atImpact.bird, score: 7, best: 7, pipes: []
       });
+      await context.close();
+    });
+
+    await t.test("comic reaction only touches face pixels; one bounded landing puff settles inside the existing hold", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      const result = await page.evaluate(() => {
+        const g = window.__flight, normal = g.facePixels(false), reaction = g.facePixels(true);
+        g.start(); g.scenario(210);
+        const flight = g.spriteFrame(0), expected = g.crop();
+        g.die();
+        const raw = document.getElementById("crash-image").toDataURL();
+        const styled = document.getElementById("crash-closeup").toDataURL();
+        g.step(.54);
+        const before = { pose: g.death(), dust: g.dustPixels() };
+        g.step(.015);
+        const contact = { pose: g.death(), dust: g.dustPixels() };
+        g.step(.02);
+        const compressed = { pose: g.death(), dust: g.dustPixels(), pixels: g.deathPixels() };
+        g.die();
+        g.step(.05);
+        const rebound = { pose: g.death(), dust: g.dustPixels(), pixels: g.deathPixels() };
+        g.step(.025); g.draw();
+        const settled = { pose: g.death(), dust: g.dustPixels(), pixels: g.deathPixels() };
+        const rawLater = document.getElementById("crash-image").toDataURL();
+        const styledLater = document.getElementById("crash-closeup").toDataURL();
+        g.start();
+        return { normal, reaction, expected, raw, styled, rawLater, styledLater, before, contact, compressed, rebound,
+          settled, flight, nextFlight: g.spriteFrame(0), reset: g.death(), source: g.sourceSprite(),
+          closeupCleared: ![...document.getElementById("crash-closeup").getContext("2d").getImageData(0, 0, 280, 208).data].some(Boolean) };
+      });
+      let changed = 0, whites = 0;
+      for (let i = 0; i < 42 * 42; i++) {
+        const before = result.normal.pixels.slice(i * 4, i * 4 + 4);
+        const after = result.reaction.pixels.slice(i * 4, i * 4 + 4);
+        if (before.some((value, channel) => value !== after[channel])) {
+          changed++;
+          assert.equal(result.normal.layers[i], 2, "expression is confined to actual source face pixels");
+          assert.equal(after[3], before[3], "reaction never adds silhouette pixels");
+        }
+        if (after.join() === "235,239,232,255" && i % 42 >= 21 && i % 42 <= 26 && Math.floor(i / 42) >= 12 && Math.floor(i / 42) <= 14) whites++;
+      }
+      assert.ok(changed >= 20 && changed <= 30, "small but legible pixel reaction, not a face replacement");
+      assert.equal(whites, 13, "3x3 and 2x3 whites retain one pupil each");
+      assert.equal(result.raw, result.expected);
+      assert.equal(result.rawLater, result.raw);
+      assert.equal(result.styledLater, result.styled);
+      assert.equal(result.before.pose.landed, false);
+      assert.deepEqual(result.before.dust, []);
+      assert.equal(result.contact.pose.landed, true);
+      assert.equal(result.contact.dust.length, 4);
+      assert.deepEqual(result.compressed.pose.dust, result.contact.pose.dust, "contact emits only once");
+      assert.deepEqual(result.rebound.pose.dust, result.contact.pose.dust, "repeated die does not emit again");
+      assert.ok(result.compressed.pose.squash > .079 && result.compressed.pose.squash <= .08);
+      assert.ok(result.rebound.pose.rebound > 1.24 && result.rebound.pose.rebound <= 1.25);
+      assert.ok(result.compressed.dust[0].alpha > result.rebound.dust[0].alpha);
+      assert.notEqual(result.compressed.dust[0].x, result.rebound.dust[0].x);
+      for (const sample of [result.contact, result.compressed, result.rebound]) {
+        assert.ok(sample.dust.every(p => p.y + p.h < 468 && p.alpha > 0 && p.alpha <= .65));
+      }
+      assert.ok(result.compressed.pixels.bottom < 468 && result.rebound.pixels.bottom < 467);
+      assert.equal(result.settled.pose.elapsed, .65);
+      assert.equal(result.settled.pose.squash, 0);
+      assert.equal(result.settled.pose.rebound, 0);
+      assert.deepEqual(result.settled.pose.dust, []);
+      assert.deepEqual(result.settled.dust, []);
+      assert.equal(result.settled.pixels.bottom, 467);
+      assert.equal(result.flight, result.nextFlight);
+      assert.equal(result.reset, null);
+      assert.equal(result.closeupCleared, true);
+      assert.equal(createHash("sha256").update(result.source).digest("hex"),
+        "46b0e1e3c5298f7fcd8f91d34dcdf30668f06d5f5573088bb1bb5bcada8319dc",
+        "original sprite pixels, layers, palette and animation definition remain unchanged");
+      const bounds = await page.evaluate(() => {
+        const g = window.__flight, samples = [];
+        for (const y of [27, 210, 464]) for (const vy of [-310, 0, 470]) {
+          g.start(); g.scenario(y, [], 0, vy); g.die();
+          for (let i = 0; i <= 80; i++) {
+            samples.push(g.deathPixels().bottom);
+            g.step(1 / 120);
+          }
+        }
+        return samples;
+      });
+      assert.ok(bounds.every(bottom => bottom < 468), "all tumble angles, including the first floor-impact frame, stay above ground");
+      await context.close();
+    });
+
+    await t.test("larger decorative retry stays readable without scrolling on portrait and short landscape phones", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block", reducedMotion: "reduce" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      await page.evaluate(() => { const g = window.__flight; g.start(); g.scenario(210, [], 100); g.die(); g.draw(); });
+      for (const viewport of [{ width: 320, height: 568 }, { width: 360, height: 640 }, { width: 390, height: 844 },
+        { width: 568, height: 320 }, { width: 667, height: 375 }, { width: 844, height: 390 }]) {
+        await page.setViewportSize(viewport);
+        // This fixture disables animation frames; invoke the layout's resize listener normally.
+        await page.waitForTimeout(60);
+        const layout = await page.evaluate(() => {
+          const dialog = document.querySelector(".dialog"), image = document.getElementById("crash-closeup");
+          const box = image.getBoundingClientRect(), retry = document.getElementById("play").getBoundingClientRect();
+          const bounds = dialog.getBoundingClientRect();
+          return { width: box.width, height: box.height, overflow: dialog.scrollHeight > dialog.clientHeight,
+            fits: bounds.top >= 0 && bounds.bottom <= innerHeight && box.left >= bounds.left && box.right <= bounds.right &&
+              retry.bottom <= bounds.bottom && retry.right <= bounds.right,
+            pose: window.__flight.death(), dust: window.__flight.dustPixels() };
+        });
+        assert.equal(layout.overflow, false, JSON.stringify(viewport));
+        assert.equal(layout.fits, true, JSON.stringify(viewport));
+        if (viewport.width === 360 || viewport.width === 390) {
+          assert.ok(layout.width >= 175 && layout.height >= 128, `enlarged close-up: ${JSON.stringify(layout)}`);
+        }
+        assert.equal(layout.pose.squash, 0);
+        assert.equal(layout.pose.rebound, 0);
+        assert.deepEqual(layout.dust, []);
+      }
       await context.close();
     });
 
@@ -885,7 +1022,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
               const selectors = ["#game", "#score", "#best", "#pause", "#sound", "#manual-open", "#theme-switch",
                 ".brand", ".edition", ".compact-tagline .eyebrow"];
               if (state !== "playing") selectors.push("#play", "#title");
-              if (state === "over") selectors.push("#crash-image");
+              if (state === "over") selectors.push("#crash-closeup");
               const canvas = document.getElementById("game").getBoundingClientRect();
               const brand = document.querySelector(".brand").getBoundingClientRect();
               const edition = document.querySelector(".edition").getBoundingClientRect();

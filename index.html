@@ -203,7 +203,6 @@ a { color: var(--cp-link); }
   .dialog.crashed { padding: 10px; }
   .dialog.crashed .pixel-title { font-size: 20px; margin: 6px 0; }
   .dialog.crashed .crash-shot { margin-bottom: 8px; }
-  .dialog.crashed .crash-shot canvas { width: auto; max-height: 24vw; }
   .dialog.crashed p { font-size: 11px; line-height: 1.4; margin: 6px 0 8px; }
   .dialog.crashed .primary { padding: 10px; }
   .dialog.crashed .prompt { margin-top: 8px; font-size: 8px; }
@@ -237,7 +236,7 @@ a { color: var(--cp-link); }
   .dialog .primary, .dialog.crashed .primary { min-height: 44px; padding: 8px; }
   .dialog .prompt, .dialog.crashed .prompt { margin-top: 8px; font-size: 8px; letter-spacing: .5px; }
   .dialog .crash-shot { margin-bottom: 8px; }
-  .dialog .crash-shot canvas { width: auto; max-height: clamp(54px, 24cqh, 140px); }
+  .dialog .crash-shot canvas { width: auto; max-height: clamp(54px, 36cqh, 172px); }
   .crash-shot figcaption { font-size: 8px; letter-spacing: .5px; }
   .cabinet > .notice { position: absolute; bottom: 8px; left: 8px; right: 8px; z-index: 2; padding: 8px; background: var(--cp-panel-strong); }
 }
@@ -249,6 +248,14 @@ a { color: var(--cp-link); }
   .scorebar .stat-label { max-width: 70px; line-height: 1.5; }
   .tools { justify-content: space-between; }
   .cabinet-footer { grid-column: 2; grid-row: 2; flex-direction: column; align-items: stretch; gap: 8px; padding-bottom: 4px; line-height: 1.5; }
+}
+@container (max-height: 280px) {
+  .dialog.crashed { padding: 6px; }
+  .dialog.crashed .pixel-title { font-size: 14px; margin: 4px 0; }
+  .dialog.crashed .crash-shot { margin: 0 0 6px; }
+  .dialog.crashed .crash-shot canvas { max-height: 32cqh; }
+  .dialog.crashed .crash-shot figcaption { font-size: 7px; margin-top: 3px; letter-spacing: 0; }
+  .dialog.crashed p, .dialog.crashed .prompt { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .primary:active { transform: none; } }
 </style>
@@ -310,8 +317,9 @@ a { color: var(--cp-link); }
             <canvas id="rider-preview" class="rider-preview" width="136" height="120" aria-label="Pocket Trump-inspired rider on a backward-facing golden trumpet, with a full comb-over and fluttering tie"></canvas>
             <div class="pixel-title" id="title">TRUMPET FLIGHT</div>
             <figure class="crash-shot" id="crash-shot" hidden>
-              <canvas id="crash-image" width="280" height="180" role="img" aria-label="Zoomed-in frozen screenshot of the rider and collision"></canvas>
-              <figcaption class="mono">CRASH CLOSE-UP / 2X ZOOM</figcaption>
+              <canvas id="crash-image" width="280" height="180" hidden aria-hidden="true"></canvas>
+              <canvas id="crash-closeup" width="280" height="208" role="img" aria-label="Collision close-up with a decorative surprised expression"></canvas>
+              <figcaption class="mono">IMPACT / COMIC REACTION</figcaption>
             </figure>
             <p id="message">Stay airborne. Dodge the pipes.<br>Your next high score starts here.</p>
             <button class="primary mono" id="play">LET'S FLY &gt;</button>
@@ -1597,6 +1605,7 @@ a { color: var(--cp-link); }
   const canvas = $("game"), ctx = canvas.getContext("2d");
   const portrait = $("rider-preview"), portraitCtx = portrait.getContext("2d");
   const crashCtx = $("crash-image").getContext("2d");
+  const closeupCtx = $("crash-closeup").getContext("2d");
   const W = canvas.width, H = canvas.height, FLOOR = 468, X = 108;
   const environments = window.TRUMPET_ENVIRONMENTS;
   const environmentLayer = document.createElement("canvas");
@@ -1776,6 +1785,7 @@ a { color: var(--cp-link); }
     musicalNotes = []; noteClock = 0;
     death = null; deadAt = 0;
     crashCtx.clearRect(0, 0, $("crash-image").width, $("crash-image").height);
+    closeupCtx.clearRect(0, 0, $("crash-closeup").width, $("crash-closeup").height);
     $("crash-shot").hidden = true;
     notifyState();
     score = 0; distance = 0; spawn = .95; accumulator = 0;
@@ -1821,6 +1831,22 @@ a { color: var(--cp-link); }
     crashCtx.imageSmoothingEnabled = false;
     crashCtx.clearRect(0, 0, snapshot.width, snapshot.height);
     crashCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, snapshot.width, snapshot.height);
+    // The raw 2x collision crop is never retouched. This separate presentation
+    // tightens that same frame and adds only the face's decorative reaction.
+    const closeup = $("crash-closeup"), zoom = closeup.width / 100;
+    const viewX = Math.max(cropX, Math.min(cropX + cropWidth - 100, X - 50));
+    const viewY = Math.max(cropY, Math.min(cropY + cropHeight - 74, bird.y - 10 - 37));
+    closeupCtx.imageSmoothingEnabled = false;
+    closeupCtx.clearRect(0, 0, closeup.width, closeup.height);
+    closeupCtx.drawImage(snapshot, (viewX - cropX) * 2, (viewY - cropY) * 2, 200, 148,
+      0, 0, closeup.width, closeup.height);
+    closeupCtx.save();
+    closeupCtx.scale(zoom, closeup.height / 74);
+    closeupCtx.translate(Math.round(X) - viewX, Math.round(bird.y) - viewY);
+    closeupCtx.rotate(riderTilt());
+    closeupCtx.scale(RIDER_SCALE, RIDER_SCALE);
+    drawImpactFace(closeupCtx);
+    closeupCtx.restore();
     state = "over"; deadAt = performance.now(); $("pause").disabled = true;
     crashSound();
     const record = score > best;
@@ -1834,7 +1860,9 @@ a { color: var(--cp-link); }
     updateScore();
     overlay(record ? "NEW HIGH SCORE!" : "ONE MORE TRY?", "You cleared " + score + (score === 1 ? " pipe. " : " pipes. ") + (record ? "A golden performance." : "A little rhythm goes a long way."), "FLY AGAIN >", "SPACE OR TAP TO TRY AGAIN");
     // Keep the collision bird/capsules and crop immutable; only this visual pose falls.
-    death = { elapsed: 0, fromY: bird.y, fromTilt: riderTilt(), y: bird.y, tilt: riderTilt() };
+    death = { elapsed: 0, fromY: bird.y, fromTilt: riderTilt(), y: bird.y, tilt: riderTilt(),
+      landed: false, squash: 0, rebound: 0, dust: [] };
+    deathPose();
     if (reducedMotion) finishDeath();
     else $("overlay").hidden = true;
     $("status").textContent = record ? "PERSONAL BEST. NICELY FLOWN." : "EVERY FLIGHT IS A FRESH START";
@@ -1849,6 +1877,18 @@ a { color: var(--cp-link); }
     // Keep its rotated bounds above ground, including impacts already at the floor.
     const groundY = FLOOR - RIDER_SCALE * (21 * Math.abs(Math.sin(death.tilt)) + 13 * Math.cos(death.tilt));
     death.y = Math.min(Math.floor(groundY), death.fromY + (FLOOR - 21 * RIDER_SCALE - death.fromY) * progress * progress);
+    const landing = Math.max(0, Math.min(1, (death.elapsed - fallDuration) / (deathDuration - fallDuration)));
+    death.squash = !reducedMotion && landing < .5 ? .08 * Math.sin(landing * 2 * Math.PI) : 0;
+    death.rebound = !reducedMotion && landing > .5 ? 1.25 * Math.sin((landing - .5) * 2 * Math.PI) : 0;
+    if (progress === 1 && !death.landed) {
+      death.landed = true;
+      if (!reducedMotion && death.elapsed < deathDuration) {
+        death.dust = [-18, -9, 9, 18].map((offset, i) => ({
+          x: X + 8 + offset, vx: Math.sign(offset) * (35 + i * 4), lift: 3 + i % 2, size: 2 + i % 2
+        }));
+      }
+    }
+    if (landing === 1) { death.squash = 0; death.rebound = 0; death.dust = []; }
   }
   function finishDeath() {
     if (!death || death.elapsed >= deathDuration) return;
@@ -2139,7 +2179,24 @@ a { color: var(--cp-link); }
       }
     }
   }
-  function drawTrumpet(painter, x, y, scale, tilt) {
+  function drawImpactFace(painter) {
+    // Source-face coordinates (layer 2), not the older procedural rider's face.
+    // Mask every pixel so the reaction cannot change the traced silhouette/hair.
+    const pixel = (x, y, color) => {
+      if (riderLayers[y * riderSprite.w + x] !== 2) return;
+      painter.fillStyle = riderSprite.palette[color];
+      painter.fillRect(x - 21, y - 29, 1, 1);
+    };
+    for (const [x, width] of [[21, 3], [25, 2]]) {
+      for (let dx = 0; dx < width; dx++) {
+        pixel(x + dx, 9, 7);
+        pixel(x + dx, 11, 1);
+        for (let dy = 0; dy < 3; dy++) pixel(x + dx, 12 + dy, 6);
+      }
+      pixel(x + width - 1, 13, 7);
+    }
+  }
+  function drawTrumpet(painter, x, y, scale, tilt, reaction = false) {
     // D-H1-T1-V2: the selected sprite is the user's traced 42 px composition.
     painter.save();
     painter.imageSmoothingEnabled = false;
@@ -2148,11 +2205,20 @@ a { color: var(--cp-link); }
     painter.scale(scale, scale);
     drawSpriteLayer(painter, false);
     drawSpriteLayer(painter, true);
+    if (reaction) drawImpactFace(painter);
     painter.restore();
   }
   function drawCharacter(y) {
     const tilt = death ? death.tilt : riderTilt();
-    drawTrumpet(ctx, X, y, RIDER_SCALE, tilt);
+    ctx.save();
+    if (death) {
+      // Compress vertically in world space about the floor, after the tumble.
+      ctx.translate(X, FLOOR - death.rebound);
+      ctx.scale(1 + death.squash / 2, 1 - death.squash);
+      ctx.translate(-X, -FLOOR);
+    }
+    drawTrumpet(ctx, X, y, RIDER_SCALE, tilt, Boolean(death));
+    ctx.restore();
     if (!reducedMotion) {
       for (const note of musicalNotes) {
         const fadeIn = Math.min(1, note.age / .06);
@@ -2163,6 +2229,17 @@ a { color: var(--cp-link); }
       }
       ctx.globalAlpha = 1;
     }
+  }
+  function drawLandingDust() {
+    if (!death || !death.dust.length) return;
+    const age = death.elapsed - fallDuration, progress = age / (deathDuration - fallDuration);
+    ctx.save();
+    ctx.globalAlpha = (1 - progress) * .65;
+    for (const p of death.dust) {
+      rect(p.x + p.vx * age, FLOOR - p.size - 1 - Math.sin(progress * Math.PI) * p.lift,
+        p.size, p.size, "text-soft");
+    }
+    ctx.restore();
   }
   function draw() {
     ctx.imageSmoothingEnabled = false;
@@ -2184,6 +2261,7 @@ a { color: var(--cp-link); }
     for (const p of particles) rect(p.x, p.y, 4, 4, "warning");
     if (state !== "ready") drawCharacter(death ? death.y : bird.y);
     else drawCharacter(340 + (reducedMotion ? 0 : Math.sin(time * 3) * 6));
+    drawLandingDust();
     if (!portrait.hidden && !$("overlay").hidden) {
       portraitCtx.clearRect(0, 0, portrait.width, portrait.height);
       portraitCtx.imageSmoothingEnabled = false;
