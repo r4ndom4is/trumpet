@@ -27,6 +27,16 @@ const hooks = `
       return { id: currentEnvironment().id, transition: structuredClone(environmentTransition), time, stageTime, distance, spawn };
     },
     spawnIn(seconds) { spawn = seconds; },
+    stageSigns() {
+      const signs = [], original = environments.drawScene;
+      environments.drawScene = (painter, options) => {
+        const result = original(painter, options);
+        signs.push({ stageTime: options.stageTime, sign: result.sign });
+        return result;
+      };
+      try { draw(); } finally { environments.drawScene = original; }
+      return signs;
+    },
     position(y, vy = 0) { bird = { y, vy }; },
     renderTrace() {
       const calls = [];
@@ -723,6 +733,42 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         }
         await context.close();
       }
+    });
+
+    await t.test("stage sign clocks reset at entry, retain outgoing age, and freeze on pause and impact", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; Math.random = () => .5; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      const result = await page.evaluate(() => {
+        const g = window.__flight;
+        g.start(); g.scenario(240, [], 9); g.spawnIn(100);
+        for (let i = 0; i < 40; i++) { g.position(240); g.step(.25); }
+        const aged = g.stageSigns();
+        // Preserve the old stage age while staging a real score crossing.
+        g.position(240);
+        g.spawnIn(0); g.step(0);
+        while (g.snapshot.score === 9 && g.snapshot.state === "playing") {
+          g.position(240); g.step(1 / 120);
+        }
+        const entered = g.environment(), layers = g.stageSigns();
+        g.pause(); g.step(.5);
+        const paused = g.environment();
+        g.pause(); g.die(); g.step(.75);
+        const dead = g.environment();
+        g.start();
+        return { aged, entered, layers, paused, dead, reset: g.environment() };
+      });
+      assert.equal(result.aged[0].stageTime, 10);
+      assert.equal(result.entered.stageTime, 0);
+      assert.ok(result.entered.transition.fromStageTime > 10);
+      assert.equal(result.layers[0].stageTime, result.entered.transition.fromStageTime);
+      assert.equal(result.layers[1].stageTime, 0);
+      assert.equal(result.layers[1].sign.text, "The Art of the Column");
+      assert.deepEqual(result.paused, result.entered);
+      assert.deepEqual(result.dead, result.entered);
+      assert.equal(result.reset.stageTime, 0);
+      await context.close();
     });
 
     await t.test("environment changes preserve the original speed, gap and spawn progression", async () => {

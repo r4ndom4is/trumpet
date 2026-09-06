@@ -33,6 +33,8 @@ The rider uses two independently fitted capsule hitboxes, rotating with the artw
 
 Scenery crossfades for one second at each threshold; reduced-motion mode switches instantly. Obstacles already in flight retain their spawn-time environment, while subsequent spawns use the new one. Their 66px caps and narrower shafts have matching collision rectangles; decorative outliers are non-lethal. Light/dark mode selects each environment's day/night palette. Speed and gap difficulty continue on the same score-based curve, and pausing freezes the transition. Gantry Nine stays indefinitely; retry starts again at The Gilded Mile.
 
+Each stage has a named architectural landmark in the background. It holds for eight seconds after entry, then slowly passes out of view without repeating. Reduced-motion mode keeps it stationary. Signs sit behind obstacles and the rider; stage clocks freeze on pause and impact.
+
 The single **sun/moon icon beside mute** switches light/dark appearance and remembers your choice, including offline. Its icon and accessible label describe the theme you can switch to. Your saved choice takes precedence over system appearance and the optional `?scoutTheme=light` / `?scoutTheme=dark` preview parameter. Until you choose, the parameter or system appearance sets the initial theme. If storage is denied, the palette still switches and an explicit notice explains that it cannot be remembered.
 
 ## A pocket-sized, screen-fitting arcade
