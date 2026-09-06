@@ -76,6 +76,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.match(html, /D-H1-T1-V2/);
       assert.match(html, /id: "char-e-legacy-42"/);
       assert.match(html, /animationId: "hair-wind-front-to-back"/);
+      assert.match(html, /-webkit-touch-callout:\s*none/);
       assert.doesNotMatch(html, /<script\s+src=/);
       assert.doesNotMatch(html, /id="update"/);
       const manifest = await (await fetch(url + "manifest.webmanifest")).json();
@@ -217,6 +218,20 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       const page = await context.newPage();
       await page.goto(url);
       await page.waitForTimeout(100);
+      const selectionGuard = await page.locator(".cabinet").evaluate(cabinet => {
+        const style = getComputedStyle(cabinet);
+        const event = new Event("selectstart", { bubbles: true, cancelable: true });
+        return {
+          userSelect: style.userSelect,
+          webkitUserSelect: style.webkitUserSelect,
+          canceled: !cabinet.dispatchEvent(event)
+        };
+      });
+      assert.deepEqual(selectionGuard, {
+        userSelect: "none",
+        webkitUserSelect: "none",
+        canceled: true
+      });
       const portrait = await page.locator("#rider-preview").evaluate(canvas => canvas.toDataURL());
       await page.waitForTimeout(150);
       assert.equal(await page.locator("#rider-preview").evaluate(canvas => canvas.toDataURL()), portrait);
