@@ -1536,6 +1536,8 @@ a { color: var(--cp-link); }
   let score = 0, best = 0, distance = 0, spawn = 0, time = 0, last = 0, accumulator = 0, deadAt = 0;
   const deathDuration = .65, fallDuration = .55;
   let death = null;
+  let musicalNotes = [], noteClock = 0;
+  const noteLifetime = .72, noteInterval = .24;
   let muted = false, audio = null, storageAvailable = true, brassWave = null;
   let environmentTransition = null, environmentId = environments.list[0].id;
   let stageTime = 0;
@@ -1691,6 +1693,7 @@ a { color: var(--cp-link); }
   function flap() { bird.vy = -310; flapSound(); }
   function start() {
     state = "playing"; bird = { y: 210, vy: 0 }; pipes = []; particles = [];
+    musicalNotes = []; noteClock = 0;
     death = null; deadAt = 0;
     crashCtx.clearRect(0, 0, $("crash-image").width, $("crash-image").height);
     $("crash-shot").hidden = true;
@@ -1828,6 +1831,25 @@ a { color: var(--cp-link); }
     }
     return distanceSquared <= r * r;
   }
+  function updateMusicalNotes(dt) {
+    if (reducedMotion) { musicalNotes = []; noteClock = 0; return; }
+    for (const note of musicalNotes) {
+      note.x += note.vx * dt;
+      note.y += note.vy * dt;
+      note.age += dt;
+    }
+    musicalNotes = musicalNotes.filter(note => note.age < noteLifetime);
+    noteClock += dt;
+    if (noteClock < noteInterval) return;
+    noteClock %= noteInterval;
+    const tilt = riderTilt(), cos = Math.cos(tilt), sin = Math.sin(tilt);
+    // Release from the bell in sprite coordinates, then let each note drift independently.
+    const x = 22 * RIDER_SCALE, y = 7 * RIDER_SCALE;
+    musicalNotes.push({
+      x: X + x * cos - y * sin, y: Math.round(bird.y) + x * sin + y * cos,
+      vx: 18 * cos + 12 * sin, vy: 18 * sin - 12 * cos, age: 0
+    });
+  }
   function step(dt) {
     if (state === "over" && death && death.elapsed < deathDuration) {
       if (death.elapsed + dt >= deathDuration) finishDeath();
@@ -1835,6 +1857,7 @@ a { color: var(--cp-link); }
       return;
     }
     if (state !== "playing") return;
+    updateMusicalNotes(dt);
     stageTime += dt;
     if (environmentTransition) {
       environmentTransition.fromStageTime += dt;
@@ -2050,14 +2073,13 @@ a { color: var(--cp-link); }
   function drawCharacter(y) {
     const tilt = death ? death.tilt : riderTilt();
     drawTrumpet(ctx, X, y, RIDER_SCALE, tilt);
-    if (!reducedMotion && (state === "ready" || state === "playing")) {
-      for (let i = 0; i < 3; i++) {
-        const phase = (time * 1.6 + i * .33) % 1;
-        const nx = X - 30 * RIDER_SCALE - phase * 42, ny = y + 10 * RIDER_SCALE - phase * 14;
-        ctx.globalAlpha = (1 - phase) * .65;
-        rect(nx, ny, 4, 3, "warning");
-        rect(nx + 3, ny - 7, 2, 9, "warning");
-        rect(nx + 5, ny - 7, 3, 2, "warning");
+    if (!reducedMotion) {
+      for (const note of musicalNotes) {
+        const fadeIn = Math.min(1, note.age / .06);
+        ctx.globalAlpha = fadeIn * (1 - note.age / noteLifetime) * .55;
+        rect(note.x, note.y, 3, 2, "warning");
+        rect(note.x + 2, note.y - 5, 1, 6, "warning");
+        rect(note.x + 3, note.y - 5, 2, 1, "warning");
       }
       ctx.globalAlpha = 1;
     }

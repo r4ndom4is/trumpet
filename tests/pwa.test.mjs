@@ -61,6 +61,7 @@ const hooks = `
     },
     collisionConfig() { return structuredClone(riderCollision); },
     riderScale() { return RIDER_SCALE; },
+    notes() { return structuredClone(musicalNotes); },
     renderedRiderScales() {
       const scales = [], original = ctx.scale;
       ctx.scale = function(x, y) { scales.push([x, y]); return original.call(this, x, y); };
@@ -1203,6 +1204,48 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         await page.reload();
         assert.equal(await page.locator("body").getAttribute("data-release"), "v5");
       } finally { await context.close(); await close(migrationServer); }
+    });
+
+    await t.test("musical notes leave the bell, drift independently, and freeze with gameplay", async () => {
+      for (const reducedMotion of ["no-preference", "reduce"]) {
+        const context = await browser.newContext({ serviceWorkers: "block", reducedMotion });
+        await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+        const page = await context.newPage();
+        await page.goto(fixture);
+        const result = await page.evaluate(() => {
+          const g = window.__flight;
+          g.start(); g.scenario(210);
+          for (let i = 0; i < 30; i++) { g.position(210); g.step(1 / 120); }
+          const emitted = g.notes();
+          g.position(290); g.step(1 / 120);
+          const moved = g.notes();
+          g.pause(); g.step(.1); g.draw(); const paused = g.notes();
+          g.pause(); g.die(); g.step(.3); g.draw(); const crashed = g.notes();
+          g.start(); const reset = g.notes();
+          let maxCount = 0;
+          for (let i = 0; i < 1200; i++) {
+            g.position(210); g.scenario(210); g.step(1 / 120);
+            maxCount = Math.max(maxCount, g.notes().length);
+          }
+          return { emitted, moved, paused, crashed, reset, maxCount, aged: g.notes() };
+        });
+        if (reducedMotion === "reduce") {
+          assert.deepEqual(result.emitted, []);
+          assert.equal(result.maxCount, 0);
+        } else {
+          assert.equal(result.emitted.length, 1);
+          const a = result.emitted[0], b = result.moved[0];
+          assert.ok(a.x > 108 + 21 * 48 / 42, "note is emitted outside the trumpet bell");
+          assert.ok(Math.abs(b.x - a.x - a.vx / 120) < 1e-9);
+          assert.ok(Math.abs(b.y - a.y - a.vy / 120) < 1e-9, "note does not jump with the rider");
+          assert.deepEqual(result.paused, result.moved);
+          assert.deepEqual(result.crashed, result.moved);
+          assert.ok(result.maxCount <= 4, "short trail remains bounded");
+          assert.ok(result.aged.every(note => note.age < .72), "old notes expire rather than wrap");
+        }
+        assert.deepEqual(result.reset, []);
+        await context.close();
+      }
     });
 
     await t.test("default-on sound can be muted before play and audio failures do not block gameplay", async () => {
