@@ -8,7 +8,20 @@ import { serve } from "../scripts/serve.mjs";
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const hooks = `
   window.__flight = {
-    start, pause, step, draw, flap, die, tone, scoreSound, crashSound, silence,
+    start, pause, step, draw, flap, die, tone, scoreSound, crashSound, silence, action, frame,
+    death() { return structuredClone(death); },
+    deathPixels() {
+      const copy = document.createElement("canvas");
+      copy.width = W; copy.height = H;
+      const painter = copy.getContext("2d");
+      drawTrumpet(painter, X, death.y, 1, death.tilt);
+      const pixels = painter.getImageData(0, 0, W, H).data;
+      let bottom = -1;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (pixels[(y * W + x) * 4 + 3]) bottom = y;
+      }
+      return { bottom, image: copy.toDataURL() };
+    },
     riderCapsules, riderTilt, capsuleHitsRect, pipeHitboxes,
     environment() {
       return { id: currentEnvironment().id, transition: structuredClone(environmentTransition), time, distance, spawn };
@@ -145,7 +158,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "true");
       await page.keyboard.press("Space");
       await page.locator("#screen").click({ position: { x: 50, y: 250 } });
-      await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?");
+      await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?" &&
+        !document.getElementById("overlay").hidden);
       assert.equal(await page.locator("#crash-shot").isVisible(), true);
       await page.screenshot({ path: "test-results/desktop-retry.png", fullPage: true });
       await page.goto(url + "?scoutTheme=dark");
@@ -230,6 +244,200 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         if (game.snapshot.state !== "over") throw new Error("Pipe collision missed");
       });
       await context.close();
+    });
+
+    await t.test("post-impact fall preserves the original crop and freezes gameplay until a grounded retry", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block", reducedMotion: "no-preference" });
+      await context.addInitScript(() => {
+        window.requestAnimationFrame = () => 1;
+        let now = 1000;
+        performance.now = () => now;
+        window.advanceClock = ms => { now += ms; return now; };
+      });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      for (const y of [27, 210, 455]) {
+        const result = await page.evaluate(y => {
+          const g = window.__flight;
+          g.start();
+          g.scenario(240, [{ x: 31, top: 160, gap: 158, passed: false }], 9);
+          g.step(0); // Start the real 9 -> 10 scenery transition before impact.
+          g.position(240); g.step(.125);
+          g.position(y, 470);
+          const expected = g.crop(), capsules = g.riderCapsules();
+          g.die();
+          const frozen = { ...g.snapshot, ...g.environment() };
+          const impact = document.getElementById("crash-image").toDataURL();
+          const initial = g.death(), hidden = document.getElementById("overlay").hidden;
+          const samples = [];
+          g.frame(performance.now());
+          for (let i = 1; i <= 16; i++) {
+            g.frame(window.advanceClock(50));
+            samples.push({
+              pose: g.death(), pixels: g.deathPixels(), frozen: { ...g.snapshot, ...g.environment() },
+              image: document.getElementById("crash-image").toDataURL(),
+              hidden: document.getElementById("overlay").hidden
+            });
+            g.die(); // Repeated collision reports must not recapture or restart the fall.
+          }
+          const settled = document.getElementById("game").toDataURL();
+          g.frame(window.advanceClock(50));
+          return {
+            expected, impact, initial, hidden, frozen, samples,
+            capsules, afterCapsules: g.riderCapsules(),
+            settled, later: document.getElementById("game").toDataURL(),
+            title: document.getElementById("title").textContent,
+            saved: localStorage.getItem("trumpet-flight-best")
+          };
+        }, y);
+        assert.equal(result.impact, result.expected, `exact impact at y=${y}`);
+        assert.equal(result.hidden, true);
+        assert.equal(result.initial.y, y);
+        assert.equal(result.initial.tilt, .3);
+        assert.equal(result.frozen.state, "over");
+        assert.equal(result.frozen.score, 10);
+        assert.equal(result.saved, "10");
+        assert.deepEqual(result.frozen.transition, { from: "env-a-gilded-mile-16", to: "env-b-marble-forum-16", elapsed: .125 });
+        for (const sample of result.samples) {
+          assert.equal(sample.image, result.impact);
+          assert.deepEqual(sample.frozen, result.frozen);
+        }
+        assert.ok(result.samples[4].pose.tilt > result.initial.tilt);
+        assert.notEqual(result.samples[4].pose.y, result.initial.y);
+        assert.ok(result.samples[8].hidden, "fall remains visible for at least 0.5 seconds");
+        assert.equal(result.samples[14].hidden, false, "retry appears within 0.75 seconds");
+        assert.equal(result.samples.at(-1).pose.tilt, Math.PI / 2);
+        assert.equal(result.samples.at(-1).pose.y, 447, "rotated 42px sprite rests on floor 468");
+        assert.equal(result.samples.at(-1).pixels.bottom, 467, "the actual sprite touches the ground without sinking");
+        assert.notEqual(result.samples[4].pixels.image, result.samples.at(-1).pixels.image, "the rendered rider actually moves");
+        assert.ok(result.samples.every(sample => sample.pixels.bottom < 468), "visual fall stays above ground");
+        assert.deepEqual(result.afterCapsules, result.capsules, "contact snapshot never follows the visual tumble");
+        assert.equal(result.settled, result.later, "landing is stationary");
+        assert.equal(result.title, y === 27 ? "NEW HIGH SCORE!" : "ONE MORE TRY?");
+      }
+      await context.close();
+    });
+
+    await t.test("the first collision step captures before falling and commits score, record and crash audio exactly once", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      await page.locator("#sound").click();
+      const result = await page.evaluate(() => {
+        const g = window.__flight;
+        g.start(); g.scenario(26, [], 7, -310);
+        const dt = 1 / 120, vy = -310 + 940 * dt, y = 26 + vy * dt;
+        g.position(y, vy);
+        const expected = g.crop();
+        g.position(26, -310);
+        let oscillators = 0, writes = 0;
+        const create = AudioContext.prototype.createOscillator, set = Storage.prototype.setItem;
+        AudioContext.prototype.createOscillator = function() { oscillators++; return create.call(this); };
+        Storage.prototype.setItem = function(...args) {
+          if (args[0] === "trumpet-flight-best") writes++;
+          return set.apply(this, args);
+        };
+        try {
+          g.step(dt);
+          const impact = document.getElementById("crash-image").toDataURL();
+          const atImpact = { ...g.snapshot, death: g.death(), oscillators, writes };
+          for (let i = 0; i < 100; i++) { g.die(); g.step(dt); }
+          g.pause(); g.draw();
+          return { expected, impact, atImpact, oscillators, writes,
+            after: g.snapshot, saved: localStorage.getItem("trumpet-flight-best"),
+            later: document.getElementById("crash-image").toDataURL() };
+        } finally {
+          AudioContext.prototype.createOscillator = create;
+          Storage.prototype.setItem = set;
+        }
+      });
+      assert.equal(result.impact, result.expected, "capture uses the collision step, not the previous painted frame");
+      assert.equal(result.later, result.impact);
+      assert.equal(result.atImpact.state, "over");
+      assert.equal(result.atImpact.death.elapsed, 0);
+      assert.equal(result.atImpact.best, 7);
+      assert.equal(result.saved, "7");
+      assert.equal(result.atImpact.oscillators, 3, "one original three-note crash phrase");
+      assert.equal(result.atImpact.writes, 1);
+      assert.equal(result.oscillators, 3, "landing adds no audio or scoring sound");
+      assert.equal(result.writes, 1);
+      assert.deepEqual(result.after, {
+        state: result.atImpact.state, bird: result.atImpact.bird, score: 7, best: 7, pipes: []
+      });
+      await context.close();
+    });
+
+    await t.test("fall skip consumes input, guards retry, and resets all death presentation on the next run", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => {
+        window.requestAnimationFrame = () => 1;
+        let now = 1000;
+        performance.now = () => now;
+        window.advanceClock = ms => { now += ms; };
+      });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      for (const input of ["keyboard", "pointer"]) {
+        await page.evaluate(() => { const g = window.__flight; g.start(); g.scenario(210); g.die(); window.advanceClock(600); });
+        const impact = await page.locator("#crash-image").evaluate(canvas => canvas.toDataURL());
+        if (input === "keyboard") await page.keyboard.press("Space");
+        else await page.locator("#screen").click({ position: { x: 20, y: 20 } });
+        assert.equal(await page.evaluate(() => window.__flight.snapshot.state), "over");
+        assert.equal(await page.locator("#overlay").isVisible(), true);
+        assert.equal(await page.locator("#crash-image").evaluate(canvas => canvas.toDataURL()), impact);
+        await page.keyboard.press("Space");
+        assert.equal(await page.evaluate(() => window.__flight.snapshot.state), "over");
+        await page.evaluate(() => window.advanceClock(451));
+        await page.locator("#play").click();
+        const reset = await page.evaluate(() => ({
+          death: window.__flight.death(), state: window.__flight.snapshot.state,
+          pixels: [...document.getElementById("crash-image").getContext("2d").getImageData(0, 0, 280, 180).data].some(Boolean)
+        }));
+        assert.deepEqual(reset, { death: null, state: "playing", pixels: false });
+        assert.equal(await page.locator("#overlay").isHidden(), true);
+      }
+      await context.close();
+    });
+
+    await t.test("reduced motion and interrupted falls go directly to a stable retry without resuming hidden motion", async () => {
+      for (const reducedMotion of ["reduce", "no-preference"]) {
+        const context = await browser.newContext({ serviceWorkers: "block", reducedMotion });
+        await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+        const page = await context.newPage();
+        await page.goto(fixture);
+        for (const interrupt of ["pause", "blur", "hidden", "manual"]) {
+          await page.evaluate(() => { const g = window.__flight; g.start(); g.scenario(210); g.die(); g.step(.2); g.draw(); });
+          const impact = await page.locator("#crash-image").evaluate(canvas => canvas.toDataURL());
+          if (reducedMotion === "reduce") assert.equal(await page.locator("#overlay").isVisible(), true);
+          if (interrupt === "pause") await page.keyboard.press("KeyP");
+          if (interrupt === "blur") await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+          if (interrupt === "hidden") await page.evaluate(() => {
+            Object.defineProperty(document, "hidden", { configurable: true, value: true });
+            document.dispatchEvent(new Event("visibilitychange"));
+          });
+          if (interrupt === "manual") await page.locator("#manual-open").click();
+          const before = await page.evaluate(() => ({
+            snapshot: window.__flight.snapshot, death: window.__flight.death(),
+            canvas: document.getElementById("game").toDataURL()
+          }));
+          await page.evaluate(() => { window.__flight.frame(1000); window.__flight.frame(6000); window.__flight.step(2); window.__flight.draw(); });
+          if (interrupt === "hidden") await page.evaluate(() => {
+            Object.defineProperty(document, "hidden", { configurable: true, value: false });
+            document.dispatchEvent(new Event("visibilitychange"));
+          });
+          if (interrupt === "manual") await page.locator("#manual-close").click();
+          const after = await page.evaluate(() => ({
+            snapshot: window.__flight.snapshot, death: window.__flight.death(),
+            canvas: document.getElementById("game").toDataURL()
+          }));
+          assert.deepEqual(after, before, `${reducedMotion}: ${interrupt} never resumes motion`);
+          assert.equal(after.snapshot.state, "over");
+          assert.equal(await page.locator("#overlay").isVisible(), true);
+          assert.equal(await page.locator("#crash-image").evaluate(canvas => canvas.toDataURL()), impact);
+        }
+        await context.close();
+      }
     });
 
     await t.test("approved dual capsules rotate exactly with the rider and use rounded contacts", async () => {
@@ -605,7 +813,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
               const game = window.__flight;
               if (state === "playing") game.start();
               if (state === "paused") game.pause();
-              if (state === "over") { game.start(); game.scenario(464); game.die(); }
+              if (state === "over") { game.start(); game.scenario(464); game.die(); game.step(.75); }
               game.draw();
             }, state);
             await page.waitForTimeout(60);
