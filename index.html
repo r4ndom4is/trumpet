@@ -1628,7 +1628,7 @@ a { color: var(--cp-link); }
   let death = null;
   let musicalNotes = [], noteClock = 0;
   const noteLifetime = .72, noteInterval = .24;
-  let muted = false, audio = null, storageAvailable = true, brassWave = null;
+  let muted = false, audio = null, audioPrimed = false, audioPrimePending = false, storageAvailable = true, brassWave = null;
   let environmentTransition = null, environmentId = environments.list[0].id;
   let stageTime = 0;
   function currentEnvironment() {
@@ -1743,6 +1743,29 @@ a { color: var(--cp-link); }
       tone(174.44, .032, 174.44, .026, true, "brass", { cutoff: 700, gain: .03, attack: .005 });
     }
   }
+  function primeAudioFromGesture(event) {
+    if (event?.target.closest("button, .dialog")) return;
+    if (muted || audioPrimed || audioPrimePending || document.hidden) return;
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) return;
+    try {
+      audio ||= new Audio();
+      const oscillator = audio.createOscillator(), gain = audio.createGain();
+      gain.gain.value = 0;
+      oscillator.connect(gain); gain.connect(audio.destination);
+      oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+      oscillator.start();
+      oscillator.stop(audio.currentTime + .01);
+      audioPrimePending = true;
+      const resumed = audio.state === "running" ? Promise.resolve() : audio.resume();
+      resumed.then(() => { audioPrimed = audio.state === "running"; }).catch(error => {
+        console.warn("Audio prime unavailable:", error);
+      }).finally(() => { audioPrimePending = false; });
+    } catch (error) {
+      audioPrimePending = false;
+      console.warn("Audio prime unavailable:", error);
+    }
+  }
   async function prepareAudio() {
     const Audio = window.AudioContext || window.webkitAudioContext;
     if (!Audio) {
@@ -1753,7 +1776,8 @@ a { color: var(--cp-link); }
     try {
       audio ||= new Audio();
       if (audio.state !== "running") await audio.resume();
-      return audio.state === "running";
+      audioPrimed = audio.state === "running";
+      return audioPrimed;
     } catch (error) {
       $("notice").hidden = false;
       $("notice").textContent = "Sound could not start. Toggle sound to retry; you can still play silently.";
@@ -1800,6 +1824,7 @@ a { color: var(--cp-link); }
     flap();
   }
   function action() {
+    primeAudioFromGesture();
     if (death && !death.finished) { finishDeath(); return; }
     if (state === "playing") flap();
     else if (state === "paused") pause();
@@ -2300,6 +2325,8 @@ a { color: var(--cp-link); }
     event.preventDefault(); action();
   });
   document.querySelector(".cabinet").addEventListener("selectstart", event => event.preventDefault());
+  document.addEventListener("pointerdown", primeAudioFromGesture, { capture: true, passive: true });
+  document.addEventListener("touchend", primeAudioFromGesture, { capture: true, passive: true });
   $("play").addEventListener("click", action);
   $("pause").addEventListener("click", pause);
   $("sound").addEventListener("click", toggleSound);
