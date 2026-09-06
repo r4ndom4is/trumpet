@@ -333,7 +333,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         assert.equal(result.frozen.state, "over");
         assert.equal(result.frozen.score, 10);
         assert.equal(result.saved, "10");
-        assert.deepEqual(result.frozen.transition, { from: "env-a-gilded-mile-16", to: "env-b-marble-forum-16", elapsed: .125, fromStageTime: .125 });
+        assert.deepEqual(result.frozen.transition, { from: "env-b-marble-forum-16", to: "env-c-executive-atrium-16", elapsed: .125, fromStageTime: .125 });
         for (const sample of result.samples) {
           assert.equal(sample.image, result.impact);
           assert.deepEqual(sample.frozen, result.frozen);
@@ -711,7 +711,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await page.goto(fixture);
       const stages = await page.evaluate(() => window.TRUMPET_ENVIRONMENTS.list.map(env => ({ id: env.id, name: env.name })));
       assert.deepEqual(stages.map(env => env.name), [
-        "Gilt Trip", "West Wing It", "File Another Day", "Fore More Years", "Roofless Ambition", "Space Force One"
+        "West Wing It", "File Another Day", "Fore More Years", "Gilt Trip", "Roofless Ambition", "Space Force One"
       ]);
       assert.equal(new Set(stages.map(env => env.id)).size, 6);
       for (const [score, index] of [
@@ -767,8 +767,16 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         return { world: { W: api.world.W, H: api.world.H, FLOOR: api.world.FLOOR, COLLIDE: api.world.COLLIDE }, entries };
       });
       assert.deepEqual(result.world, { W: 448, H: 512, FLOOR: 468, COLLIDE: 66 });
-      for (const [index, entry] of result.entries.entries()) {
-        const shaft = [56, 56, 54, 56, 56, 54][index], cap = [20, 20, 18, 20, 22, 16][index];
+      const geometry = {
+        "env-a-gilded-mile-16": [56, 20],
+        "env-b-marble-forum-16": [56, 20],
+        "env-c-executive-atrium-16": [54, 18],
+        "env-d-links-and-lightning-16": [56, 20],
+        "env-e-penthouse-row-16": [56, 22],
+        "env-f-gantry-nine-16": [54, 16]
+      };
+      for (const entry of result.entries) {
+        const [shaft, cap] = geometry[entry.id];
         assert.deepEqual(entry.boxes, entry.expected, entry.id);
         assert.deepEqual(entry.boxes, [
           { x: 197 + (66 - shaft) / 2, y: 0, w: shaft, h: 161 - cap, part: "ceiling-shaft" },
@@ -914,7 +922,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.ok(result.entered.transition.fromStageTime > 10);
       assert.equal(result.layers[0].stageTime, result.entered.transition.fromStageTime);
       assert.equal(result.layers[1].stageTime, 0);
-      assert.equal(result.layers[1].sign.text, "West Wing It");
+      assert.equal(result.layers[1].sign.text, "File Another Day");
       assert.deepEqual(result.paused, result.entered);
       assert.deepEqual(result.dead, result.entered);
       assert.equal(result.reset.stageTime, 0);

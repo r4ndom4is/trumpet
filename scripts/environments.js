@@ -583,7 +583,7 @@
       id: "env-a-gilded-mile-16",
       name: "Gilt Trip",
       levelName: "Gilt Trip",
-      level: 1,
+      level: 4,
       obstacleId: "obst-colonnade-66",
       obstacleName: "Colonnade",
       recommended: true,
@@ -648,7 +648,7 @@
       id: "env-b-marble-forum-16",
       name: "West Wing It",
       levelName: "West Wing It",
-      level: 2,
+      level: 1,
       obstacleId: "obst-broken-drum-66",
       obstacleName: "Portico column",
       premise: "A stylized Washington DC exterior: the White House residence, six-column north portico and long wings, beyond a broad lawn and iron fence.",
@@ -708,7 +708,7 @@
       id: "env-c-executive-atrium-16",
       name: "File Another Day",
       levelName: "File Another Day",
-      level: 3,
+      level: 2,
       obstacleId: "obst-elevator-pylon-66",
       obstacleName: "Paperwork stack",
       premise: "An after-hours records office: boxed files on deep shelves, a sorting desk, tabbed folders and towers of paperwork instead of elevator machinery.",
@@ -772,7 +772,7 @@
       id: "env-d-links-and-lightning-16",
       name: "Fore More Years",
       levelName: "Fore More Years",
-      level: 4,
+      level: 3,
       obstacleId: "obst-topiary-pillar-66",
       obstacleName: "Topiary pillar",
       fallback: true,
@@ -993,6 +993,7 @@
     }
   ];
 
+  ENVS.sort((a, b) => a.level - b.level);
   const byId = {};
   for (const env of ENVS) byId[env.id] = env;
 
@@ -1000,7 +1001,7 @@
   const PIPES_PER_LEVEL = 10;
   const CAMPAIGN_STATUS = "Live";
 
-  const CAMPAIGN = ENVS.slice().sort((a, b) => a.level - b.level).map(env => {
+  const CAMPAIGN = ENVS.map(env => {
     const unlockAt = (env.level - 1) * PIPES_PER_LEVEL;
     const clearAt = env.level === ENVS.length ? null : env.level * PIPES_PER_LEVEL;
     Object.assign(env, {

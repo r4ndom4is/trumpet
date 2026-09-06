@@ -12,8 +12,8 @@ const window = {};
 runInNewContext(source, { window });
 const art = window.TRUMPET_ENVIRONMENTS;
 const names = [
-  "Gilt Trip", "West Wing It", "File Another Day",
-  "Fore More Years", "Roofless Ambition", "Space Force One"
+  "West Wing It", "File Another Day", "Fore More Years",
+  "Gilt Trip", "Roofless Ambition", "Space Force One"
 ];
 
 function recorder() {
@@ -99,10 +99,27 @@ test("signs precede obstacles and rider; crossfade renders have no shared entry 
 });
 
 test("campaign still advances by ten cleared obstacles and never wraps stage six", () => {
+  const ids = [
+    "env-b-marble-forum-16", "env-c-executive-atrium-16", "env-d-links-and-lightning-16",
+    "env-a-gilded-mile-16", "env-e-penthouse-row-16", "env-f-gantry-nine-16"
+  ];
+  const obstacles = [
+    "obst-broken-drum-66", "obst-elevator-pylon-66", "obst-topiary-pillar-66",
+    "obst-colonnade-66", "obst-rooftop-stack-66", "obst-gantry-tower-66"
+  ];
+  assert.deepEqual(plain(art.list.map(env => env.id)), ids);
+  for (const [i, env] of art.list.entries()) {
+    assert.equal(env.level, i + 1);
+    assert.equal(env.unlockAt, i * 10);
+    assert.equal(env.clearAt, i === 5 ? null : (i + 1) * 10);
+    assert.equal(env.obstacleId, obstacles[i]);
+  }
   for (let score = 0; score <= 1000; score++) {
     const level = art.levelAt(score);
     assert.equal(level.level, Math.min(6, Math.floor(score / 10) + 1));
     assert.equal(level.name, names[level.level - 1]);
+    assert.equal(level.environmentId, ids[level.level - 1]);
+    assert.equal(level.obstacleId, obstacles[level.level - 1]);
   }
   assert.equal(art.campaign[5].unlockAt, 50);
   assert.equal(art.campaign[5].clearAt, null);
@@ -112,7 +129,8 @@ test("four retained obstacle sets keep their approved pixels, decoration and col
   // Stages 1, 4, 5, 6 from main 21fc6bd, not a blessing of the replacement artwork.
   const expected = "8fb85e5e0ee1fa0307318d67bbc1d15353bdbc3973b28989d74c90d008c61f3d";
   const snapshots = [];
-  for (const env of [art.list[0], ...art.list.slice(3)]) {
+  for (const env of ["env-a-gilded-mile-16", "env-d-links-and-lightning-16",
+    "env-e-penthouse-row-16", "env-f-gantry-nine-16"].map(id => art.byId[id])) {
     for (const theme of ["day", "night"]) {
       for (const [x, top, gap] of [[0, 96, 158], [113, 174, 144], [326, 212, 132]]) {
         const ctx = recorder();
@@ -126,8 +144,9 @@ test("four retained obstacle sets keep their approved pixels, decoration and col
 
 test("replacement columns and paperwork fill exactly the original stepped collision envelope", () => {
   const inside = (x, y, box) => x >= box.x && x < box.x + box.w && y >= box.y && y < box.y + box.h;
-  for (const index of [1, 2]) for (const theme of ["day", "night"]) {
-    const env = art.list[index], sw = index === 1 ? 56 : 54, ch = index === 1 ? 20 : 18;
+  for (const id of ["env-b-marble-forum-16", "env-c-executive-atrium-16"]) for (const theme of ["day", "night"]) {
+    const env = art.byId[id], columns = id === "env-b-marble-forum-16";
+    const sw = columns ? 56 : 54, ch = columns ? 20 : 18;
     for (const [x, top, gap] of [[0, 96, 158], [113, 174, 144], [326, 212, 132], [100, 20, 428]]) {
       const ctx = recorder();
       const result = art.drawPair(ctx, { env, theme, x, top, gap, reduced: true });
@@ -156,7 +175,7 @@ test("replacement columns and paperwork fill exactly the original stepped collis
 });
 
 test("paperwork has page seams, inset folder tabs and archive-box labels, including the cap", () => {
-  const env = art.list[2];
+  const env = art.byId["env-c-executive-atrium-16"];
   assert.equal(env.id, "env-c-executive-atrium-16");
   assert.equal(env.obstacleId, "obst-elevator-pylon-66");
   assert.equal(env.obstacleName, "Paperwork stack");
@@ -175,7 +194,8 @@ test("paperwork has page seams, inset folder tabs and archive-box labels, includ
 });
 
 test("scene identities live in architecture and grounds, independently of one-pass signs", () => {
-  const [dc, records, golf] = art.list.slice(1, 4);
+  const [dc, records, golf] = ["env-b-marble-forum-16", "env-c-executive-atrium-16",
+    "env-d-links-and-lightning-16"].map(id => art.byId[id]);
   assert.deepEqual([dc.id, records.id, golf.id], [
     "env-b-marble-forum-16", "env-c-executive-atrium-16", "env-d-links-and-lightning-16"
   ]);
@@ -292,9 +312,10 @@ test("phone-size day/night contact sheets render with readable signs", { timeout
         const art = window.TRUMPET_ENVIRONMENTS, canvas = document.createElement("canvas");
         canvas.width = 448; canvas.height = 512;
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        return [[1, 1102 / .054], [2, 398 / .055], [3, 1095 / .055]].map(([index, boundary]) => {
+        return [["env-b-marble-forum-16", 1102 / .054], ["env-c-executive-atrium-16", 398 / .055],
+          ["env-d-links-and-lightning-16", 1095 / .055]].map(([id, boundary]) => {
           const sample = scroll => {
-            art.drawScene(ctx, { env: art.list[index], theme, time: 120, stageTime: 120, scroll, gaps: [] });
+            art.drawScene(ctx, { env: art.byId[id], theme, time: 120, stageTime: 120, scroll, gaps: [] });
             return ctx.getImageData(0, 250, 448, 218).data;
           };
           const before = sample(boundary - 1), after = sample(boundary + 1);
@@ -302,7 +323,7 @@ test("phone-size day/night contact sheets render with readable signs", { timeout
           for (let i = 0; i < before.length; i += 4) {
             if (before[i] !== after[i] || before[i + 1] !== after[i + 1] || before[i + 2] !== after[i + 2]) changed++;
           }
-          return { env: art.list[index].id, fraction: changed / (448 * 218) };
+          return { env: id, fraction: changed / (448 * 218) };
         });
       }, theme);
       for (const seam of seams) assert.ok(seam.fraction < .035,
