@@ -10,6 +10,22 @@ const hooks = `
   window.__flight = {
     start, pause, step, draw, flap, die, tone, scoreSound, crashSound, silence,
     sound() { return { muted, count: voices.size, fading: fadingVoices.size, state: audio?.state, types: [...voices].map(v => v.kind || v.oscillator.type) }; },
+    sprite() {
+      return {
+        id: riderSprite.id, animationId: riderSprite.animationId, width: riderSprite.w, height: riderSprite.h,
+        hairPixels: riderLayers.filter(layer => layer === 1).length
+      };
+    },
+    spriteFrame(t) {
+      const previous = time;
+      time = t;
+      const copy = document.createElement("canvas");
+      copy.width = 42; copy.height = 42;
+      const painter = copy.getContext("2d");
+      drawTrumpet(painter, 21, 29, 1, 0);
+      time = previous;
+      return copy.toDataURL();
+    },
     suspendAudio() { return audio.suspend(); },
     get snapshot() { return { state, bird: {...bird}, score, best, pipes: pipes.map(p => ({...p})) }; },
     scenario(y, obstacles = [], points = 0) { bird = {y, vy: 0}; pipes = obstacles; score = points; },
@@ -58,6 +74,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
     await t.test("local manifest, PNG dimensions and single approved renderer", async () => {
       assert.ok(!html.includes("drawBird") && !html.includes('id="theme"') && !html.includes("PIXEL FLAP"));
       assert.match(html, /D-H1-T1-V2/);
+      assert.match(html, /id: "char-e-legacy-42"/);
+      assert.match(html, /animationId: "hair-wind-front-to-back"/);
       assert.doesNotMatch(html, /<script\s+src=/);
       assert.doesNotMatch(html, /id="update"/);
       const manifest = await (await fetch(url + "manifest.webmanifest")).json();
@@ -115,6 +133,14 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       });
       const page = await context.newPage();
       await page.goto(fixture);
+      assert.deepEqual(await page.evaluate(() => window.__flight.sprite()), {
+        id: "char-e-legacy-42",
+        animationId: "hair-wind-front-to-back",
+        width: 42,
+        height: 42,
+        hairPixels: 188
+      });
+      assert.equal(await page.evaluate(() => window.__flight.spriteFrame(0) === window.__flight.spriteFrame(.2)), true);
       const score = await page.evaluate(() => {
         const game = window.__flight;
         game.start();
@@ -555,6 +581,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       });
       const page = await context.newPage();
       await page.goto(fixture);
+      assert.equal(await page.evaluate(() => window.__flight.spriteFrame(0) === window.__flight.spriteFrame(.2)), false);
       assert.equal(await page.evaluate(() => window.audioCreated), 0);
       await page.locator("#play").click();
       assert.equal(await page.evaluate(() => window.audioCreated), 0);
@@ -565,14 +592,14 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         for (let i = 0; i < 100; i++) window.__flight.flap();
         return window.__flight.sound();
       });
-      assert.equal(rapid.count, 1);
-      assert.ok(rapid.fading <= 1);
-      assert.deepEqual(rapid.types, ["noise"]);
+      assert.equal(rapid.count, 2);
+      assert.ok(rapid.fading <= 2);
+      assert.deepEqual(rapid.types, ["custom", "custom"]);
       await page.evaluate(() => window.__flight.scoreSound());
       assert.deepEqual(await page.evaluate(() => {
         const sound = window.__flight.sound();
         return [sound.count, sound.types];
-      }), [1, ["sine"]]);
+      }), [2, ["sine", "sine"]]);
       await page.waitForFunction(() => window.__flight.sound().count === 0, null, { polling: 25, timeout: 3000 });
       assert.equal(await page.evaluate(() => window.__flight.sound().count), 0);
       await page.evaluate(() => { window.__flight.crashSound(); window.__flight.pause(); });

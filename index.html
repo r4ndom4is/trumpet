@@ -389,7 +389,7 @@ a { color: var(--cp-link); }
     }
     voices.clear();
   }
-  function tone(frequency, duration, endFrequency = frequency, delay = 0, append = false, shape = "brass") {
+  function tone(frequency, duration, endFrequency = frequency, delay = 0, append = false, shape = "brass", options = {}) {
     if (muted || !audio || audio.state !== "running" || document.hidden) return;
     if (!append) silence();
     if (!brassWave) {
@@ -402,18 +402,20 @@ a { color: var(--cp-link); }
     if (shape === "brass") oscillator.setPeriodicWave(brassWave);
     else oscillator.type = shape;
     const at = audio.currentTime + delay;
-    oscillator.frequency.setValueAtTime(frequency * .985, at);
-    oscillator.frequency.setValueAtTime(frequency, at + .016);
-    oscillator.frequency.setValueAtTime(endFrequency, at + duration * .6);
+    const attack = options.attack ?? .008;
+    oscillator.frequency.setValueAtTime(frequency, at);
+    if (endFrequency !== frequency) {
+      oscillator.frequency.exponentialRampToValueAtTime(endFrequency, at + duration * (options.bend ?? .7));
+    }
     filter.type = "lowpass";
-    filter.Q.value = .55;
-    filter.frequency.setValueAtTime(Math.min(4000, frequency * 5), at);
-    filter.frequency.setValueAtTime(frequency * 3.3, at + .025);
-    filter.frequency.setValueAtTime(frequency * 1.8, at + duration * .65);
+    filter.Q.value = options.q ?? .55;
+    const cutoff = options.cutoff ?? Math.min(4000, frequency * 5);
+    filter.frequency.setValueAtTime(cutoff, at);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(250, cutoff * (options.close ?? .5)), at + duration);
+    const peak = options.gain ?? .025;
     gain.gain.setValueAtTime(0, at);
-    gain.gain.linearRampToValueAtTime(.025, at + .008);
-    gain.gain.linearRampToValueAtTime(.018, at + .032);
-    gain.gain.setValueAtTime(.018, at + duration * .55);
+    gain.gain.linearRampToValueAtTime(peak, at + attack);
+    gain.gain.linearRampToValueAtTime(peak * (options.sustain ?? .68), at + Math.min(duration * .5, attack + .022));
     gain.gain.linearRampToValueAtTime(0, at + duration);
     oscillator.connect(filter); filter.connect(gain); gain.connect(audio.destination);
     const voice = { oscillator, gain, kind: oscillator.type };
@@ -425,37 +427,19 @@ a { color: var(--cp-link); }
     };
     oscillator.start(at); oscillator.stop(at + duration);
   }
-  function valveClick() {
-    if (muted || !audio || audio.state !== "running" || document.hidden) return;
-    silence();
-    const duration = .018;
-    const buffer = audio.createBuffer(1, Math.ceil(audio.sampleRate * duration), audio.sampleRate);
-    const samples = buffer.getChannelData(0);
-    for (let i = 0; i < samples.length; i++) samples[i] = (Math.random() * 2 - 1) * (1 - i / samples.length);
-    const source = audio.createBufferSource(), filter = audio.createBiquadFilter(), gain = audio.createGain();
-    source.buffer = buffer;
-    filter.type = "bandpass";
-    filter.frequency.value = 520;
-    filter.Q.value = 1.1;
-    gain.gain.setValueAtTime(.012, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.0001, audio.currentTime + duration);
-    source.connect(filter); filter.connect(gain); gain.connect(audio.destination);
-    const voice = { oscillator: source, gain, kind: "noise" };
-    voices.add(voice);
-    source.onended = () => {
-      voices.delete(voice);
-      fadingVoices.delete(voice);
-      source.disconnect(); filter.disconnect(); gain.disconnect();
-    };
-    source.start(); source.stop(audio.currentTime + duration);
-  }
   function scoreSound() {
     silence();
-    tone(330, .11, 370, 0, true, "sine");
+    tone(294, .13, 294, 0, true, "sine", { cutoff: 840, gain: .044, attack: .012 });
+    tone(370.44, .125, 370.44, .006, true, "sine", { cutoff: 960, gain: .026, attack: .012 });
   }
   function crashSound() {
     silence();
-    [392, 329.63, 261.63].forEach((note, i) => tone(note, .13, note * .891, i * .1, true));
+    [
+      [294, 232.26, 0, .055],
+      [246.96, 183.49, .081, .046],
+      [207.45, 144.96, .162, .037]
+    ].forEach(([from, to, delay, gain]) =>
+      tone(from, .1, to, delay, true, "brass", { cutoff: 1140, close: .36, gain, attack: .006 }));
   }
   async function flapSound() {
     if (muted || !audio) return;
@@ -468,7 +452,11 @@ a { color: var(--cp-link); }
         return;
       }
     }
-    if (state === "playing") valveClick();
+    if (state === "playing") {
+      silence();
+      tone(196, .026, 196, 0, true, "brass", { cutoff: 650, gain: .034, attack: .005 });
+      tone(174.44, .032, 174.44, .026, true, "brass", { cutoff: 700, gain: .03, attack: .005 });
+    }
   }
   async function toggleSound() {
     if (muted) {
@@ -613,7 +601,7 @@ a { color: var(--cp-link); }
     rect(x, capY + 4, 58, 10, "accent");
     rect(x + 4, capY + 4, 6, 10, "warning");
   }
-  function drawTrumpet(painter, x, y, scale, tilt) {
+  function drawLegacyTrumpet(painter, x, y, scale, tilt) {
     painter.save();
     painter.translate(Math.round(x), Math.round(y));
     painter.rotate(tilt);
@@ -695,6 +683,78 @@ a { color: var(--cp-link); }
     p(-17, -26 + wave(), 3, 2, "warning");
     p(-14, -23 + wave(1.4), 4, 3, "warning");
     p(-14, -27 + wave(), 5, 1, "surface", .45);
+    painter.restore();
+  }
+  const riderSprite = {
+    id: "char-e-legacy-42",
+    animationId: "hair-wind-front-to-back",
+    w: 42,
+    h: 42,
+    palette: ["#030101","#f4aa72","#ebc353","#4f74a3","#b2813e","#9a262a","#ebefe8","#51311b","#e69360","#e9c46d","#2d4871","#83552b","#ca3a3d","#a7b1af","#0c0200","#fcc699","#fdeda5","#222a3b","#bb8e49","#b4cbd3","#01020c","#c16e4f"],
+    pixels: "0000000000000000ccccccc500000000000000000000000000000800cmmjj333355900000000000000000000000000008cm93333j3333jj00000000000000000000000000cc5cc5593aa3333j20000000000000000000000005cccc5555j3aaaahgaj2c00000000000000000000008c5jjj5555333aaa93355000000000000000000000ccc55jjcc5j933j33jj5c00000000000000000000cccjjj5mj9ccccjj55ccc8000000000000000000008jj393j92229mmccc8c0000000000000000000000ccjj3ajj92jj2g299m5c00000000000000000000000cjjjj5999jjj55jjj5c00000000000000000000000c8cccj99jj5cm9jcccj000000000000000000000008c9mm9922222g2922c0000000000000000000000000cc9m999222g29292a0000000000000000000000008ccmm99992229mm2220000000000000000000000000ccc8m992222g29222000000000000000000000000008c8c992222255299000000000000000000000000000bbicm222229j9m000000000000000000000000000444bb8mmmm92cm000000000000000000000000000b4444bbbcmmccc00000000000000000000000000004b4444i4e8cbib00000000005ccj000000000000044bb444b4e6cbbb0000000005ccc5j000000000000b4bb4444b4644i4000000000cccc5500000000000044bib444bbdbbb400000000jcccc559000000000bb444bbb444b6bbb440000000c88c55jm00000000bb4b444bbb444bbib440000095588859j900000000bb44bbbbbbb444bib4b0005cjaj8885j9ja00000000b4444bbbibb444ib44cmjjaj5588852aaa000000000bb444bbiiib4ejc5aa9j5ccccc88jaaaj0000000000bbbb444biic2g5c5j5cccccc588jhhj90000000000bbb44445888j95c8c5500005cccj2aj000000000000bbbbbj2jcciiiic00j00000055j9jc00000000005c88bib2ggfiicmmj00cc00000955m50000000000cc55888imgjeiccj80505cc00000ccc00004005jccccc000c885g5c88cccccccc000000000004e4ecc8cc000c0ccc8ccccc55c8c58c000000000004bb0000c0000cc8cc888888cj5cc880000000000000400000c0009cc5c8cc8cccccc00000000000000000000000cc0ccc8cccccc80000000000000000000000000000cccc5ccc885c90000000000000000000000000000000c88c00ccc8440000000000000000000000000000000000008b4b00000000000000000000000",
+    layers: "0000000000000000111111110000000000000000000000000000090011111111111100000000000000000000000000001111111111111110000000000000000000000000011111111111111111000000000000000000000000111111111111111111111000000000000000000000011111111111111111111100000000000000000000011111111111111111111100000000000000000000111111122221111111111100000000000000000000111111122222222111100000000000000000000001111111122112222222100000000000000000000000111111222221122111100000000000000000000000112111222222222222100000000000000000000000112222222222222222000000000000000000000000011222222222222221000000000000000000000000111222222222222222000000000000000000000000011112222222222222000000000000000000000000001112222222222222000000000000000000000000000444222222222220000000000000000000000000004444422222222200000000000000000000000000044444444222222000000000000000000000000000044444444656444000000000088880000000000000444444444656444000000000888888000000000000444444444456444000000000888888000000000000444444444454444000000008888888800000000044444444444454444400000008888888800000000444444444444444444400000888888888800000000444444444444444444400088888888888880000000044444444444444644988888888888888880000000004444444444446778888888888888888880000000000444444444497778888888888888888880000000000444444474887778888800008888888800000000000044444777884444800800000088888800000000008884444777444777800880000088888000000000088888884777948878080888000008880000400888888800088899988898888888000000000009999988880008088889888888888888000000000009490000800008888888888888888880000000000000900000800088888888888888800000000000000000000000880888888888880000000000000000000000000000888888888888800000000000000000000000000000008888008888a9000000000000000000000000000000000000899a00000000000000000000000"
+  };
+  const riderPixels = Uint8Array.from(riderSprite.pixels, value => Number.parseInt(value, 36));
+  const riderLayers = Uint8Array.from(riderSprite.layers, value => Number.parseInt(value, 36));
+  let hairBack = -1, hairFront = -1;
+  const hairRuns = Array.from({ length: riderSprite.w }, (_, x) => {
+    let top = -1;
+    for (let y = 0; y < riderSprite.h; y++) {
+      if (riderLayers[y * riderSprite.w + x] === 1) { top = y; break; }
+    }
+    if (top < 0) return null;
+    let end = top;
+    while (end + 1 < riderSprite.h && riderLayers[(end + 1) * riderSprite.w + x] === 1) end++;
+    if (end - top < 1) return null;
+    if (hairBack < 0) hairBack = x;
+    hairFront = x;
+    return { top, end, free: end + 1 >= riderSprite.h || riderPixels[(end + 1) * riderSprite.w + x] === 0 };
+  });
+  function hairOffset(x) {
+    if (reducedMotion) return 0;
+    if (!hairRuns[x]) return 0;
+    const progress = (hairFront - x) / Math.max(1, hairFront - hairBack);
+    const amplitude = 1.35 - .45 * progress;
+    return Math.round(amplitude * Math.sin(time * 5.2 - progress * 4.4));
+  }
+  function drawSpriteLayer(painter, hair) {
+    const paintPixel = (x, y, index) => {
+      if (!index) return;
+      painter.fillStyle = riderSprite.palette[index - 1];
+      painter.fillRect(x - 21, y - 29, 1, 1);
+    };
+    for (let y = 0; y < riderSprite.h; y++) {
+      for (let x = 0; x < riderSprite.w; x++) {
+        const index = y * riderSprite.w + x;
+        const layer = riderLayers[index];
+        if (!layer || (layer === 1) !== hair) continue;
+        if (!hair) { paintPixel(x, y, riderPixels[index]); continue; }
+        const run = hairRuns[x], offset = run ? hairOffset(x) : 0;
+        if (run && y >= run.top && y <= run.end) {
+          if (run.free) paintPixel(x, y + offset, riderPixels[index]);
+          else if (y >= run.top + offset) paintPixel(x, y, riderPixels[index]);
+        } else paintPixel(x, y, riderPixels[index]);
+      }
+    }
+    if (hair) {
+      for (let x = 0; x < riderSprite.w; x++) {
+        const run = hairRuns[x], offset = run ? hairOffset(x) : 0;
+        if (run && !run.free && offset < 0) {
+          const top = riderPixels[run.top * riderSprite.w + x];
+          for (let shift = offset; shift < 0; shift++) paintPixel(x, run.top + shift, top);
+        }
+      }
+    }
+  }
+  function drawTrumpet(painter, x, y, scale, tilt) {
+    // D-H1-T1-V2: the selected sprite is the user's traced 42 px composition.
+    painter.save();
+    painter.imageSmoothingEnabled = false;
+    painter.translate(Math.round(x), Math.round(y));
+    painter.rotate(tilt);
+    painter.scale(scale, scale);
+    drawSpriteLayer(painter, false);
+    drawSpriteLayer(painter, true);
     painter.restore();
   }
   function drawCharacter(y) {
