@@ -77,7 +77,8 @@ try {
   await page.locator("#manual-close").tap();
   assert.equal(await page.locator("#title").innerText(), "TAKE A BREATHER");
   await page.locator("#play").tap();
-  await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?");
+  await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?" &&
+    !document.getElementById("overlay").hidden);
   assert.equal(await page.locator("#crash-shot").isVisible(), true);
   await page.screenshot({ path: "test-results/live-offline-retry.png", fullPage: true });
   assert.deepEqual(errors, []);
