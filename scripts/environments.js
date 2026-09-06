@@ -646,8 +646,8 @@
     },
     {
       id: "env-b-marble-forum-16",
-      name: "White House Grounds",
-      levelName: "The White House",
+      name: "Marble Forum",
+      levelName: "The Art of the Column",
       level: 2,
       obstacleId: "obst-broken-drum-66",
       obstacleName: "Portico column",
@@ -770,8 +770,8 @@
     },
     {
       id: "env-d-links-and-lightning-16",
-      name: "Palm Beach Links",
-      levelName: "The Mar-a-Lago Nine",
+      name: "Links & Lightning",
+      levelName: "The Back Nine",
       level: 4,
       obstacleId: "obst-topiary-pillar-66",
       obstacleName: "Topiary pillar",

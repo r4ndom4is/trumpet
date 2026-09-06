@@ -12,8 +12,8 @@ const window = {};
 runInNewContext(source, { window });
 const art = window.TRUMPET_ENVIRONMENTS;
 const names = [
-  "The Gilded Mile", "The White House", "Paperwork, Please",
-  "The Mar-a-Lago Nine", "Penthouse Peril", "The Biggest Launch"
+  "The Gilded Mile", "The Art of the Column", "Paperwork, Please",
+  "The Back Nine", "Penthouse Peril", "The Biggest Launch"
 ];
 
 function recorder() {
@@ -46,7 +46,8 @@ test("all six campaign names are mounted signs distinct from environment display
     }
   }
   assert.equal(art.list[4].name, "Penthouse Row");
-  assert.equal(art.list[3].name, "Palm Beach Links");
+  assert.equal(art.list[1].name, "Marble Forum");
+  assert.equal(art.list[3].name, "Links & Lightning");
 });
 
 test("entry landmark holds eight seconds, drifts once, and never wraps at 50+", () => {
