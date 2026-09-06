@@ -3,8 +3,8 @@ import { chromium } from "playwright";
 
 // Render the actual approved in-game art; keep no second, drifting sprite implementation.
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-const drawing = html.slice(html.indexOf("  function drawTrumpet("), html.indexOf("  function drawCharacter("));
-if (!drawing.startsWith("  function drawTrumpet(")) throw new Error("Rider renderer not found");
+const drawing = html.slice(html.indexOf("  const riderSprite ="), html.indexOf("  function drawCharacter("));
+if (!drawing.startsWith("  const riderSprite =")) throw new Error("Traced rider renderer not found");
 const theme = html.match(/:root \{[\s\S]*?\n\}/)[0];
 const browser = await chromium.launch();
 try {
@@ -27,13 +27,14 @@ try {
       ctx.fillRect(0, 0, size, size);
       ctx.fillStyle = colors["accent-soft"];
       ctx.fillRect(size * .08, size * .08, size * .84, size * .84);
-      const scale = size * (maskable ? .58 : .78) / 50;
-      const render = new Function("colors", "reducedMotion", "time", `${drawing}; return drawTrumpet;`)(colors, true, 0);
+      const renderer = new Function("colors", "reducedMotion", "time",
+        `${drawing}; return { drawTrumpet, riderSprite };`)(colors, true, 0);
+      const scale = size * (maskable ? .58 : .78) / renderer.riderSprite.w;
       ctx.imageSmoothingEnabled = false;
-      render(ctx, size / 2, size / 2 + 10 * scale, scale, 0);
+      renderer.drawTrumpet(ctx, size / 2, size / 2 + 8.5 * scale, scale, 0);
       return canvas.toDataURL("image/png").split(",")[1];
     }, { drawing, size, maskable });
     await writeFile(new URL(`../icons/${name}.png`, import.meta.url), Buffer.from(png, "base64"));
   }
 } finally { await browser.close(); }
-console.log("Rendered six PNG icons from the approved rider.");
+console.log("Rendered six PNG icons from the selected traced rider.");
