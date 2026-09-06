@@ -58,7 +58,8 @@ try {
   await page.locator("#theme-switch").click();
   assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
   assert.equal(await page.locator("#theme-switch").getAttribute("aria-label"), "Switch to dark theme");
-  assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "false");
+  assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "true");
+  assert.equal(await page.locator("#sound").getAttribute("aria-label"), "Mute sound");
   await mkdir(new URL("../test-results/", import.meta.url), { recursive: true });
   await page.screenshot({ path: "test-results/live-mobile.png", fullPage: true });
   await context.setOffline(true);
@@ -69,7 +70,8 @@ try {
   await page.locator("#play").tap();
   assert.equal(await page.locator("#overlay").isHidden(), true);
   await page.locator("#sound").tap();
-  assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "true");
+  assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "false");
+  assert.equal(await page.locator("#sound").getAttribute("aria-label"), "Enable sound");
   await page.locator("#manual-open").tap();
   assert.equal(await page.locator("#title").innerText(), "TAKE A BREATHER");
   assert.match(await page.locator("#manual").innerText(), /Less panic. More rhythm./);
