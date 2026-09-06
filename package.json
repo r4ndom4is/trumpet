@@ -7,7 +7,7 @@
     "serve": "node scripts/serve.mjs",
     "icons": "node scripts/icons.mjs",
     "embed:environments": "node scripts/embed-environments.mjs",
-    "test": "node --test tests/pwa.test.mjs",
+    "test": "node --test tests/pwa.test.mjs tests/scenery.test.mjs",
     "test:live": "node scripts/verify-live.mjs"
   },
   "devDependencies": {

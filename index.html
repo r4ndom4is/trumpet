@@ -345,8 +345,8 @@ a { color: var(--cp-link); }
 /* Trumpet Flight - approved six-environment artwork.
  *
  * Six ENV-16 concepts from the art-direction brief. Every ramp is the brief's exact
- * sixteen hexes in slot order; the renderers implement the corrected parallax ladder
- * and the six palette rules. Embedded into index.html for atomic offline updates.
+ * sixteen hexes in slot order; restrained scenery stays behind the unchanged
+ * obstacle artwork. Embedded into index.html for atomic offline updates.
  */
 (() => {
   "use strict";
@@ -398,8 +398,9 @@ a { color: var(--cp-link); }
   const wingOf = id => (COLLIDE - SHAFT[id]) >> 1;
   const DECOR_CLEAR = 24;         // decoration keeps this far back from either gap face
 
-  /* Corrected parallax ladder (brief section 2). */
-  const RATES = { haze: 0.03, clouds: 0.05, far: 0.10, mid: 0.30, world: 1.0, fore: 1.7 };
+  /* Distant architecture moves slowly enough to read at phone resolution. */
+  const RATES = { haze: 0.015, clouds: 0.025, far: 0.055, mid: 0.12, world: 1.0, fore: 1.7 };
+  const LANDMARK = { x: 194, width: 224, hold: 8, speed: 12 };
 
   /* Sky structure: two dithered transitions replace the hard y=330 seam. */
   const SKY = { hiTo: 168, d1: 36, loTo: 292, d2: 36 };
@@ -780,6 +781,44 @@ a { color: var(--cp-link); }
     });
   }
 
+  /* A fascia/billboard mounted by each environment's architecture, never HUD text.
+   * Only existing palette slots are used; the sign has no obstacle-edge treatment. */
+  function scenicSign(g, text, x, y) {
+    const width = 208, height = 28;
+    g.px(x, y, width, height, "FAR-2");
+    g.px(x + 2, y + 2, width - 4, height - 4, "MID-2");
+    const ctx = g.ctx;
+    ctx.save();
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = g.P["SKY-GLOW"];
+    ctx.globalAlpha = .9;
+    ctx.fillText(text, Math.round(x + width / 2), y + height / 2 + 1);
+    ctx.restore();
+    return { text, x: Math.round(x), y, width, height };
+  }
+
+  function pitchedRoof(g, x, y, width, rise) {
+    for (let row = 0; row < rise; row += 2) {
+      const inset = Math.round((1 - row / rise) * width / 2);
+      g.px(x + inset, y + row, width - inset * 2, 2, "MID-1");
+    }
+    g.px(x - 4, y + rise, width + 8, 4, "MID-2");
+  }
+
+  function waterTank(g, x, roofY) {
+    // Broad cylinder, lid and two braced legs, all visibly planted on a roof.
+    g.px(x + 7, roofY - 18, 4, 18, "MID-2");
+    g.px(x + 33, roofY - 18, 4, 18, "MID-2");
+    g.px(x + 7, roofY - 10, 30, 3, "MID-1");
+    g.px(x + 2, roofY - 49, 40, 32, "MID-1");
+    g.px(x + 33, roofY - 49, 9, 32, "MID-2");
+    g.px(x, roofY - 51, 44, 4, "MID-2");
+    g.px(x + 6, roofY - 55, 32, 4, "MID-1");
+    g.px(x + 2, roofY - 24, 40, 3, "MID-2");
+  }
+
   /* ------------------------------------------------------------- concepts */
 
   const ENVS = [
@@ -805,27 +844,38 @@ a { color: var(--cp-link); }
       glow: [352, 66, 22],
       clouds: [[0, 74, 0, 1], [96, 122, 0, .7]],
       far(g, off) {
-        g.repeat(off, 112, 60, x => {
+        g.repeat(off, 244, 60, x => {
           for (let i = 0; i < 3; i++) {
-            const h = 62 + i * 26, bx = x + i * 38;
-            g.px(bx, 372 - h, 32, h, "FAR-1");
-            for (let y = 372 - h + 8; y < 366; y += 10) g.px(bx + 3, y, 26, 3, "FAR-2");
+            const h = 46 + i * 22, bx = x + i * 64;
+            g.px(bx, 372 - h, 52, h, "FAR-1");
+            g.px(bx + 8, 366 - h, 36, 6, "FAR-2");
+            for (let y = 382 - h; y < 366; y += 22) g.px(bx + 6, y, 40, 2, "FAR-2");
           }
         });
       },
       mid(g, off, t) {
         // Palms sway 1 px; the obstacle never animates.
-        g.repeat(off, 118, 70, x => {
+        g.repeat(off - 64, 254, 70, x => {
           const sway = g.reduced ? 0 : Math.round(Math.sin(t * 1.1 + x * .04));
-          g.px(x + 28, 392, 5, FLOOR - 392, "MID-2");
+          g.px(x + 30, 373, 5, FLOOR - 373, "MID-2");
           for (let i = 0; i < 4; i++) {
-            const a = i * 1.57;
-            g.px(x + 28 + Math.round(Math.cos(a) * 17) + sway, 384 + Math.round(Math.sin(a) * 7), 16, 6, "MID-1");
+            const dx = i * 7;
+            g.px(x + 30 - dx + sway, 368 + i * 3, 10, 4, "MID-1");
+            g.px(x + 30 + dx + sway, 368 + i * 3, 10, 4, "MID-1");
           }
-          g.px(x + 74, 404, 30, FLOOR - 404, "MID-2");
-          g.px(x + 70, 398, 38, 7, "MID-1");
-          for (let i = 0; i < 5; i++) g.px(x + 71 + i * 8, 405, 4, 4, "TRIM", .5);
+          g.px(x + 72, 438, 80, 30, "MID-1");
+          g.px(x + 68, 432, 88, 6, "MID-2");
         });
+      },
+      landmark(g, x) {
+        // Resort entrance: canopy, recessed doors and planted side wings.
+        g.px(x, 396, 224, FLOOR - 396, "MID-1");
+        g.px(x + 64, 402, 96, 66, "MID-2");
+        for (let i = 0; i < 3; i++) g.px(x + 72 + i * 30, 408, 22, 50, "FAR-2");
+        g.px(x - 4, 390, 232, 7, "MID-2");
+        g.px(x + 8, 449, 40, 19, "MID-2");
+        g.px(x + 176, 449, 40, 19, "MID-2");
+        return scenicSign(g, this.levelName, x + 8, 363);
       },
       ground(g, off) {
         g.px(0, FLOOR, W, H - FLOOR, "GROUND");
@@ -858,29 +908,38 @@ a { color: var(--cp-link); }
       glow: [346, 72, 20],
       clouds: [[0, 82, 0, .8]],
       far(g, off) {
-        g.repeat(off, 168, 90, x => {
+        g.repeat(off, 336, 90, x => {
           for (let i = 0; i < 2; i++) {
-            const bx = x + i * 84, peak = 306 + i * 14;
+            const bx = x + i * 168, peak = 306 + i * 14;
             for (let s = 0; s < 40; s++) {
               const hh = Math.round(Math.sin((s / 40) * Math.PI) * (56 - i * 12));
-              g.px(bx + s * 2, peak + (56 - hh), 2, 372 - peak - (56 - hh), i ? "FAR-2" : "FAR-1");
+              g.px(bx + s * 4, peak + (56 - hh), 4, 372 - peak - (56 - hh), i ? "FAR-2" : "FAR-1");
             }
           }
         });
       },
-      mid(g, off, t) {
-        // Aqueduct rhythm is deliberately offset from the obstacle rhythm.
-        g.repeat(off, 74, 40, x => {
-          g.px(x, 360, 74, 12, "MID-1");
-          g.px(x + 6, 372, 14, 46, "MID-1");
-          g.px(x + 54, 372, 14, 46, "MID-1");
-          g.px(x + 20, 372, 34, 8, "MID-2");
+      mid(g, off) {
+        // An arched arcade, not another row of gap-shaped floating lintels.
+        g.repeat(off, 144, 50, x => {
+          g.px(x, 402, 144, 10, "MID-1");
+          g.px(x, 412, 18, FLOOR - 412, "MID-1");
+          g.px(x + 126, 412, 18, FLOOR - 412, "MID-1");
+          for (let i = 0; i < 5; i++) {
+            g.px(x + 18 + i * 8, 412, 8, 20 - i * 4, "MID-1");
+            g.px(x + 118 - i * 8, 412, 8, 20 - i * 4, "MID-1");
+          }
         });
-        g.repeat(off, 92, 40, x => {
-          const lean = g.reduced ? 0 : Math.round(Math.sin(t * .9 + x * .05));
-          g.px(x + 12 + lean, 386, 8, FLOOR - 386, "MID-2");
-          g.px(x + 10 + lean, 380, 12, 12, "MID-2");
-        });
+      },
+      landmark(g, x) {
+        // Low museum pavilion with a pediment and a named frieze.
+        pitchedRoof(g, x, 330, 224, 28);
+        g.px(x, 358, 224, 40, "MID-1");
+        for (let i = 0; i < 5; i++) {
+          g.px(x + 8 + i * 48, 398, 16, 62, "MID-1");
+          g.px(x + 5 + i * 48, 398, 22, 4, "MID-2");
+        }
+        g.px(x - 4, 460, 232, 8, "MID-2");
+        return scenicSign(g, this.levelName, x + 8, 365);
       },
       ground(g, off) {
         g.px(0, FLOOR, W, H - FLOOR, "GROUND");
@@ -916,28 +975,40 @@ a { color: var(--cp-link); }
       sky(g, t) {
         // The "sky" is a coffered skylight: the scale joke is that this is indoors.
         sky(g, t);
-        for (let x = 0; x < W; x += 56) g.px(x, 0, 3, HAZE_TOP, "FAR-2", .45);
-        for (let y = 24; y < HAZE_TOP; y += 46) g.px(0, y, W, 3, "FAR-2", .45);
+        for (let x = 0; x < W; x += 112) g.px(x, 0, 2, HAZE_TOP, "FAR-2", .22);
+        for (let y = 24; y < HAZE_TOP; y += 92) g.px(0, y, W, 2, "FAR-2", .22);
       },
       glow: null,
       clouds: null,
       far(g, off) {
         g.px(0, 336, W, 30, "FAR-1");
-        g.repeat(off, 18, 20, x => g.px(x + 6, 340, 5, 22, "FAR-2"));
+        g.repeat(off, 72, 20, x => g.px(x + 6, 340, 3, 22, "FAR-2"));
         g.px(0, 332, W, 5, "FAR-2");
       },
-      mid(g, off, t) {
-        g.px(0, 392, W, 10, "MID-1");
-        g.repeat(off, 128, 70, x => {
-          g.px(x + 8, 402, 26, 22, "MID-2");
-          g.px(x + 4, 396, 34, 7, "MID-1");
-          for (let i = 0; i < 3; i++) g.px(x + 10 + i * 8, 388, 6, 9, "TRIM");
-          // Chandelier on a long, slow period.
-          const sway = g.reduced ? 0 : Math.round(Math.sin(t * .5 + x * .02));
-          g.px(x + 78 + sway, 336, 3, 22, "MID-2");
-          g.px(x + 70 + sway, 358, 20, 8, "MID-2");
-          g.px(x + 74 + sway, 366, 12, 5, "SKY-GLOW", .6);
+      mid(g, off) {
+        g.px(0, 450, W, 18, "MID-1");
+        g.repeat(off, 264, 70, x => {
+          g.px(x + 8, 430, 38, 38, "MID-2");
+          g.px(x + 4, 425, 46, 6, "MID-1");
+          g.px(x + 25, 390, 4, 35, "MID-2");
+          g.px(x + 14, 384, 26, 20, "MID-1");
+          g.px(x + 20, 378, 14, 8, "MID-1");
+          // Upholstered bench on a continuous mezzanine floor.
+          g.px(x + 94, 430, 64, 18, "MID-2");
+          g.px(x + 98, 448, 4, 20, "MID-2");
+          g.px(x + 150, 448, 4, 20, "MID-2");
         });
+      },
+      landmark(g, x) {
+        // Elevator-bank directory mounted on the lintel, over recessed doors.
+        g.px(x, 346, 224, 122, "MID-1");
+        g.px(x + 6, 352, 212, 7, "FAR-2");
+        for (let i = 0; i < 3; i++) {
+          g.px(x + 14 + i * 68, 402, 60, 66, "MID-2");
+          g.px(x + 20 + i * 68, 408, 48, 60, "FAR-2");
+          g.px(x + 43 + i * 68, 408, 2, 60, "MID-1");
+        }
+        return scenicSign(g, this.levelName, x + 8, 368);
       },
       ground(g, off) {
         g.px(0, FLOOR, W, H - FLOOR, "GROUND");
@@ -978,7 +1049,7 @@ a { color: var(--cp-link); }
       weather(g, off, t) {
         // Sparse diagonal rain on the haze layer.
         if (g.reduced) return;
-        for (let i = 0; i < 46; i++) {
+        for (let i = 0; i < 22; i++) {
           const x = wrap(i * 61 - t * 190, W + 60) - 30;
           const y = wrap(i * 37 + t * 300, FLOOR);
           g.px(x, y, 1, 5, "HAZE", .5);
@@ -986,25 +1057,33 @@ a { color: var(--cp-link); }
         }
       },
       far(g, off) {
-        g.repeat(off, 148, 80, x => {
+        g.repeat(off, 296, 80, x => {
           for (let s = 0; s < 74; s++) {
             const hh = Math.round(Math.sin((s / 74) * Math.PI) * 34) + 8;
-            g.px(x + s * 2, 372 - hh, 2, hh + 6, s % 3 ? "FAR-1" : "FAR-2");
+            g.px(x + s * 4, 372 - hh, 4, hh + 6, "FAR-1");
           }
         });
       },
-      mid(g, off, t) {
+      mid(g, off) {
         g.px(0, 396, W, FLOOR - 396, "MID-1");
-        g.repeat(off, 96, 50, x => {
-          g.px(x, 396, 52, 6, "MID-2");
-          g.px(x + 60, 404, 36, 5, "MID-2");
-          // Sprinkler arcs, well clear of the play column.
-          const p = g.reduced ? .5 : (Math.sin(t * 1.6 + x * .03) + 1) / 2;
-          for (let i = 0; i < 7; i++) {
-            const a = (i / 6) * Math.PI;
-            g.px(x + 20 + Math.round(Math.cos(a) * 22), 396 - Math.round(Math.sin(a) * 14 * p), 2, 2, "TRIM", .6);
-          }
+        g.repeat(off, 292, 70, x => {
+          g.px(x + 4, 420, 90, 5, "FAR-1");
+          g.px(x + 14, 416, 70, 4, "FAR-1");
+          g.px(x + 42, 380, 2, 36, "MID-2");
+          g.px(x + 44, 380, 16, 7, "FAR-2");
+          g.px(x + 112, 444, 78, 5, "MID-2");
         });
+      },
+      landmark(g, x) {
+        // Clubhouse porch: one broad roof, fascia and open veranda.
+        pitchedRoof(g, x, 320, 224, 40);
+        g.px(x, 364, 224, 38, "MID-1");
+        g.px(x + 32, 402, 160, 66, "MID-2");
+        for (let i = 0; i < 4; i++) g.px(x + 42 + i * 38, 416, 26, 36, "FAR-2");
+        g.px(x + 8, 402, 8, 66, "MID-1");
+        g.px(x + 208, 402, 8, 66, "MID-1");
+        g.px(x, 460, 224, 8, "MID-1");
+        return scenicSign(g, this.levelName, x + 8, 369);
       },
       ground(g, off) {
         g.px(0, FLOOR, W, H - FLOOR, "GROUND");
@@ -1026,10 +1105,10 @@ a { color: var(--cp-link); }
       level: 5,
       obstacleId: "obst-rooftop-stack-66",
       obstacleName: "Rooftop stack",
-      premise: "A rooftop run above a city at dusk - water towers, HVAC stacks, neon. Night-native, so the \"day\" ramp is dusk rather than noon.",
+      premise: "A rooftop run above a city at dusk - stepped terraces, lidded water tanks and a supported rooftop marquee. Night-native, so the \"day\" ramp is dusk rather than noon.",
       obstacleNote: "A 56 px scaffolded stack under a flared 66 px vent hood, 22 px tall, with a louvred back and a painted TRIM band. The lattice lives on the outer faces only; 3 px hood brackets sit in the margin as tagged decoration.",
-      readability: "Both ramps are dark, so the rim-lit OBST-EDGE does all the work. A dark world makes the warm rider glow, but this is the least tonal range of the six and neon invites clutter.",
-      scores: { separation: "Fair", charm: "Medium", clutter: "High", themeRange: "Poor (dark only)" },
+      readability: "Both ramps are dark, so the rim-lit OBST-EDGE does all the work. The warm rider sits above restrained roof silhouettes; readable lettering is reserved for one supported sign, never repeated neon.",
+      scores: { separation: "Fair", charm: "Medium", clutter: "Low", themeRange: "Poor (dark only)" },
       dayLabel: "Dusk",
       nightLabel: "Night",
       exceptions: [
@@ -1045,39 +1124,44 @@ a { color: var(--cp-link); }
       },
       glow: [78, 92, 15],
       clouds: [[0, 118, 0, 1]],
-      far(g, off, t) {
-        g.repeat(off, 126, 70, x => {
-          for (let i = 0; i < 4; i++) {
-            const h = 54 + ((i * 37) % 58), bx = x + i * 32;
-            g.px(bx, 372 - h, 26, h, i % 2 ? "FAR-2" : "FAR-1");
-            for (let wy = 372 - h + 6; wy < 366; wy += 8) {
+      far(g, off) {
+        g.repeat(off, 272, 70, x => {
+          for (let i = 0; i < 3; i++) {
+            const h = 54 + ((i * 37) % 58), bx = x + i * 82;
+            g.px(bx, 372 - h, 64, h, "FAR-1");
+            g.px(bx + 8, 362 - h, 48, 10, "FAR-1");
+            for (let wy = 382 - h; wy < 366; wy += 18) {
               for (let wx = 0; wx < 3; wx++) {
-                // Lit-window dither on a slow pseudo-random schedule.
-                const seed = bx * .3 + wy * .7 + wx;
-                const lit = g.reduced ? hash(seed) > .45 : hash(seed + Math.floor(t * .8) * .13) > .45;
-                if (lit) g.px(bx + 4 + wx * 7, wy, 4, 4, "SKY-GLOW", .5);
+                // Fixed windows do not twinkle or re-seed as the skyline scrolls.
+                if ((i + wx + wy) % 3) g.px(bx + 10 + wx * 17, wy, 6, 3, "FAR-2");
               }
             }
           }
         });
       },
-      mid(g, off, t) {
-        g.repeat(off, 142, 80, x => {
-          g.px(x + 6, 388, 30, 26, "MID-1");
-          g.px(x + 2, 382, 38, 7, "MID-1");
-          for (let i = 0; i < 4; i++) g.px(x + 8 + i * 8, 414, 4, FLOOR - 414, "MID-2");
-          // Billboard frames only: no legible text anywhere.
-          g.px(x + 74, 356, 52, 3, "MID-2");
-          g.px(x + 74, 392, 52, 3, "MID-2");
-          g.px(x + 74, 356, 3, 39, "MID-2");
-          g.px(x + 123, 356, 3, 39, "MID-2");
-          g.px(x + 78, 360, 44, 31, "TRIM", .12);
-          // Steam plumes rise from mid-layer stacks only.
-          if (!g.reduced) for (let i = 0; i < 3; i++) {
-            const p = wrap(t * .5 + i * .33, 1);
-            g.px(x + 18, 382 - p * 26, 6, 5, "SKY-GLOW", (1 - p) * .3);
-          }
+      mid(g, off) {
+        g.repeat(off - 96, 320, 80, x => {
+          // A stepped roofline gives every tank and vent a visible footing.
+          g.px(x, 412, 112, FLOOR - 412, "MID-1");
+          g.px(x + 112, 438, 94, FLOOR - 438, "MID-1");
+          g.px(x + 206, 422, 114, FLOOR - 422, "MID-1");
+          g.px(x, 412, 112, 5, "MID-2");
+          g.px(x + 112, 438, 94, 5, "MID-2");
+          g.px(x + 206, 422, 114, 5, "MID-2");
+          waterTank(g, x + 32, 412);
+          g.px(x + 244, 407, 32, 15, "MID-2");
+          g.px(x + 240, 403, 40, 5, "MID-1");
+          g.px(x + 248, 411, 24, 2, "FAR-2");
         });
+      },
+      landmark(g, x) {
+        // A filled rooftop billboard, on two legs bolted into a broad penthouse.
+        g.px(x, 414, 224, FLOOR - 414, "MID-1");
+        g.px(x - 4, 410, 232, 5, "MID-2");
+        g.px(x + 32, 390, 5, 20, "MID-2");
+        g.px(x + 187, 390, 5, 20, "MID-2");
+        for (let i = 0; i < 4; i++) g.px(x + 22 + i * 50, 432, 30, 18, "FAR-2");
+        return scenicSign(g, this.levelName, x + 8, 363);
       },
       ground(g, off) {
         g.px(0, FLOOR, W, H - FLOOR, "GROUND");
@@ -1086,6 +1170,7 @@ a { color: var(--cp-link); }
       },
       fore(g, off) {
         // Slack cable crossing the top 8 px only, never over the gap.
+        if (g.reduced) off = 0;
         for (let x = 0; x < W; x++) {
           const y = 2 + Math.round(Math.sin((x + off * .3) * .012) * 3 + 3);
           g.px(x, y, 1, 2, "INK", .8);
@@ -1116,33 +1201,46 @@ a { color: var(--cp-link); }
         // Two contrails drift on the far layer.
         for (let i = 0; i < 2; i++) {
           const y = 46 + i * 26;
-          const x = g.reduced ? i * 180 + 40 : wrap(t * 9 + i * 210, W + 200) - 100;
+          const x = g.reduced ? i * 180 + 40 : wrap(t * 3 + i * 210, W + 200) - 100;
           g.px(x, y, 96, 2, "SKY-GLOW", .34);
           g.px(x + 96, y, 6, 2, "SKY-GLOW", .6);
         }
       },
       far(g, off) {
-        g.repeat(off, 134, 70, x => {
-          g.px(x, 344, 62, 28, "FAR-1");
-          g.px(x, 340, 62, 5, "FAR-2");
-          g.px(x + 76, 352, 40, 20, "FAR-2");
-          g.px(x + 120, 322, 4, 50, "FAR-2");
+        g.repeat(off, 352, 70, x => {
+          g.px(x, 344, 116, 28, "FAR-1");
+          g.px(x + 8, 336, 100, 8, "FAR-1");
+          // Distant launch vehicle and service mast, in far values only.
+          g.px(x + 172, 294, 18, 78, "FAR-1");
+          g.px(x + 176, 286, 10, 8, "FAR-1");
+          g.px(x + 180, 282, 2, 4, "FAR-1");
+          g.px(x + 154, 302, 6, 70, "FAR-2");
+          g.px(x + 160, 316, 12, 4, "FAR-2");
+          g.px(x + 168, 362, 26, 10, "FAR-1");
         });
       },
       mid(g, off, t) {
         g.px(0, 398, W, FLOOR - 398, "MID-1");
         g.px(0, 398, W, 5, "MID-2");
-        g.repeat(off, 116, 60, x => {
+        g.repeat(off, 288, 60, x => {
           g.px(x + 10, 404, 44, 6, "MID-2");
-          // The windsock flips with the same wind cycle that drives the rider's hair.
-          const wind = g.reduced ? 1 : Math.sign(Math.sin(t * 5.2)) || 1;
+          const wind = g.reduced ? 0 : Math.round(Math.sin(t * .7));
           g.px(x + 72, 372, 3, 26, "MID-2");
-          for (let i = 0; i < 4; i++) g.px(x + 75 + wind * i * 5, 374 + i, 5, 5 - i, "TRIM", .8);
+          for (let i = 0; i < 4; i++) g.px(x + 75 + i * 5, 374 + i + wind, 5, 5 - i, "FAR-2");
           if (!g.reduced) for (let i = 0; i < 2; i++) {
             const p = wrap(t * .6 + i * .5, 1);
             g.px(x + 24, 404 - p * 18, 7, 5, "SKY-GLOW", (1 - p) * .28);
           }
         });
+      },
+      landmark(g, x) {
+        // Low mission-control hangar with a stepped roof and large shutter door.
+        g.px(x, 358, 224, 110, "MID-1");
+        g.px(x + 16, 348, 192, 10, "MID-1");
+        g.px(x + 28, 340, 168, 8, "MID-1");
+        g.px(x + 40, 403, 144, 65, "MID-2");
+        for (let y = 410; y < 468; y += 12) g.px(x + 44, y, 136, 2, "FAR-2");
+        return scenicSign(g, this.levelName, x + 8, 366);
       },
       ground(g, off) {
         g.px(0, FLOOR, W, H - FLOOR, "GROUND");
@@ -1206,7 +1304,14 @@ a { color: var(--cp-link); }
 
   /* --------------------------------------------------------------- scene */
 
+  /* stageTime: nonnegative elapsed seconds since THIS environment's entry.
+   * Omit for a fixed preview. Hold 8s, then move the entire landmark left at 12px/s
+   * without wrapping. Reduced motion keeps it fixed. During a crossfade, supply
+   * each layer's own elapsed time; the caller owns entry/reset/pause bookkeeping. */
   function drawScene(ctx, opts) {
+    if (opts.stageTime !== undefined && (!Number.isFinite(opts.stageTime) || opts.stageTime < 0)) {
+      throw new RangeError("stageTime must be nonnegative elapsed seconds");
+    }
     const env = typeof opts.env === "string" ? byId[opts.env] : opts.env;
     const theme = opts.theme === "night" ? "night" : "day";
     const P = env.ramps[theme];
@@ -1224,6 +1329,8 @@ a { color: var(--cp-link); }
     if (env.weather) env.weather(g, dec * RATES.haze, t);
     env.far(g, dec * RATES.far, t);
     env.mid(g, dec * RATES.mid, t);
+    const landmarkX = LANDMARK.x - (reduced ? 0 : Math.max(0, (opts.stageTime || 0) - LANDMARK.hold) * LANDMARK.speed);
+    const sign = landmarkX + LANDMARK.width > 0 ? env.landmark(g, landmarkX) : null;
     env.ground(g, scroll * RATES.world);
 
     const gapSize = opts.gap || 158;
@@ -1242,7 +1349,7 @@ a { color: var(--cp-link); }
     if (opts.rider) opts.rider(ctx, opts.riderX === undefined ? 108 : opts.riderX,
       opts.riderY === undefined ? 236 : opts.riderY);
     return {
-      env, theme, palette: P,
+      env, theme, palette: P, sign,
       shaft: SHAFT[env.obstacleId], capHeight: CAP_H[env.obstacleId], width: COLLIDE,
       hitboxes: boxes, decor: g.marks.slice()
     };
@@ -1431,13 +1538,15 @@ a { color: var(--cp-link); }
   let death = null;
   let muted = true, audio = null, storageAvailable = true, brassWave = null;
   let environmentTransition = null, environmentId = environments.list[0].id;
+  let stageTime = 0;
   function currentEnvironment() {
     return environments.byId[environments.levelAt(score).environmentId];
   }
   function syncEnvironment() {
     const next = currentEnvironment();
     if (next.id === environmentId) return;
-    environmentTransition = reducedMotion ? null : { from: environmentId, to: next.id, elapsed: 0 };
+    environmentTransition = reducedMotion ? null : { from: environmentId, to: next.id, elapsed: 0, fromStageTime: stageTime };
+    stageTime = 0;
     environmentId = next.id;
     $("environment-name").textContent = next.name;
     $("announcement").textContent = "Entering " + next.name + ". Score " + score + ".";
@@ -1594,7 +1703,7 @@ a { color: var(--cp-link); }
     $("crash-shot").hidden = true;
     notifyState();
     score = 0; distance = 0; spawn = .95; accumulator = 0;
-    environmentId = currentEnvironment().id; environmentTransition = null;
+    environmentId = currentEnvironment().id; environmentTransition = null; stageTime = 0;
     $("environment-name").textContent = currentEnvironment().name;
     updateScore(); $("overlay").hidden = true; $("pause").disabled = false;
     $("pause").setAttribute("aria-label", "Pause game");
@@ -1732,7 +1841,9 @@ a { color: var(--cp-link); }
       return;
     }
     if (state !== "playing") return;
+    stageTime += dt;
     if (environmentTransition) {
+      environmentTransition.fromStageTime += dt;
       environmentTransition.elapsed = Math.min(1, environmentTransition.elapsed + dt);
       if (environmentTransition.elapsed >= 1) environmentTransition = null;
     }
@@ -1960,10 +2071,10 @@ a { color: var(--cp-link); }
   function draw() {
     ctx.imageSmoothingEnabled = false;
     const theme = document.documentElement.dataset.theme === "dark" ? "night" : "day";
-    const sceneOptions = { theme, time, scroll: state === "ready" ? time * 12 : distance, reduced: reducedMotion, gaps: [] };
+    const sceneOptions = { theme, time, stageTime, scroll: state === "ready" ? time * 12 : distance, reduced: reducedMotion, gaps: [] };
     const env = currentEnvironment();
     if (environmentTransition) {
-      environments.drawScene(ctx, { ...sceneOptions, env: environmentTransition.from });
+      environments.drawScene(ctx, { ...sceneOptions, env: environmentTransition.from, stageTime: environmentTransition.fromStageTime });
       environments.drawScene(environmentCtx, { ...sceneOptions, env });
       // Composite finished scenery, since the pixel painter owns globalAlpha internally.
       ctx.save(); ctx.globalAlpha = environmentTransition.elapsed;

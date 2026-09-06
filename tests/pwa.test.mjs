@@ -24,7 +24,7 @@ const hooks = `
     },
     riderCapsules, riderTilt, capsuleHitsRect, pipeHitboxes,
     environment() {
-      return { id: currentEnvironment().id, transition: structuredClone(environmentTransition), time, distance, spawn };
+      return { id: currentEnvironment().id, transition: structuredClone(environmentTransition), time, stageTime, distance, spawn };
     },
     spawnIn(seconds) { spawn = seconds; },
     position(y, vy = 0) { bird = { y, vy }; },
@@ -71,7 +71,7 @@ const hooks = `
     get snapshot() { return { state, bird: {...bird}, score, best, pipes: pipes.map(p => ({...p})) }; },
     scenario(y, obstacles = [], points = 0, vy = 0) {
       bird = {y, vy}; score = points;
-      syncEnvironment(); environmentTransition = null;
+      syncEnvironment(); environmentTransition = null; stageTime = 0;
       pipes = obstacles.map(pipe => ({ environmentId: currentEnvironment().id, ...pipe }));
     },
     tickTime(t) { time = t; },
@@ -297,7 +297,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         assert.equal(result.frozen.state, "over");
         assert.equal(result.frozen.score, 10);
         assert.equal(result.saved, "10");
-        assert.deepEqual(result.frozen.transition, { from: "env-a-gilded-mile-16", to: "env-b-marble-forum-16", elapsed: .125 });
+        assert.deepEqual(result.frozen.transition, { from: "env-a-gilded-mile-16", to: "env-b-marble-forum-16", elapsed: .125, fromStageTime: .125 });
         for (const sample of result.samples) {
           assert.equal(sample.image, result.impact);
           assert.deepEqual(sample.frozen, result.frozen);
@@ -692,7 +692,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           }, points);
           const old = result.stages[Math.min(5, Math.floor(points / 10))];
           const next = result.stages[Math.min(5, Math.floor((points + 1) / 10))];
-          const transition = reducedMotion === "reduce" || old.id === next.id ? null : { from: old.id, to: next.id, elapsed: 0 };
+          const transition = reducedMotion === "reduce" || old.id === next.id ? null : { from: old.id, to: next.id, elapsed: 0, fromStageTime: 0 };
           const label = `${points} -> ${points + 1} (${reducedMotion})`;
           assert.equal(result.scored.score, points + 1, label);
           assert.equal(result.scored.state, "playing", label);
@@ -703,7 +703,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           assert.deepEqual(result.scored.transition, transition, label);
           assert.deepEqual(result.afterDrawing, transition, label);
           assert.deepEqual(result.afterPause, result.paused, label);
-          assert.deepEqual(result.quarter.transition, transition && { ...transition, elapsed: .25 }, label);
+          assert.deepEqual(result.quarter.transition, transition && { ...transition, elapsed: .25, fromStageTime: .25 }, label);
           const trace = result.quarter.trace;
           assert.deepEqual(trace.filter(call => call.kind === "scene").map(call => [call.env, call.gaps]),
             transition ? [[old.id, []], [next.id, []]] : [[next.id, []]], label);
@@ -714,7 +714,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           assert.deepEqual(result.preservedBoxes, result.oldBoxes, label);
           assert.equal(result.finished, null, label);
           assert.deepEqual(result.afterCrash, result.crashed, label);
-          assert.deepEqual(result.crashed, transition && { ...transition, elapsed: .125 }, label);
+          assert.deepEqual(result.crashed, transition && { ...transition, elapsed: .125, fromStageTime: .125 }, label);
           assert.equal(result.reset.score, 0, label);
           assert.equal(result.reset.id, result.stages[0].id, label);
           assert.equal(result.reset.label, result.stages[0].name, label);

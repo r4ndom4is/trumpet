@@ -43,7 +43,7 @@ The header keeps **trumpet flight.** on the left and **POCKET ARCADE / NO. 001**
 
 **Flight manual** keeps every line of the original introduction, tips, controls, installation details, and footer in an accessible, scrollable dialog. Opening it pauses an active flight. Close it with **Close**, Escape, or the backdrop; keyboard focus returns to the opener, and the game stays paused until you resume. Desktop keeps the spacious original layout.
 
-The retry panel keeps the exact collision frame: a 2x, nearest-neighbor crop centered on the rider with bounds clamped to the game canvas.
+The retry panel keeps the exact initial collision frame: a 2x, nearest-neighbor crop centered on the rider with bounds clamped to the game canvas. After impact the rider takes a short tumble to the ground, while the world, score, and captured image stay frozen. Tap or press Space to skip the fall; a separate deliberate input retries. Reduced-motion mode skips the fall, and pausing or leaving the page settles it immediately.
 
 ## Install and play offline
 
