@@ -711,7 +711,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await page.goto(fixture);
       const stages = await page.evaluate(() => window.TRUMPET_ENVIRONMENTS.list.map(env => ({ id: env.id, name: env.name })));
       assert.deepEqual(stages.map(env => env.name), [
-        "The Gilded Mile", "Marble Forum", "Records Room", "Links & Lightning", "Penthouse Row", "Gantry Nine"
+        "Gilt Trip", "West Wing It", "File Another Day", "Fore More Years", "Roofless Ambition", "Space Force One"
       ]);
       assert.equal(new Set(stages.map(env => env.id)).size, 6);
       for (const [score, index] of [
@@ -914,7 +914,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.ok(result.entered.transition.fromStageTime > 10);
       assert.equal(result.layers[0].stageTime, result.entered.transition.fromStageTime);
       assert.equal(result.layers[1].stageTime, 0);
-      assert.equal(result.layers[1].sign.text, "The Art of the Column");
+      assert.equal(result.layers[1].sign.text, "West Wing It");
       assert.deepEqual(result.paused, result.entered);
       assert.deepEqual(result.dead, result.entered);
       assert.equal(result.reset.stageTime, 0);

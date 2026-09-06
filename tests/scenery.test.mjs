@@ -12,8 +12,8 @@ const window = {};
 runInNewContext(source, { window });
 const art = window.TRUMPET_ENVIRONMENTS;
 const names = [
-  "The Gilded Mile", "The Art of the Column", "Paperwork, Please",
-  "The Back Nine", "Penthouse Peril", "The Biggest Launch"
+  "Gilt Trip", "West Wing It", "File Another Day",
+  "Fore More Years", "Roofless Ambition", "Space Force One"
 ];
 
 function recorder() {
@@ -34,7 +34,7 @@ const render = (env, options = {}) => {
   return { calls: ctx.calls, result: plain(result.sign) };
 };
 
-test("all six campaign names are mounted signs distinct from environment display names", () => {
+test("all six approved names match mounted signs and environment display names", () => {
   for (const [i, env] of art.list.entries()) {
     for (const theme of ["day", "night"]) {
       const { calls, result } = render(env, { theme });
@@ -45,9 +45,7 @@ test("all six campaign names are mounted signs distinct from environment display
       assert.ok(calls.filter(c => c[0] === "rect").every(c => Object.values(env.ramps[theme]).includes(c[5])));
     }
   }
-  assert.equal(art.list[4].name, "Penthouse Row");
-  assert.equal(art.list[1].name, "Marble Forum");
-  assert.equal(art.list[3].name, "Links & Lightning");
+  assert.deepEqual(plain(art.list.map(env => env.name)), names);
 });
 
 test("entry landmark holds eight seconds, drifts once, and never wraps at 50+", () => {
