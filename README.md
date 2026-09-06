@@ -4,7 +4,7 @@
 
 A small, polished, installable arcade game: a miniature Trump-inspired rider, a golden backward-facing trumpet, a windswept comb-over, and a fluttering tie. Dodge pipes, find your rhythm, and chase your personal best. Original pixel artwork and synthesized sound; no accounts, analytics, external assets, or runtime dependencies.
 
-The sound stays proudly 8-bit: rounded pulse-wave trumpet toots, stepped pitch and brass-like filtering, a little major-key score fanfare, and a descending arcade wah-wah. Soft note endings and a tiny crossfade between taps avoid sharp clicks. Low-volume voices replace previous notes during rapid tapping; mute, pause, and backgrounding silence them. Audio starts only after you enable sound and resumes on a fresh gesture when required by mobile browsers.
+The sound stays proudly 8-bit: rounded pulse-wave trumpet toots, stepped pitch and brass-like filtering, a little major-key score fanfare, and a descending arcade wah-wah. Soft note endings and a tiny crossfade between taps avoid sharp clicks. Low-volume voices replace previous notes during rapid tapping; mute, pause, and backgrounding silence them. Sound is on by default, but audio is created only on the first play/flap gesture and resumes on a fresh gesture when required by mobile browsers. You can mute before starting.
 
 This is an original, unofficial caricature game. It is not affiliated with or endorsed by Donald Trump, any campaign, or any organization. No license is asserted by this repository.
 
@@ -14,11 +14,11 @@ This is an original, unofficial caricature game. It is not affiliated with or en
 | --- | --- |
 | Space / Arrow Up / click or tap the game | Start, flap, or retry |
 | P / Escape / pause button | Pause or resume |
-| M / sound button | Toggle synthesized sound (initially muted) |
+| M / sound button | Toggle synthesized sound (on by default) |
 
 One point per pipe pair. The personal best is saved in this browser, not synced between devices. If browser storage is blocked, the game explains that the best lasts only for the current visit. Switching windows or hiding the page pauses a flight. Reduced-motion preferences suppress decorative animation.
 
-The rider uses two independently fitted capsule hitboxes, rotating with the artwork: a body capsule (21px centreline, 18px diameter, 90 degrees) and a trumpet capsule (27px centreline, 10px diameter, -25 degrees). Their centres relative to the live rider anchor are (-2, -8) and (3, 3). The imported studio fit is translated up 8px before rotation because the studio centres the sprite at y=-21 while the live renderer starts it at y=-29; the fit against the artwork is preserved. Rounded ends determine contact with pipes, ceiling, and floor; scoring waits until both capsules clear a pipe. Flight physics, artwork, and sounds are unchanged.
+The 42px source sprite is displayed at 48px (scale 48/42, about 14% larger), with both fitted capsule hitboxes scaled by the same factor. In source pixels these are a body capsule (21px centreline, 18px diameter, 90 degrees) and a trumpet capsule (27px centreline, 10px diameter, -25 degrees), centred at (-2, -8) and (3, 3) relative to the live anchor. The imported studio fit is translated up 8 source pixels, then scaled and rotated with the artwork; the visual fit is preserved. Rounded ends determine contact with pipes, ceiling, and floor; scoring waits until both capsules clear a pipe. The crash fall also uses the enlarged sprite bounds. Flight physics, gap sizes, source artwork, and sound phrases are unchanged.
 
 ## Six environments
 

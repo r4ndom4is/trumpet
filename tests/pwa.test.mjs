@@ -14,7 +14,7 @@ const hooks = `
       const copy = document.createElement("canvas");
       copy.width = W; copy.height = H;
       const painter = copy.getContext("2d");
-      drawTrumpet(painter, X, death.y, 1, death.tilt);
+      drawTrumpet(painter, X, death.y, RIDER_SCALE, death.tilt);
       const pixels = painter.getImageData(0, 0, W, H).data;
       let bottom = -1;
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
@@ -60,6 +60,13 @@ const hooks = `
       return calls;
     },
     collisionConfig() { return structuredClone(riderCollision); },
+    riderScale() { return RIDER_SCALE; },
+    renderedRiderScales() {
+      const scales = [], original = ctx.scale;
+      ctx.scale = function(x, y) { scales.push([x, y]); return original.call(this, x, y); };
+      try { drawCharacter(bird.y); } finally { ctx.scale = original; }
+      return scales;
+    },
     sound() { return { muted, count: voices.size, fading: fadingVoices.size, state: audio?.state, types: [...voices].map(v => v.kind || v.oscillator.type) }; },
     sprite() {
       return {
@@ -165,7 +172,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await page.keyboard.press("KeyP");
       assert.equal(await page.locator("#title").innerText(), "TAKE A BREATHER");
       await page.keyboard.press("KeyM");
-      assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "true");
+      assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "false");
       await page.keyboard.press("Space");
       await page.locator("#screen").click({ position: { x: 50, y: 250 } });
       await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?" &&
@@ -270,7 +277,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         const result = await page.evaluate(y => {
           const g = window.__flight;
           g.start();
-          g.scenario(240, [{ x: 31, top: 160, gap: 158, passed: false }], 9);
+          g.scenario(240, [{ x: 29, top: 160, gap: 158, passed: false }], 9);
           g.step(0); // Start the real 9 -> 10 scenery transition before impact.
           g.position(240); g.step(.125);
           g.position(y, 470);
@@ -317,7 +324,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         assert.ok(result.samples[8].hidden, "fall remains visible for at least 0.5 seconds");
         assert.equal(result.samples[14].hidden, false, "retry appears within 0.75 seconds");
         assert.equal(result.samples.at(-1).pose.tilt, Math.PI / 2);
-        assert.equal(result.samples.at(-1).pose.y, 447, "rotated 42px sprite rests on floor 468");
+        assert.equal(result.samples.at(-1).pose.y, 444, "rotated 48px sprite rests on floor 468");
         assert.equal(result.samples.at(-1).pixels.bottom, 467, "the actual sprite touches the ground without sinking");
         assert.notEqual(result.samples[4].pixels.image, result.samples.at(-1).pixels.image, "the rendered rider actually moves");
         assert.ok(result.samples.every(sample => sample.pixels.bottom < 468), "visual fall stays above ground");
@@ -333,7 +340,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
       const page = await context.newPage();
       await page.goto(fixture);
-      await page.locator("#sound").click();
+      await page.locator("#play").click();
+      await page.waitForFunction(() => window.__flight.sound().state === "running");
       const result = await page.evaluate(() => {
         const g = window.__flight;
         g.start(); g.scenario(26, [], 7, -310);
@@ -456,6 +464,10 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       const page = await context.newPage();
       await page.goto(fixture);
       const config = await page.evaluate(() => window.__flight.collisionConfig());
+      const scale = await page.evaluate(() => window.__flight.riderScale());
+      assert.equal(scale * 42, 48, "nominal gameplay rider width increases to 48px");
+      assert.deepEqual(await page.evaluate(() => window.__flight.renderedRiderScales()), [[48 / 42, 48 / 42]],
+        "actual gameplay painter uses the enlarged scale, not just the collision model");
       assert.deepEqual(config, {
         localCentre: { x: 0, y: -1 },
         capsules: [
@@ -475,13 +487,13 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         }, vy);
         assert.equal(result.tilt, tilt);
         for (let i = 0; i < 2; i++) {
-          assert.equal(result.capsules[i].r, local[i].r);
+          assert.equal(result.capsules[i].r, local[i].r * scale);
           for (const endpoint of ["a", "b"]) {
             const [x, studioY] = local[i][endpoint];
             // The approved fit uses the studio's -21 sprite origin; live artwork uses -29.
             const y = studioY - 8;
-            assert.ok(Math.abs(result.capsules[i][endpoint].x - (108 + x * Math.cos(tilt) - y * Math.sin(tilt))) < 1e-9);
-            assert.ok(Math.abs(result.capsules[i][endpoint].y - (210 + x * Math.sin(tilt) + y * Math.cos(tilt))) < 1e-9);
+            assert.ok(Math.abs(result.capsules[i][endpoint].x - (108 + scale * (x * Math.cos(tilt) - y * Math.sin(tilt)))) < 1e-9);
+            assert.ok(Math.abs(result.capsules[i][endpoint].y - (210 + scale * (x * Math.sin(tilt) + y * Math.cos(tilt)))) < 1e-9);
           }
         }
       }
@@ -525,17 +537,17 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           return { state: g.snapshot.state, score: g.snapshot.score };
         };
         return {
-          ceilingSafe: run(28), ceilingHit: run(27),
-          floorSafe: run(454), floorHit: run(455),
-          oldRectangleCornerForgiven: run(188, [{ x: 100, top: 160, gap: 158, passed: false }]),
+          ceilingSafe: run(32), ceilingHit: run(31),
+          floorSafe: run(452), floorHit: run(453),
+          bodyClearance: run(192, [{ x: 100, top: 160, gap: 158, passed: false }]),
           bodyHit: run(175, [{ x: 100, top: 160, gap: 158, passed: false }]),
           trumpetHit: run(200, [{ x: 70, top: 54, gap: 158, passed: false }]),
-          trumpetSafe: run(200, [{ x: 70, top: 56, gap: 158, passed: false }]),
-          notFullyClear: run(200, [{ x: 32, top: 100, gap: 158, passed: false }]),
-          fullyClear: run(200, [{ x: 31, top: 100, gap: 158, passed: false }])
+          trumpetSafe: run(200, [{ x: 70, top: 58, gap: 158, passed: false }]),
+          notFullyClear: run(200, [{ x: 30, top: 100, gap: 158, passed: false }]),
+          fullyClear: run(200, [{ x: 29, top: 100, gap: 158, passed: false }])
         };
       });
-      for (const key of ["ceilingSafe", "floorSafe", "oldRectangleCornerForgiven", "trumpetSafe", "notFullyClear"]) {
+      for (const key of ["ceilingSafe", "floorSafe", "bodyClearance", "trumpetSafe", "notFullyClear"]) {
         assert.deepEqual(results[key], { state: "playing", score: 0 }, key);
       }
       for (const key of ["ceilingHit", "floorHit", "bodyHit", "trumpetHit"]) {
@@ -648,7 +660,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
             g.start(); g.scenario(200, [{ x, top, gap: 100, passed: false, environmentId: env.id }], index * 10);
             g.step(0); return g.snapshot.state;
           };
-          return { id: env.id, besideShaft: run(130, 300), shaftContact: run(124, 300), capContact: run(130, 210) };
+          return { id: env.id, besideShaft: run(132, 300), shaftContact: run(124, 300), capContact: run(132, 210) };
         });
       });
       for (const contact of contacts) {
@@ -671,7 +683,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
             const g = window.__flight, api = window.TRUMPET_ENVIRONMENTS;
             g.start();
             g.scenario(240, [
-              { x: 31, top: 160, gap: 158, passed: false },
+              { x: 29, top: 160, gap: 158, passed: false },
               { x: 300.6, top: 160.6, gap: 158, passed: false }
             ], points);
             const before = g.environment(), oldBoxes = g.pipeHitboxes(g.snapshot.pipes[1]);
@@ -690,7 +702,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
             const preservedBoxes = g.pipeHitboxes({ ...g.snapshot.pipes[1], x: 300.6 });
             for (let i = 0; i < 3; i++) { g.position(200); g.step(.25); }
             const finished = g.environment().transition;
-            g.start(); g.scenario(240, [{ x: 31, top: 160, gap: 158, passed: false }], points); g.step(0);
+            g.start(); g.scenario(240, [{ x: 29, top: 160, gap: 158, passed: false }], points); g.step(0);
             g.position(240); g.step(.125); g.die();
             const crashed = g.environment().transition;
             g.step(2); g.draw();
@@ -920,10 +932,10 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           const oldIcon = await page.locator("#theme-symbol").getAttribute("d");
           await page.locator("#theme-switch").click();
           assert.notEqual(await page.locator("#theme-symbol").getAttribute("d"), oldIcon);
-          assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "false");
+          assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "true");
           assert.deepEqual(await page.evaluate(() => window.__flight.snapshot), beforeControls);
           await page.locator("#sound").click();
-          await page.waitForFunction(() => document.getElementById("sound").getAttribute("aria-pressed") === "true", null, { polling: 25 });
+          await page.waitForFunction(() => document.getElementById("sound").getAttribute("aria-pressed") === "false", null, { polling: 25 });
           assert.deepEqual(await page.evaluate(() => window.__flight.snapshot), beforeControls);
           await page.locator("#sound").click();
           await page.evaluate(() => window.__flight.start());
@@ -1193,6 +1205,42 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       } finally { await context.close(); await close(migrationServer); }
     });
 
+    await t.test("default-on sound can be muted before play and audio failures do not block gameplay", async () => {
+      for (const mode of ["muted", "unsupported", "resume-fails"]) {
+        const context = await browser.newContext({ serviceWorkers: "block" });
+        await context.addInitScript(mode => {
+          window.requestAnimationFrame = () => 1;
+          const NativeAudio = window.AudioContext;
+          window.audioCreated = 0;
+          if (mode === "unsupported") {
+            window.AudioContext = undefined; window.webkitAudioContext = undefined;
+          } else {
+            window.AudioContext = class extends NativeAudio {
+              constructor(...args) { super(...args); window.audioCreated++; }
+              get state() { return mode === "resume-fails" ? "suspended" : super.state; }
+              resume() { return mode === "resume-fails" ? Promise.reject(new Error("Audio unavailable in test")) : super.resume(); }
+            };
+          }
+        }, mode);
+        const page = await context.newPage();
+        await page.goto(fixture);
+        if (mode === "muted") await page.locator("#sound").click();
+        await page.locator("#play").click();
+        assert.equal(await page.evaluate(() => window.__flight.snapshot.state), "playing");
+        if (mode === "muted") {
+          assert.equal(await page.evaluate(() => window.audioCreated), 0);
+          assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "false");
+          await page.locator("#sound").click();
+          await page.waitForFunction(() => window.__flight.sound().state === "running");
+          assert.equal(await page.evaluate(() => window.audioCreated), 1);
+        } else {
+          await page.waitForFunction(() => !document.getElementById("notice").hidden);
+          assert.match(await page.locator("#notice").innerText(), mode === "unsupported" ? /does not support/ : /could not start/);
+        }
+        await context.close();
+      }
+    });
+
     await t.test("retro brass synthesis is gesture-gated, quiet, bounded and silenced on pause/mute", async () => {
       const context = await browser.newContext({ serviceWorkers: "block" });
       await context.addInitScript(() => {
@@ -1207,14 +1255,15 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await page.goto(fixture);
       assert.equal(await page.evaluate(() => window.__flight.spriteFrame(0) === window.__flight.spriteFrame(.2)), false);
       assert.equal(await page.evaluate(() => window.audioCreated), 0);
+      assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "true");
+      assert.equal(await page.locator("#sound").getAttribute("aria-label"), "Mute sound");
       await page.locator("#play").click();
-      assert.equal(await page.evaluate(() => window.audioCreated), 0);
-      await page.locator("#sound").click();
+      await page.waitForFunction(() => window.__flight.sound().state === "running");
       assert.equal(await page.evaluate(() => window.audioCreated), 1);
       assert.equal(await page.evaluate(() => window.__flight.sound().state), "running");
       const scoringSounds = await page.evaluate(() => [8, 9, 19, 29, 39, 49, 59].map(points => {
         const g = window.__flight;
-        g.start(); g.scenario(240, [{ x: 31, top: 160, gap: 158, passed: false }], points); g.step(0);
+        g.start(); g.scenario(240, [{ x: 29, top: 160, gap: 158, passed: false }], points); g.step(0);
         return { count: g.sound().count, types: g.sound().types };
       }));
       assert.deepEqual(scoringSounds, Array.from({ length: 7 }, () => ({ count: 2, types: ["sine", "sine"] })),

@@ -291,8 +291,8 @@ a { color: var(--cp-link); }
         <div><div class="stat-label mono">SCORE</div><div class="stat-number mono" id="score">00</div></div>
         <div class="best"><div class="stat-label mono">PERSONAL BEST</div><div class="stat-number mono" id="best">00</div></div>
         <div class="tools" role="group" aria-label="Game controls">
-          <button class="tool" id="sound" aria-label="Enable sound" aria-pressed="false" title="Sound (M)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4 5 9H2v6h3l6 5z"/><path id="sound-mark" d="m16 9 6 6m0-6-6 6"/></svg>
+          <button class="tool" id="sound" aria-label="Mute sound" aria-pressed="true" title="Sound (M)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4 5 9H2v6h3l6 5z"/><path id="sound-mark" d="M15 8q5 4 0 8M18 4q9 8 0 16"/></svg>
           </button>
           <button class="tool" id="theme-switch" aria-label="Switch to dark theme" title="Switch to dark theme" data-theme="light">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path id="theme-symbol" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
@@ -1536,7 +1536,7 @@ a { color: var(--cp-link); }
   let score = 0, best = 0, distance = 0, spawn = 0, time = 0, last = 0, accumulator = 0, deadAt = 0;
   const deathDuration = .65, fallDuration = .55;
   let death = null;
-  let muted = true, audio = null, storageAvailable = true, brassWave = null;
+  let muted = false, audio = null, storageAvailable = true, brassWave = null;
   let environmentTransition = null, environmentId = environments.list[0].id;
   let stageTime = 0;
   function currentEnvironment() {
@@ -1643,46 +1643,39 @@ a { color: var(--cp-link); }
       tone(from, .1, to, delay, true, "brass", { cutoff: 1140, close: .36, gain, attack: .006 }));
   }
   async function flapSound() {
-    if (muted || !audio) return;
-    if (audio.state !== "running") {
-      try { await audio.resume(); }
-      catch (error) {
-        $("notice").hidden = false;
-        $("notice").textContent = "Sound could not resume. Toggle sound to retry; you can still play silently.";
-        console.warn("Audio resume failed:", error);
-        return;
-      }
-    }
+    if (muted || document.hidden) return;
+    if ((!audio || audio.state !== "running") && !await prepareAudio()) return;
     if (state === "playing") {
       silence();
       tone(196, .026, 196, 0, true, "brass", { cutoff: 650, gain: .034, attack: .005 });
       tone(174.44, .032, 174.44, .026, true, "brass", { cutoff: 700, gain: .03, attack: .005 });
     }
   }
-  async function toggleSound() {
-    if (muted) {
-      const Audio = window.AudioContext || window.webkitAudioContext;
-      if (!Audio) {
-        $("notice").hidden = false;
-        $("notice").textContent = "This browser does not support synthesized audio.";
-        return;
-      }
-      try {
-        audio ||= new Audio();
-        await audio.resume();
-      } catch (error) {
-        $("notice").hidden = false;
-        $("notice").textContent = "Sound could not start. You can still play without audio.";
-        console.warn("Audio unavailable:", error);
-        return;
-      }
+  async function prepareAudio() {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) {
+      $("notice").hidden = false;
+      $("notice").textContent = "This browser does not support synthesized audio.";
+      return false;
     }
+    try {
+      audio ||= new Audio();
+      if (audio.state !== "running") await audio.resume();
+      return audio.state === "running";
+    } catch (error) {
+      $("notice").hidden = false;
+      $("notice").textContent = "Sound could not start. Toggle sound to retry; you can still play silently.";
+      console.warn("Audio unavailable:", error);
+      return false;
+    }
+  }
+  async function toggleSound() {
     muted = !muted;
     if (muted) silence();
     $("sound").setAttribute("aria-pressed", String(!muted));
     $("sound").setAttribute("aria-label", muted ? "Enable sound" : "Mute sound");
     $("sound-mark").setAttribute("d", muted ? "m16 9 6 6m0-6-6 6" : "M15 8q5 4 0 8M18 4q9 8 0 16");
-    tone(392, .16);
+    if (!muted && await prepareAudio()) tone(392, .16);
   }
   function overlay(title, message, button, prompt) {
     const crashed = state === "over";
@@ -1771,8 +1764,8 @@ a { color: var(--cp-link); }
     death.tilt = death.fromTilt + (Math.PI / 2 - death.fromTilt) * turn;
     // The 42px artwork uses (-21, -29), not the capsule studio's (-21, -21).
     // Keep its rotated bounds above ground, including impacts already at the floor.
-    const groundY = FLOOR - (21 * Math.abs(Math.sin(death.tilt)) + 13 * Math.cos(death.tilt));
-    death.y = Math.min(Math.floor(groundY), death.fromY + (FLOOR - 21 - death.fromY) * progress * progress);
+    const groundY = FLOOR - RIDER_SCALE * (21 * Math.abs(Math.sin(death.tilt)) + 13 * Math.cos(death.tilt));
+    death.y = Math.min(Math.floor(groundY), death.fromY + (FLOOR - 21 * RIDER_SCALE - death.fromY) * progress * progress);
   }
   function finishDeath() {
     if (!death || death.elapsed >= deathDuration) return;
@@ -1782,6 +1775,7 @@ a { color: var(--cp-link); }
     $("overlay").hidden = false;
     draw();
   }
+  const RIDER_SCALE = 48 / 42;
   const riderCollision = {
     localCentre: { x: 0, y: -1 },
     capsules: [
@@ -1795,14 +1789,14 @@ a { color: var(--cp-link); }
   function riderCapsules() {
     const tilt = riderTilt(), cos = Math.cos(tilt), sin = Math.sin(tilt);
     // Match drawTrumpet's rounded anchor and rotate both offsets and capsule axes.
-    const world = (x, y) => ({ x: X + x * cos - y * sin, y: Math.round(bird.y) + x * sin + y * cos });
+    const world = (x, y) => ({ x: X + RIDER_SCALE * (x * cos - y * sin), y: Math.round(bird.y) + RIDER_SCALE * (x * sin + y * cos) });
     return riderCollision.capsules.map(c => {
       const angle = c.angle * Math.PI / 180;
       const dx = Math.cos(angle) * c.length / 2, dy = Math.sin(angle) * c.length / 2;
       // The studio centres the 42px sprite at y=-21; the live renderer starts at -29.
       // Convert the fitted shape into live sprite coordinates before applying tilt.
       const x = riderCollision.localCentre.x + c.x, y = riderCollision.localCentre.y + c.y - 8;
-      return { a: world(x - dx, y - dy), b: world(x + dx, y + dy), r: c.thickness / 2 };
+      return { a: world(x - dx, y - dy), b: world(x + dx, y + dy), r: c.thickness / 2 * RIDER_SCALE };
     });
   }
   function segmentPointDistanceSquared(a, b, p) {
@@ -2055,11 +2049,11 @@ a { color: var(--cp-link); }
   }
   function drawCharacter(y) {
     const tilt = death ? death.tilt : riderTilt();
-    drawTrumpet(ctx, X, y, 1, tilt);
+    drawTrumpet(ctx, X, y, RIDER_SCALE, tilt);
     if (!reducedMotion && (state === "ready" || state === "playing")) {
       for (let i = 0; i < 3; i++) {
         const phase = (time * 1.6 + i * .33) % 1;
-        const nx = X - 30 - phase * 42, ny = y + 10 - phase * 14;
+        const nx = X - 30 * RIDER_SCALE - phase * 42, ny = y + 10 * RIDER_SCALE - phase * 14;
         ctx.globalAlpha = (1 - phase) * .65;
         rect(nx, ny, 4, 3, "warning");
         rect(nx + 3, ny - 7, 2, 9, "warning");
