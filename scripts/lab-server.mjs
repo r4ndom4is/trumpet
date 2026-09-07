@@ -24,7 +24,7 @@ const types = {
 
 // Only these repo-relative paths may be read as static files - the lab
 // directory itself plus the canonical scripts/ modules it loads directly.
-const staticAllowed = /^(tools\/character-lab\/.*|scripts\/(environments|sprite|sounds|atmosphere)\.js|scripts\/theme\.css)$/;
+const staticAllowed = /^(tools\/character-lab\/.*|scripts\/(environments|sprite|sounds|atmosphere|hitbox)\.js|scripts\/theme\.css)$/;
 
 // Only these logical modules may be written by /api/save, each mapped to its
 // canonical file and (if any) the embed script that must run afterward to
@@ -34,6 +34,7 @@ const modules = {
   sounds: { file: "scripts/sounds.js", embed: "scripts/embed-assets.mjs" },
   theme: { file: "scripts/theme.css", embed: "scripts/embed-assets.mjs" },
   atmosphere: { file: "scripts/atmosphere.js", embed: "scripts/embed-assets.mjs" },
+  hitbox: { file: "scripts/hitbox.js", embed: "scripts/embed-assets.mjs" },
   environments: { file: "scripts/environments.js", embed: "scripts/embed-environments.mjs" }
 };
 
