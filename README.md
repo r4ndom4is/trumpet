@@ -91,6 +91,6 @@ npm run test:live
 
 Playwright is only a development dependency; nothing from `node_modules` is requested by the app. Icons are real PNGs rendered from the same `drawTrumpet` function used in the game, including separate padded maskable variants.
 
-Environment artwork lives in `scripts/environments.js`. After editing it, run `npm run embed:environments` and commit the regenerated `index.html` as well. The published file already contains the complete environment module, so hosting and offline launches still require no build or external runtime scripts.
+Environment artwork lives in `scripts/environments.js`. After editing it, run `npm run embed:environments` and commit the regenerated `index.html` as well. The rider sprite (`scripts/sprite.js`), sound effects (`scripts/sounds.js`) and theme colors (`scripts/theme.css`) are similarly canonical; after editing any of them, run `npm run embed:assets` and commit the regenerated `index.html`. The published file already contains all of these modules inline, so hosting and offline launches still require no build or external runtime scripts. The dev-only character lab in `tools/character-lab/` loads these same canonical files directly (no separate copies), so it can never drift from what's shipped.
 
 The migration regression reads the actual v3 release (`440cfd9`) from Git history; use a full clone rather than a shallow checkout when running it.
