@@ -28,5 +28,6 @@ let html = (await readFile(target, "utf8")).replace(/\r\n/g, "\n");
 html = await embedJs(html, { name: "sprite", file: "./sprite.js", begin: "// BEGIN GENERATED SPRITE", end: "// END GENERATED SPRITE" });
 html = await embedJs(html, { name: "sounds", file: "./sounds.js", begin: "// BEGIN GENERATED SOUNDS", end: "// END GENERATED SOUNDS" });
 html = await embedCss(html, { name: "theme", file: "./theme.css", begin: "/* BEGIN GENERATED THEME */", end: "/* END GENERATED THEME */" });
+html = await embedJs(html, { name: "atmosphere", file: "./atmosphere.js", begin: "// BEGIN GENERATED ATMOSPHERE", end: "// END GENERATED ATMOSPHERE" });
 await writeFile(target, html);
-console.log("Embedded sprite, sounds and theme assets into index.html.");
+console.log("Embedded sprite, sounds, theme and atmosphere assets into index.html.");

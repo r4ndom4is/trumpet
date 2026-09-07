@@ -117,9 +117,10 @@
     return g;
   }
 
-  /* Distant-layer wrapper for the opt-in "reduce background distraction" knobs
-   * (character-lab tuning only - never called with an `atmosphere` option in the
-   * shipping game, so default rendering is pixel-identical to before this existed).
+  /* Distant-layer wrapper for the "reduce background distraction" atmosphere
+   * knobs. Tuned live via scripts/atmosphere.js / the character lab's Atmosphere
+   * panel; the shipping game applies window.TRUMPET_ATMOSPHERE's default values
+   * on every draw (see the `atmosphere` field in index.html's sceneOptions).
    * `contrast` softens the FAR and MID tokens toward HAZE, `collapse` additionally
    * merges each pair's two tones into one, and `spacing` stretches the period the
    * environment's own far()/mid() pass to g.repeat(), so repeated silhouettes sit
