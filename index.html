@@ -2010,14 +2010,18 @@ a { color: var(--cp-link); }
     $("overlay").hidden = false;
     draw();
   }
-  const RIDER_SCALE = 48 / 42;
-  const riderCollision = {
+  // BEGIN GENERATED HITBOX
+  window.TRUMPET_HITBOX = {
+    displayScale: 48 / 42,
     localCentre: { x: 0, y: -1 },
     capsules: [
       { x: -2, y: 1, length: 21, angle: 90, thickness: 18 },
       { x: 3, y: 12, length: 27, angle: -25, thickness: 10 }
     ]
   };
+  // END GENERATED HITBOX
+  const RIDER_SCALE = window.TRUMPET_HITBOX.displayScale;
+  const riderCollision = { localCentre: window.TRUMPET_HITBOX.localCentre, capsules: window.TRUMPET_HITBOX.capsules };
   function riderTilt() {
     return state === "ready" ? -.04 : Math.max(-.16, Math.min(.3, bird.vy / 1400));
   }
