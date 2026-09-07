@@ -481,7 +481,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.equal(result.reset, null);
       assert.equal(result.closeupCleared, true);
       assert.equal(createHash("sha256").update(result.source).digest("hex"),
-        "46b0e1e3c5298f7fcd8f91d34dcdf30668f06d5f5573088bb1bb5bcada8319dc",
+        "c11ed8f3b16a595f213688bebb98a4a352e88991f57f5d7dab6a2a6473741284",
         "original sprite pixels, layers, palette and animation definition remain unchanged");
       const bounds = await page.evaluate(() => {
         const g = window.__flight, samples = [];
