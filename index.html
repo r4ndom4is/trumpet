@@ -414,6 +414,21 @@ a { color: var(--cp-link); }
 
   const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
   const wrap = (value, period) => ((value % period) + period) % period;
+  const clampUnit = v => Math.max(0, Math.min(1, v || 0));
+
+  /* Lerp two "#rrggbb" colours. Used only by the opt-in atmosphere knobs below;
+   * every ramp token stays a flat fill, so this never introduces a gradient/blur. */
+  function blendHex(a, b, t) {
+    if (!a || !b || !(t > 0)) return a;
+    if (t >= 1) return b;
+    const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+    const mix = (shift) => {
+      const x = (pa >> shift) & 255, y = (pb >> shift) & 255;
+      return Math.round(x + (y - x) * t);
+    };
+    const hex = n => n.toString(16).padStart(2, "0");
+    return `#${hex(mix(16))}${hex(mix(8))}${hex(mix(0))}`;
+  }
 
   /* ---------------------------------------------------------------- painter */
 
@@ -452,6 +467,33 @@ a { color: var(--cp-link); }
       }
     };
     return g;
+  }
+
+  /* Distant-layer wrapper for the opt-in "reduce background distraction" knobs
+   * (character-lab tuning only - never called with an `atmosphere` option in the
+   * shipping game, so default rendering is pixel-identical to before this existed).
+   * `contrast` softens the FAR and MID tokens toward HAZE, `collapse` additionally
+   * merges each pair's two tones into one, and `spacing` stretches the period the
+   * environment's own far()/mid() pass to g.repeat(), so repeated silhouettes sit
+   * further apart. Nothing here blurs a pixel - every fill stays a flat colour. */
+  function atmospherePainter(g, P, atmosphere) {
+    if (!atmosphere) return g;
+    const contrast = clampUnit(atmosphere.contrast);
+    const collapse = clampUnit(atmosphere.collapse);
+    const spacing = 1 + clampUnit(atmosphere.spacing) * 2;
+    if (!contrast && !collapse && spacing === 1) return g;
+    const soft = Object.assign({}, P);
+    for (const slot of ["FAR-1", "FAR-2", "MID-1", "MID-2"]) soft[slot] = blendHex(P[slot], P.HAZE, contrast * .65);
+    if (collapse) {
+      soft["FAR-2"] = blendHex(soft["FAR-2"], soft["FAR-1"], collapse);
+      soft["MID-2"] = blendHex(soft["MID-2"], soft["MID-1"], collapse);
+    }
+    const layer = painter(g.ctx, soft, g.reduced);
+    if (spacing > 1) {
+      const repeat = layer.repeat;
+      layer.repeat = (offset, period, pad, fn) => repeat(offset, period * spacing, pad, fn);
+    }
+    return layer;
   }
 
   /* --------------------------------------------------------------- obstacle */
@@ -1370,10 +1412,14 @@ a { color: var(--cp-link); }
     };
   });
 
-  /* Clamp at Space Force One rather than looping after sixty obstacles. */
-  function levelAt(pipes) {
+  /* Clamp at the sixth stage rather than looping after sixty obstacles. `rotation`
+   * cyclically re-maps which environment occupies each slot (a per-run "which
+   * stage do we start on" shuffle) without touching the unlockAt/clearAt pacing:
+   * omit it, or pass 0, for the exact unrotated order every existing caller relies on. */
+  function levelAt(pipes, rotation = 0) {
     const index = Math.min(CAMPAIGN.length - 1, Math.max(0, Math.floor(pipes / PIPES_PER_LEVEL)));
-    return CAMPAIGN[index];
+    const spin = Number.isFinite(rotation) ? ((rotation % CAMPAIGN.length) + CAMPAIGN.length) % CAMPAIGN.length : 0;
+    return CAMPAIGN[(index + spin) % CAMPAIGN.length];
   }
 
   /* ------------------------------------------------------------- obstacles */
@@ -1416,8 +1462,13 @@ a { color: var(--cp-link); }
     if (env.glow) disc(g, env.glow[0], env.glow[1], env.glow[2]);
     if (env.clouds) clouds(g, dec * RATES.clouds, env.clouds);
     if (env.weather) env.weather(g, dec * RATES.haze, t);
-    env.far(g, dec * RATES.far, t);
-    env.mid(g, dec * RATES.mid, t);
+    const atmosphere = opts.atmosphere;
+    const gDistant = atmospherePainter(g, P, atmosphere);
+    env.far(gDistant, dec * RATES.far, t);
+    env.mid(gDistant, dec * RATES.mid, t);
+    if (atmosphere && atmosphere.haze) {
+      g.px(0, 0, W, FLOOR, "HAZE", clampUnit(atmosphere.haze) * .35);
+    }
     const landmarkX = LANDMARK.x - (reduced ? 0 : Math.max(0, (opts.stageTime || 0) - LANDMARK.hold) * LANDMARK.speed);
     const sign = landmarkX + LANDMARK.width > 0 ? env.landmark(g, landmarkX) : null;
     env.ground(g, scroll * RATES.world);
@@ -1631,8 +1682,11 @@ a { color: var(--cp-link); }
   let muted = false, audio = null, audioPrimed = false, audioPrimePending = false, storageAvailable = true, brassWave = null;
   let environmentTransition = null, environmentId = environments.list[0].id;
   let stageTime = 0;
+  // Which of the six stages a run starts on. Rerolled by action() each time a fresh
+  // run begins; stays 0 (the unrotated, original order) until the first real start.
+  let stageRotation = 0;
   function currentEnvironment() {
-    return environments.byId[environments.levelAt(score).environmentId];
+    return environments.byId[environments.levelAt(score, stageRotation).environmentId];
   }
   function syncEnvironment() {
     const next = currentEnvironment();
@@ -1828,7 +1882,10 @@ a { color: var(--cp-link); }
     if (death && !death.finished) { finishDeath(); return; }
     if (state === "playing") flap();
     else if (state === "paused") pause();
-    else if (state === "ready" || performance.now() - deadAt > 450) start();
+    else if (state === "ready" || performance.now() - deadAt > 450) {
+      stageRotation = Math.floor(Math.random() * environments.list.length);
+      start();
+    }
   }
   function pause() {
     if (death && !death.finished) { silence(); finishDeath(); return; }

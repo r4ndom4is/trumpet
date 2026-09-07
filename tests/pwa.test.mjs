@@ -42,6 +42,8 @@ const hooks = `
     environment() {
       return { id: currentEnvironment().id, transition: structuredClone(environmentTransition), time, stageTime, distance, spawn };
     },
+    stageRotation() { return stageRotation; },
+    setStageRotation(n) { stageRotation = n; },
     spawnIn(seconds) { spawn = seconds; },
     stageSigns() {
       const signs = [], original = environments.drawScene;
@@ -787,6 +789,55 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         assert.deepEqual(result, { mapped: stages[index].id, indexed: stages[index].id,
           current: stages[index].id, pipe: stages[index].id, label: stages[index].name }, `score ${score}`);
       }
+      await context.close();
+    });
+
+    await t.test("stage rotation cycles the campaign order and a fresh run rerolls it via a real click", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      const stages = await page.evaluate(() => window.TRUMPET_ENVIRONMENTS.list.map(env => env.id));
+      // levelAt(pipes, rotation) keeps the exact unrotated order when rotation is 0 or omitted,
+      // and cyclically re-maps which stage occupies each score band otherwise.
+      const rotated = await page.evaluate(stages => {
+        const api = window.TRUMPET_ENVIRONMENTS;
+        return {
+          omitted: stages.map((_, i) => api.levelAt(i * 10).environmentId),
+          explicitZero: stages.map((_, i) => api.levelAt(i * 10, 0).environmentId),
+          plusTwo: stages.map((_, i) => api.levelAt(i * 10, 2).environmentId),
+          negativeOne: stages.map((_, i) => api.levelAt(i * 10, -1).environmentId),
+          wrapped: api.levelAt(0, stages.length + 2).environmentId
+        };
+      }, stages);
+      assert.deepEqual(rotated.omitted, stages);
+      assert.deepEqual(rotated.explicitZero, stages);
+      assert.deepEqual(rotated.plusTwo, [stages[2], stages[3], stages[4], stages[5], stages[0], stages[1]]);
+      assert.deepEqual(rotated.negativeOne, [stages[5], stages[0], stages[1], stages[2], stages[3], stages[4]]);
+      assert.equal(rotated.wrapped, stages[2]);
+
+      // g.start() (the debug/test primitive) never rerolls the rotation, so it stays 0 and every
+      // score-to-stage assertion elsewhere in this suite keeps holding unchanged.
+      const beforePlay = await page.evaluate(() => {
+        const g = window.__flight;
+        g.start();
+        return g.stageRotation();
+      });
+      assert.equal(beforePlay, 0);
+
+      // A real run start (clicking Play) rerolls the rotation using Math.random(), and the
+      // visible starting stage follows it.
+      await context.addInitScript(() => { Math.random = () => 2 / 6; });
+      const page2 = await context.newPage();
+      await page2.goto(fixture);
+      const played = await page2.evaluate(stages => {
+        const g = window.__flight;
+        document.getElementById("play").click();
+        return { rotation: g.stageRotation(), id: g.environment().id, label: document.getElementById("environment-name").textContent };
+      }, stages);
+      assert.equal(played.rotation, 2);
+      assert.equal(played.id, stages[2]);
+      assert.equal(played.label, "Fore More Years");
       await context.close();
     });
 

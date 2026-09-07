@@ -31,7 +31,7 @@ The 42px source sprite is displayed at 48px (scale 48/42, about 14% larger), wit
 | 40-49 | Roofless Ambition |
 | 50 onward | Space Force One |
 
-Scenery crossfades for one second at each threshold; reduced-motion mode switches instantly. Obstacles already in flight retain their spawn-time environment, while subsequent spawns use the new one. Their 66px caps and narrower shafts have matching collision rectangles; decorative outliers are non-lethal. Light/dark mode selects each environment's day/night palette. Speed and gap difficulty continue on the same score-based curve, and pausing freezes the transition. Space Force One stays indefinitely; retry starts again at West Wing It.
+Scenery crossfades for one second at each threshold; reduced-motion mode switches instantly. Obstacles already in flight retain their spawn-time environment, while subsequent spawns use the new one. Their 66px caps and narrower shafts have matching collision rectangles; decorative outliers are non-lethal. Light/dark mode selects each environment's day/night palette. Speed and gap difficulty continue on the same score-based curve, and pausing freezes the transition. Each fresh run (first play and every retry) rerolls a random starting stage, then advances through the same six-stage order from there; Space Force One stays indefinitely once reached.
 
 Each stage has a mounted entry sign in the background. It holds for eight seconds after entry, then slowly passes out of view without repeating. Reduced-motion mode keeps it stationary. Signs sit behind obstacles and the rider; stage clocks freeze on pause and impact.
 

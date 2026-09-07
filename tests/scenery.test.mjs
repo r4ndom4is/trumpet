@@ -125,6 +125,50 @@ test("campaign still advances by ten cleared obstacles and never wraps stage six
   assert.equal(art.campaign[5].clearAt, null);
 });
 
+test("levelAt's optional rotation cyclically re-maps stages without touching pacing", () => {
+  const ids = plain(art.list.map(env => env.id));
+  for (let score = 0; score <= 60; score += 10) {
+    const base = plain(art.levelAt(score));
+    assert.deepEqual(plain(art.levelAt(score, 0)), base);
+    assert.deepEqual(plain(art.levelAt(score, ids.length)), base);
+    assert.deepEqual(plain(art.levelAt(score, -ids.length)), base);
+  }
+  const rotated = plain(ids.map((_, i) => art.levelAt(i * 10, 3).environmentId));
+  assert.deepEqual(rotated, [ids[3], ids[4], ids[5], ids[0], ids[1], ids[2]]);
+  const negative = plain(ids.map((_, i) => art.levelAt(i * 10, -2).environmentId));
+  assert.deepEqual(negative, [ids[4], ids[5], ids[0], ids[1], ids[2], ids[3]]);
+  // Rotation only changes which environment is shown - the score thresholds where the
+  // visible stage changes stay exactly the same as the unrotated schedule.
+  for (const rotation of [0, 2, -1, 5]) {
+    const changesAt = [];
+    for (let score = 1; score <= 60; score++) {
+      if (art.levelAt(score, rotation).environmentId !== art.levelAt(score - 1, rotation).environmentId) changesAt.push(score);
+    }
+    assert.deepEqual(changesAt, [10, 20, 30, 40, 50], `rotation ${rotation}`);
+  }
+});
+
+test("the opt-in atmosphere option is a no-op by default and only softens far/mid layers when tuned", () => {
+  for (const env of art.list) {
+    const baseline = render(env, {}).calls;
+    assert.deepEqual(render(env, { atmosphere: null }).calls, baseline);
+    assert.deepEqual(render(env, { atmosphere: { contrast: 0, collapse: 0, spacing: 0, haze: 0 } }).calls, baseline);
+
+    const softened = render(env, { atmosphere: { contrast: 1, collapse: 1 } }).calls;
+    assert.notDeepEqual(softened, baseline, `${env.id} contrast/collapse should change rendering`);
+    // Softened far/mid fills blend toward HAZE (an approved token), so every fill colour is
+    // still either an original ramp token or a "#rrggbb" blend of two of them.
+    const approved = new Set(Object.values(env.ramps.day));
+    assert.ok(softened.filter(c => c[0] === "rect").every(c => approved.has(c[5]) || /^#[0-9a-f]{6}$/i.test(c[5])),
+      `${env.id} softened fills should stay flat colours`);
+
+    const hazed = render(env, { atmosphere: { haze: 1 } }).calls;
+    const hazeFills = hazed.filter(c => c[0] === "rect" && c[5] === env.ramps.day.HAZE && c[6] > 0 && c[6] < 1);
+    const baselineHazeFills = baseline.filter(c => c[0] === "rect" && c[5] === env.ramps.day.HAZE && c[6] > 0 && c[6] < 1);
+    assert.ok(hazeFills.length > baselineHazeFills.length, `${env.id} haze overlay should add a translucent HAZE rect`);
+  }
+});
+
 test("four retained obstacle sets keep their approved pixels, decoration and collision", () => {
   // Stages 1, 4, 5, 6 from main 21fc6bd, not a blessing of the replacement artwork.
   const expected = "8fb85e5e0ee1fa0307318d67bbc1d15353bdbc3973b28989d74c90d008c61f3d";
