@@ -471,9 +471,10 @@ a { color: var(--cp-link); }
     return g;
   }
 
-  /* Distant-layer wrapper for the opt-in "reduce background distraction" knobs
-   * (character-lab tuning only - never called with an `atmosphere` option in the
-   * shipping game, so default rendering is pixel-identical to before this existed).
+  /* Distant-layer wrapper for the "reduce background distraction" atmosphere
+   * knobs. Tuned live via scripts/atmosphere.js / the character lab's Atmosphere
+   * panel; the shipping game applies window.TRUMPET_ATMOSPHERE's default values
+   * on every draw (see the `atmosphere` field in index.html's sceneOptions).
    * `contrast` softens the FAR and MID tokens toward HAZE, `collapse` additionally
    * merges each pair's two tones into one, and `spacing` stretches the period the
    * environment's own far()/mid() pass to g.repeat(), so repeated silhouettes sit
@@ -2353,10 +2354,13 @@ a { color: var(--cp-link); }
     }
     ctx.restore();
   }
+  // BEGIN GENERATED ATMOSPHERE
+  window.TRUMPET_ATMOSPHERE = { contrast: 0.6, collapse: 0, spacing: 0.05, haze: 0 };
+  // END GENERATED ATMOSPHERE
   function draw() {
     ctx.imageSmoothingEnabled = false;
     const theme = document.documentElement.dataset.theme === "dark" ? "night" : "day";
-    const sceneOptions = { theme, time, stageTime, scroll: state === "ready" ? time * 12 : distance, reduced: reducedMotion, gaps: [] };
+    const sceneOptions = { theme, time, stageTime, scroll: state === "ready" ? time * 12 : distance, reduced: reducedMotion, gaps: [], atmosphere: window.TRUMPET_ATMOSPHERE };
     const env = currentEnvironment();
     if (environmentTransition) {
       environments.drawScene(ctx, { ...sceneOptions, env: environmentTransition.from, stageTime: environmentTransition.fromStageTime });
