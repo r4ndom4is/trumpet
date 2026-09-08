@@ -1739,6 +1739,44 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       }
     });
 
+    await t.test("pause lights the button cap instead of a separate indicator and clears on resume", async () => {
+      for (const viewport of [{ width: 390, height: 844 }, { width: 667, height: 375 }, { width: 1440, height: 1000 }]) {
+        for (const colorScheme of ["light", "dark"]) {
+          const context = await browser.newContext({
+            viewport, colorScheme, hasTouch: true, serviceWorkers: "block",
+            reducedMotion: colorScheme === "light" ? "reduce" : "no-preference"
+          });
+          try {
+            const page = await context.newPage();
+            await page.goto(fixture);
+            await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
+            const pause = page.locator("#pause"), bounds = await pause.boundingBox();
+            const compact = viewport.height < 560;
+            const glow = () => pause.evaluate((node, compact) => getComputedStyle(node, compact ? null : "::before").boxShadow, compact);
+            assert.equal(await glow(), "none");
+            await page.locator("#play").tap();
+            await page.keyboard.press("KeyP");
+            assert.equal(await pause.getAttribute("aria-label"), "Resume game");
+            assert.equal(await pause.evaluate(node => getComputedStyle(node, "::after").content), "none");
+            assert.notEqual(await glow(), "none");
+            assert.deepEqual(await pause.boundingBox(), bounds);
+            if (!compact) {
+              await page.waitForFunction(() => getComputedStyle(document.getElementById("pause"), "::before").opacity === "1");
+              assert.equal(await pause.evaluate(node => getComputedStyle(node, "::before").animationName), "none");
+              await page.locator(".cabinet").evaluate(node => node.dataset.art = "unavailable");
+              assert.notEqual(await pause.evaluate(node => getComputedStyle(node).boxShadow), "none");
+              await page.locator(".cabinet").evaluate(node => node.dataset.art = "ready");
+            }
+            await page.keyboard.press("KeyP");
+            assert.equal(await pause.getAttribute("aria-label"), "Pause game");
+            assert.equal(await glow(), "none");
+          } finally {
+            await context.close();
+          }
+        }
+      }
+    });
+
     await t.test("muted HUD replaces the button light across phone, landscape and desktop layouts", async () => {
       for (const viewport of [{ width: 390, height: 844 }, { width: 667, height: 375 }, { width: 1440, height: 1000 }]) {
         const context = await browser.newContext({ viewport, hasTouch: true, serviceWorkers: "block" });

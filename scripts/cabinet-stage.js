@@ -157,7 +157,7 @@
     }
     frameRequest = requestAnimationFrame(tick);
   }
-  async function show(focusEnter = false) {
+  async function show() {
     const token = ++generation;
     currentMode = root.dataset.theme === "dark" ? "dark" : "light";
     const mode = currentMode;
@@ -186,7 +186,6 @@
       scene.classList.add("is-loaded");
       enter.disabled = false;
       cue();
-      if (focusEnter) enter.focus({ preventScroll: true });
     } catch (error) {
       if (token !== generation) return;
       console.warn("Cabinet introduction unavailable:", error);
@@ -213,7 +212,7 @@
     outsidePress = false;
     if (returning) {
       document.dispatchEvent(new Event("cabinetleave"));
-      show(true);
+      show();
     }
   });
   enter.addEventListener("click", () => wake());

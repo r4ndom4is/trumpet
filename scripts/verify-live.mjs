@@ -20,7 +20,7 @@ try {
   assert.equal(await page.locator(".marquee").innerText(), "trumpet flight.");
   const cachedArt = await page.evaluate(async () => {
     const keys = await caches.keys();
-    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v20")));
+    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v21")));
     return (await cache.keys()).filter(request => request.url.includes("/assets/cabinet/v2/")).map(request => new URL(request.url).pathname.split("/").at(-1)).sort();
   });
   assert.deepEqual(cachedArt, (await readdir(new URL("../assets/cabinet/v2/", import.meta.url))).filter(file => file.endsWith(".webp")).sort());
@@ -131,7 +131,12 @@ try {
   assert.equal(await desktopPage.locator("#arrival-scene").isHidden(), true);
   await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "play");
   await desktopPage.mouse.click(24, 500);
-  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "intro");
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "intro" &&
+    !document.getElementById("enter-cabinet").disabled);
+  assert.equal(await desktopPage.locator("#enter-cabinet").evaluate(node => getComputedStyle(node).outlineStyle), "none");
+  await desktopPage.keyboard.press("Tab");
+  assert.equal(await desktopPage.evaluate(() => document.activeElement.id), "enter-cabinet");
+  assert.equal(await desktopPage.locator("#enter-cabinet").evaluate(node => getComputedStyle(node).outlineStyle), "solid");
   await desktopPage.reload();
   await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "intro" &&
     !document.getElementById("enter-cabinet").disabled);
@@ -142,6 +147,13 @@ try {
   assert.equal(await desktopPage.locator("#pause").evaluate(node => getComputedStyle(node).cursor), "pointer");
   await desktopPage.locator("#manual-open").hover();
   await desktopPage.waitForFunction(() => getComputedStyle(document.getElementById("manual-open")).filter === "brightness(1.09)");
+  await desktopPage.locator("#play").click();
+  await desktopPage.keyboard.press("KeyP");
+  await desktopPage.waitForFunction(() => getComputedStyle(document.getElementById("pause"), "::before").opacity === "1");
+  assert.equal(await desktopPage.locator("#pause").evaluate(node => getComputedStyle(node, "::after").content), "none");
+  assert.notEqual(await desktopPage.locator("#pause").evaluate(node => getComputedStyle(node, "::before").boxShadow), "none");
+  await desktopPage.locator("#play").click();
+  assert.equal(await desktopPage.locator("#pause").evaluate(node => getComputedStyle(node, "::before").boxShadow), "none");
   await desktop.close();
   assert.deepEqual(errors, []);
   console.log(`Live HTTPS app, matching source, viewport fit, remembered theme, manual, manifest/icons, installability and offline gameplay verified: ${url}`);

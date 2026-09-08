@@ -296,7 +296,11 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
         await entered(page);
         await page.mouse.click(24, 500);
         await ready(page);
+        assert.notEqual(await page.evaluate(() => document.activeElement.id), "enter-cabinet");
+        assert.equal(await page.locator("#enter-cabinet").evaluate(node => getComputedStyle(node).outlineStyle), "none");
+        await page.keyboard.press("Tab");
         assert.equal(await page.evaluate(() => document.activeElement.id), "enter-cabinet");
+        assert.equal(await page.locator("#enter-cabinet").evaluate(node => getComputedStyle(node).outlineStyle), "solid");
         await page.reload();
         await ready(page);
         assert.equal(await page.locator(".cabinet").getAttribute("data-power"), "off");

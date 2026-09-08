@@ -106,7 +106,10 @@ body .shell {
 .shell #sound { --control-center: calc(34.74cqw - max(44px, 12.45cqw)); }
 .shell #theme-switch { --control-center: 34.74cqw; }
 .shell #leaderboard-open { --control-center: calc(34.74cqw + max(44px, 12.45cqw)); }
-.shell #pause { --control-center: 78.9cqw; }
+.shell #pause {
+  --control-center: 78.9cqw;
+  --pause-glow: inset 0 0 8px rgb(255 230 192 / .45), 0 0 10px 3px rgb(255 116 82 / .42);
+}
 .shell .tool svg, .control-name { display: none; }
 .cabinet[data-art="ready"] .tool::before {
   content: ""; position: absolute; left: calc(50% + var(--cap-center) - var(--control-center)); top: 50%;
@@ -117,9 +120,11 @@ body .shell {
 .shell .tool:active:not(:disabled)::before { opacity: 1; background: rgb(38 14 10 / .18); }
 .shell .tool:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 1px; }
 .shell .tool:focus-visible::before { opacity: 1; }
-.shell #pause[aria-label="Resume game"]::after {
-  content: ""; position: absolute; width: 6px; height: 6px; bottom: 1px; left: calc(50% - 3px);
-  border-radius: 50%; background: #ffcc6d; box-shadow: 0 0 3px #a7211e;
+.cabinet[data-art="ready"][data-flight-state="paused"] #pause::before {
+  opacity: 1; background: rgb(255 246 220 / .22); box-shadow: var(--pause-glow);
+}
+.cabinet:not([data-art="ready"])[data-flight-state="paused"] #pause {
+  border-color: #e79679; box-shadow: var(--pause-glow);
 }
 .lower-cabinet { position: relative; height: var(--apron-height, 64px); overflow: hidden; background: var(--cabinet-apron) top center / 100% auto no-repeat; }
 .shell .manual-trigger {
@@ -246,6 +251,7 @@ body .shell {
   .shell .tool:disabled { opacity: .45; }
   .shell .tool:active:not(:disabled) { background: var(--cp-panel-strong); }
   .shell .tool::before, .shell .tool::after { display: none; }
+  .shell .cabinet[data-flight-state="paused"] #pause { border-color: #e79679; box-shadow: var(--pause-glow); }
   .control-name { display: inline; }
   .lower-cabinet { grid-column: 2; grid-row: 3; height: 48px; background: none; overflow: visible; }
   .shell .manual-trigger { position: static; width: 100%; height: 44px; min-height: 44px; border-radius: 6px; background: var(--cp-bg-elevated); border: 1px solid var(--cp-border); }
