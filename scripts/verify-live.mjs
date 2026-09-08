@@ -20,7 +20,7 @@ try {
   assert.equal(await page.locator(".marquee").innerText(), "trumpet flight.");
   const cachedArt = await page.evaluate(async () => {
     const keys = await caches.keys();
-    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v16")));
+    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v17")));
     return (await cache.keys()).filter(request => request.url.includes("/assets/cabinet/v1/")).length;
   });
   assert.equal(cachedArt, 10);
@@ -45,10 +45,15 @@ try {
   }
   for (const viewport of [
     { width: 320, height: 568 }, { width: 375, height: 667 },
-    { width: 390, height: 844 }, { width: 667, height: 375 }
+    { width: 390, height: 844 }, { width: 667, height: 375 },
+    { width: 1920, height: 1200 }, { width: 820, height: 1280 }
   ]) {
     await page.setViewportSize(viewport);
     await page.waitForTimeout(80);
+    if (viewport.height >= 1200) {
+      assert.ok(await page.locator(".cabinet").evaluate(node => node.getBoundingClientRect().width > 600),
+        "Large screens must no longer stop at the former 480px cabinet cap");
+    }
     assert.equal(await page.locator(".edition").isVisible(), true);
     assert.equal(await page.locator(".compact-tagline").innerText(), "SMALL GAME. BIG ONE-MORE-TRY ENERGY.");
     assert.equal(await page.locator("header #theme-switch").count(), 0);

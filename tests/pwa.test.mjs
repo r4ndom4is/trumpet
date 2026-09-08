@@ -1316,6 +1316,52 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await blocked.close();
     });
 
+    await t.test("desktop and tablets fill available height while preserving the full cabinet and phone sizing", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      await page.evaluate(() => { window.__flight.start(); window.__flight.pause(); });
+      const before = await page.evaluate(() => window.__flight.snapshot);
+      const projection = JSON.parse(await readFile(new URL("../assets/cabinet/v1/geometry.json", import.meta.url), "utf8"));
+      for (const viewport of [
+        { width: 2560, height: 1440 }, { width: 1920, height: 1200 },
+        { width: 820, height: 1280 }, { width: 768, height: 1024 },
+        { width: 1024, height: 768 }, { width: 390, height: 844 }
+      ]) {
+        await page.setViewportSize(viewport);
+        await page.waitForTimeout(60);
+        const layout = await page.evaluate(projection => {
+          const box = selector => document.querySelector(selector).getBoundingClientRect();
+          const cabinet = box(".cabinet"), main = box("main"), canvas = box("#game"), deck = box(".control-deck");
+          const ids = { sound: "sound", theme: "theme-switch", leaderboard: "leaderboard-open", pause: "pause" };
+          const capsClickable = Object.entries(projection.controls.buttons).every(([name, button]) => {
+            const [x, y] = button.centerPercent;
+            return [-.3, 0, .3].every(offset =>
+              document.elementFromPoint(deck.left + deck.width * (x + offset * button.capSizePercent[0]) / 100,
+                deck.top + deck.height * y / 100)?.closest("button")?.id === ids[name]);
+          });
+          return { width: cabinet.width, height: cabinet.height, available: main.height,
+            apronRatio: box(".lower-cabinet").height / cabinet.width,
+            gameRatio: canvas.width / canvas.height, capsClickable,
+            fits: cabinet.left >= 0 && cabinet.right <= innerWidth && cabinet.top >= main.top - .5 &&
+              cabinet.bottom <= innerHeight + .5 && document.documentElement.scrollHeight <= innerHeight };
+        }, projection);
+        assert.equal(layout.fits, true, JSON.stringify({ viewport, layout }));
+        assert.equal(layout.capsClickable, true, JSON.stringify({ viewport, layout }));
+        assert.ok(Math.abs(layout.gameRatio - 448 / 512) < .002);
+        if (viewport.width > 600) {
+          assert.ok(layout.height / layout.available > .995, JSON.stringify({ viewport, layout }));
+          assert.ok(Math.abs(layout.apronRatio - 254 / 696) < .002, JSON.stringify({ viewport, layout }));
+          if (viewport.height >= 1200) assert.ok(layout.width > 600, JSON.stringify({ viewport, layout }));
+        } else {
+          assert.ok(Math.abs(layout.width - 382) < 1, "The existing 390px phone cabinet must keep its width");
+        }
+        assert.deepEqual(await page.evaluate(() => window.__flight.snapshot), before);
+      }
+      await context.close();
+    });
+
     await t.test("cabinet artwork is local, transparent, theme-aware and complete at desktop sizes", async () => {
       const context = await browser.newContext({ serviceWorkers: "block", viewport: { width: 1440, height: 1000 } });
       const page = await context.newPage();
