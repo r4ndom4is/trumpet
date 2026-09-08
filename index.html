@@ -357,6 +357,11 @@ body .shell {
 .shell .dialog .crash-shot { margin-bottom: 8px; }
 .shell .dialog .crash-shot canvas { width: auto; max-height: clamp(42px, 40cqh, 172px); }
 .shell .crash-shot figcaption { font-size: 8px; letter-spacing: .5px; }
+.shell .dialog.crashed { display: flex; flex-direction: column; overflow: hidden; }
+.shell .dialog.crashed > :not(.crash-shot) { flex-shrink: 0; }
+.shell .dialog.crashed .crash-shot { display: flex; flex-direction: column; min-height: 54px; flex-shrink: 1; }
+.shell .dialog.crashed .crash-shot canvas { min-height: 0; flex-shrink: 1; object-fit: contain; }
+.shell .dialog.crashed .crash-shot figcaption { flex-shrink: 0; }
 .control-deck { --deck-render-height: max(56px, var(--deck-height, 64px)); position: relative; height: var(--deck-render-height); background: var(--cabinet-deck) center / 100% 100% no-repeat; container-type: inline-size; }
 .shell .tools { --control-size: max(44px, 11cqw); position: absolute; inset: 0; display: block; }
 .shell .tool {
@@ -414,7 +419,6 @@ body .shell {
 .manual-heading h2 { font-size: 21px; letter-spacing: -.5px; }
 .manual .instructions { border-radius: 0; }
 .screen-content:has(.score-screen[open]) > :not(.score-screen) { visibility: hidden; }
-.shell .screen:has(.score-screen[open]) { touch-action: pan-y; }
 .score-screen {
   --score-bg: #14252c; --score-text: #fff6db; --score-soft: #b5c6c8; --score-gold: #ffd27b;
   position: absolute; inset: 0; z-index: 4; width: 100%; height: 100%; max-width: none; max-height: none;
@@ -424,15 +428,16 @@ body .shell {
 }
 .score-screen[open] { display: flex; flex-direction: column; }
 .score-heading { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 8px; }
-.score-heading-actions { display: flex; gap: 6px; }
-.score-heading-actions svg { display: block; margin: auto; }
-.score-heading h2 { font: 800 clamp(22px, 8cqw, 32px)/1 monospace; margin: 0; letter-spacing: -.04em; color: var(--score-gold); }
+.score-heading h2 { flex: 1; font: 800 clamp(18px, 6cqw, 28px)/1 monospace; margin: 0; letter-spacing: -.04em; color: var(--score-gold); white-space: nowrap; }
+.score-page-controls { display: flex; align-items: center; font-size: 10px; }
+#leaderboard-close { border: 0; }
+#leaderboard-close svg { display: block; margin: auto; }
 .score-screen button {
   min-width: 44px; min-height: 44px; padding: 6px 10px; border: 1px solid #637b80; border-radius: 2px;
   background: transparent; color: var(--score-text); font-family: inherit; font-size: 12px; font-weight: 700;
   line-height: 1.2; cursor: pointer; touch-action: manipulation;
 }
-.score-screen button:focus-visible, .score-screen input:focus-visible, .score-rows:focus-visible {
+.score-screen button:focus-visible, .initial-character:focus-visible {
   outline: 2px solid var(--score-gold); outline-offset: -2px;
 }
 .score-screen button:disabled { opacity: .6; cursor: wait; }
@@ -440,13 +445,12 @@ body .shell {
 .score-tabs button { border-color: transparent; border-bottom: 2px solid #435c62; padding-inline: 2px; white-space: nowrap; }
 .score-tabs button[aria-selected="true"] { color: var(--score-gold); border-bottom-color: var(--score-gold); background: #243940; }
 #leaderboard-results { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-.leaderboard-note { flex: none; margin: 4px 0; color: var(--score-soft); font: 11px/1.45 sans-serif; }
 .score-columns, #leaderboard-list li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; }
-.score-columns { color: var(--score-soft); font-size: 10px; line-height: 1.2; padding: 3px 4px 7px; border-bottom: 1px solid #637b80; }
-.score-rows { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #637b80 var(--score-bg); }
-#leaderboard-list { padding: 0; margin: 0; list-style: none; counter-reset: flight-rank; font-variant-numeric: tabular-nums; }
-#leaderboard-list li { counter-increment: flight-rank; min-height: 22px; padding: 1px 4px; border-bottom: 1px solid #30454c; }
-#leaderboard-list li::before { content: counter(flight-rank, decimal-leading-zero); color: var(--score-soft); font: 12px monospace; }
+.score-columns { flex: none; color: var(--score-soft); font-size: 10px; line-height: 1.2; padding: 8px 4px; border-bottom: 1px solid #637b80; }
+.score-rows { flex: 1; min-height: 0; }
+#leaderboard-list { padding: 0; margin: 0; list-style: none; font-variant-numeric: tabular-nums; }
+#leaderboard-list li { min-height: 22px; padding: 2px 4px; border-bottom: 1px solid #30454c; }
+#leaderboard-list li::before { content: attr(data-rank); color: var(--score-soft); font: 12px monospace; }
 #leaderboard-list li:nth-child(-n+3) { color: var(--score-gold); }
 #leaderboard-list li[data-you="true"] { background: #29414a; }
 #leaderboard-list strong { grid-column: 3; grid-row: 1; font: 700 clamp(13px, 4.4cqw, 16px)/1.2 monospace; overflow-wrap: anywhere; text-align: right; }
@@ -454,31 +458,36 @@ body .shell {
 #leaderboard-list .local-date { font: 11px/1.4 sans-serif; color: var(--score-soft); }
 #leaderboard-empty { margin: 24px 4px; max-width: 25ch; color: var(--score-soft); font: 14px/1.6 sans-serif; }
 #leaderboard-status { flex: none; margin: 5px 0 0; color: var(--score-soft); font: 11px/1.4 sans-serif; }
-.score-actions { display: flex; flex: none; gap: 8px; }
-.score-actions:has(button:not([hidden])) { min-height: 44px; margin-top: 6px; }
-#leaderboard-enter, #leaderboard-publish { background: var(--score-gold); border-color: var(--score-gold); color: var(--score-bg); }
-#leaderboard-enter { flex: 1; }
-#leaderboard-entry { flex: 1; min-height: 0; overflow: auto; padding: 10px 0; }
-#leaderboard-entry label { display: block; margin: 10px 0 6px; font: 14px/1.4 sans-serif; }
-.score-entry-title { margin: 12px 0 0; color: var(--score-gold); font: 700 18px/1.3 monospace; }
-.score-entry-score { margin: 8px 0; font: 800 clamp(28px, 12cqw, 48px)/1 monospace; }
-#leaderboard-name {
-  display: block; width: 7ch; max-width: 100%; min-height: 48px; padding: 8px; border: 1px solid #637b80;
-  border-bottom: 3px solid var(--score-gold); border-radius: 0; color: var(--score-text); background: #243940;
-  font: 700 28px/1.2 monospace; letter-spacing: .3em; text-transform: uppercase; user-select: text; -webkit-user-select: text;
-}
-#leaderboard-name::placeholder { color: #92a9ae; }
-#leaderboard-name-help, #leaderboard-submit-status { color: var(--score-soft); font: 12px/1.5 sans-serif; margin: 8px 0; }
-.score-entry-actions { display: flex; gap: 8px; margin: 12px 0; }
+#leaderboard-publish { background: var(--score-gold); border-color: var(--score-gold); color: var(--score-bg); }
+.score-screen[data-view="entry"] > :not(#leaderboard-entry) { display: none; }
+#leaderboard-entry { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; text-align: center; }
+.score-entry-heading { flex: none; padding-top: 8px; }
+.score-entry-heading h2 { margin: 0; color: var(--score-gold); font: 800 clamp(18px, 6cqw, 26px)/1.2 monospace; }
+#leaderboard-entry-score { margin: 6px 0 0; font: 12px/1.4 monospace; }
+.arcade-initials { display: flex; flex: 1; min-height: 136px; align-items: center; justify-content: center; gap: clamp(8px, 5cqw, 24px); }
+.initial-slot { display: flex; flex-direction: column; align-items: center; }
+.initial-slot button { width: 52px; padding: 0; border: 0; font-size: 14px; color: var(--score-soft); }
+.initial-character { display: block; width: 52px; height: 48px; font: 700 40px/48px monospace; border-bottom: 2px solid #637b80; }
+.initial-slot:focus-within .initial-character { color: var(--score-gold); border-bottom-color: var(--score-gold); }
+.initial-character[aria-disabled="true"] { opacity: .6; }
+#leaderboard-name-help, #leaderboard-submit-status { flex: none; color: var(--score-soft); font: 11px/1.4 sans-serif; margin: 0; }
+#leaderboard-submit-status { color: var(--score-gold); }
+.score-entry-actions { display: flex; flex: none; gap: 12px; }
 .score-entry-actions button { flex: 1; }
-.score-check { margin: 6px 0 0; padding: 8px; min-height: 44px; background: none; border: 0; color: var(--cp-accent); font: 700 12px sans-serif; }
+#leaderboard-cancel { border-color: transparent; }
 @media (hover: hover) and (pointer: fine) {
   .score-screen button:hover:not(:disabled) { background: #365159; color: var(--score-text); }
 }
 @container (max-height: 320px) {
-  .score-heading h2 { font-size: 21px; }
+  .score-heading { gap: 0; }
   .score-tabs { margin-top: 2px; }
-  .leaderboard-note { margin: 4px 0; }
+  .score-columns { padding-block: 4px; }
+  #leaderboard-entry { gap: 4px; }
+  .score-entry-heading { padding-top: 0; }
+  .score-entry-heading h2 { font-size: 18px; }
+  #leaderboard-entry-score { margin-top: 2px; font-size: 11px; }
+  .arcade-initials { min-height: 112px; }
+  .initial-character { height: 24px; font-size: 24px; line-height: 24px; }
 }
 @container (min-height: 480px) {
   #leaderboard-list li { padding-block: 4px; }
@@ -673,19 +682,20 @@ body .shell {
             </figure>
             <p id="message">Stay airborne. Dodge the pipes.<br>Your next high score starts here.</p>
             <button class="primary mono" id="play">LET'S FLY &gt;</button>
-            <button class="score-check" id="score-submit-open" hidden>Check global ranking</button>
             <div class="prompt mono" id="prompt">OR PRESS SPACE TO START</div>
           </div>
          </div>
           <dialog class="score-screen" id="leaderboard" aria-labelledby="leaderboard-title">
             <div class="score-heading">
               <h2 id="leaderboard-title">TOP 10</h2>
-              <div class="score-heading-actions">
-                <button id="leaderboard-refresh" hidden aria-label="Refresh global scores" title="Refresh global scores">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.4 6M20 3v8h-8"/></svg>
-                </button>
-                <button id="leaderboard-close" autofocus aria-label="Back to the game">Back</button>
+              <div class="score-page-controls" hidden>
+                <button id="scores-previous" aria-label="Previous five scores">&lt;</button>
+                <span id="scores-page" aria-live="polite"></span>
+                <button id="scores-next" aria-label="Next five scores">&gt;</button>
               </div>
+              <button id="leaderboard-close" autofocus aria-label="Close scores">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+              </button>
             </div>
             <div class="score-tabs" role="tablist" aria-label="Score board">
               <button id="scores-daily" role="tab" aria-controls="leaderboard-results" aria-selected="false" tabindex="-1" data-board="daily">Daily</button>
@@ -693,27 +703,41 @@ body .shell {
               <button id="scores-local" role="tab" aria-controls="leaderboard-results" aria-selected="true" data-board="local" aria-label="Scores on this device">Device</button>
             </div>
             <div id="leaderboard-results" role="tabpanel" aria-labelledby="scores-local">
-              <p class="leaderboard-note" id="leaderboard-note">The best flights on this device. No accounts, no uploads.</p>
               <div class="score-columns" aria-hidden="true"><span>NO.</span><span>PLAYER</span><span>SCORE</span></div>
-              <div class="score-rows" tabindex="0" aria-label="Scroll scores">
+              <div class="score-rows">
                 <p id="leaderboard-empty">Your first flight starts the list.</p>
                 <ol id="leaderboard-list" aria-label="Highest scoring flights"></ol>
               </div>
               <p id="leaderboard-status" role="status">Saved in this browser.</p>
-              <div class="score-actions">
-                <button id="leaderboard-enter" hidden>Enter your score</button>
-              </div>
             </div>
             <form id="leaderboard-entry" hidden>
-              <p class="score-entry-title">A place on the board.</p>
-              <p class="score-entry-score" id="leaderboard-entry-score"></p>
-              <label for="leaderboard-name">Your three-character tag</label>
-              <input id="leaderboard-name" name="arcadeName" minlength="3" maxlength="3" pattern="[A-Za-z0-9]{3}" placeholder="ABC" autocomplete="off" autocapitalize="characters" spellcheck="false" required aria-describedby="leaderboard-name-help">
-              <p id="leaderboard-name-help">Three letters or numbers. Your tag and score will be public. One best per browser; clearing browser data resets your guest identity.</p>
-              <p id="leaderboard-submit-status" role="status"></p>
+              <div class="score-entry-heading">
+                <h2 id="leaderboard-entry-title">NEW HIGH SCORE</h2>
+                <p id="leaderboard-entry-score"></p>
+              </div>
+              <input type="hidden" id="leaderboard-name" name="arcadeName" value="AAA">
+              <div class="arcade-initials" role="group" aria-label="Choose your three initials">
+                <div class="initial-slot">
+                  <button type="button" data-slot="0" data-step="1" aria-label="Next first initial">&#9650;</button>
+                  <span class="initial-character" role="spinbutton" tabindex="0" data-slot="0" aria-label="First initial" aria-valuemin="0" aria-valuemax="35" aria-valuenow="0" aria-valuetext="A">A</span>
+                  <button type="button" data-slot="0" data-step="-1" aria-label="Previous first initial">&#9660;</button>
+                </div>
+                <div class="initial-slot">
+                  <button type="button" data-slot="1" data-step="1" aria-label="Next second initial">&#9650;</button>
+                  <span class="initial-character" role="spinbutton" tabindex="0" data-slot="1" aria-label="Second initial" aria-valuemin="0" aria-valuemax="35" aria-valuenow="0" aria-valuetext="A">A</span>
+                  <button type="button" data-slot="1" data-step="-1" aria-label="Previous second initial">&#9660;</button>
+                </div>
+                <div class="initial-slot">
+                  <button type="button" data-slot="2" data-step="1" aria-label="Next third initial">&#9650;</button>
+                  <span class="initial-character" role="spinbutton" tabindex="0" data-slot="2" aria-label="Third initial" aria-valuemin="0" aria-valuemax="35" aria-valuenow="0" aria-valuetext="A">A</span>
+                  <button type="button" data-slot="2" data-step="-1" aria-label="Previous third initial">&#9660;</button>
+                </div>
+              </div>
+              <p id="leaderboard-name-help">Your initials and score will be public.</p>
+              <p id="leaderboard-submit-status" role="status" hidden></p>
               <div class="score-entry-actions">
-                <button type="button" id="leaderboard-cancel">Not now</button>
-                <button type="submit" id="leaderboard-publish">Publish score</button>
+                <button type="button" id="leaderboard-cancel">Skip</button>
+                <button type="submit" id="leaderboard-publish">Save</button>
               </div>
             </form>
           </dialog>
@@ -2436,6 +2460,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     deadAt = performance.now(); // A skip gesture must never double as the next retry.
     $("overlay").hidden = false;
     draw();
+    document.dispatchEvent(new Event("flightretryready"));
   }
   // BEGIN GENERATED HITBOX
   window.TRUMPET_HITBOX = {
@@ -2881,6 +2906,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
       if (id === "manual" && $("leaderboard").open) $("leaderboard").close();
       document.dispatchEvent(new Event("flightmanualopen"));
       opener.focus({ preventScroll: true });
+      dialog.returnValue = "";
       if (id === "leaderboard") {
         dialog.show();
         $("overlay").inert = true;
@@ -2892,7 +2918,8 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     closer.addEventListener("click", () => dialog.close());
     dialog.addEventListener("keydown", event => {
       if (event.key === "Escape" && id === "leaderboard") {
-        event.preventDefault(); event.stopPropagation(); dialog.close(); return;
+        event.preventDefault(); event.stopPropagation();
+        dialog.close(dialog.dataset.view === "entry" ? "retry" : ""); return;
       }
       if (event.key !== "Tab") return;
       const controls = [...dialog.querySelectorAll('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), a[href], [tabindex="0"]')]
@@ -2906,7 +2933,8 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     });
     dialog.addEventListener("close", () => {
       if (id === "leaderboard") $("overlay").inert = false;
-      if (document.activeElement === document.body || dialog.contains(document.activeElement)) opener.focus({ preventScroll: true });
+      if (id === "leaderboard" && dialog.returnValue === "retry") $("play").focus({ preventScroll: true });
+      else if (document.activeElement === document.body || dialog.contains(document.activeElement)) opener.focus({ preventScroll: true });
     });
     let backdropDown = false;
     const outside = event => {
@@ -8066,10 +8094,12 @@ This typically indicates that your device does not have a healthy Internet conne
     const api = () => window.TRUMPET_GLOBAL_SCORES;
     const boards = ["daily", "allTime", "local"];
     const today = () => Math.floor(Date.now() / 86400000) * 86400000;
-    let records = [], writable = true, localStatus = "Saved in this browser. Clearing browser data clears this list.";
+    let records = [], writable = true, localStatus = "SAVED ON THIS DEVICE";
     let mode = api()?.enabled ? "daily" : "local", remote = null, remoteStatus = "", busy = false;
-    let candidate = null, request = 0, publishing = false, savedTag = "";
-    let lastReadAttempt = 0;
+    let candidate = null, entryFlight = null, reading = null, publishing = false, savedTag = "";
+    let openingEntry = false, page = 0, compact = false;
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const characters = [...document.querySelectorAll(".initial-character")];
     function unavailable(error, corrupt = false) {
       writable = corrupt;
       localStatus = corrupt
@@ -8112,8 +8142,10 @@ This typically indicates that your device does not have a healthy Internet conne
       return ["daily", "allTime"].filter(kind =>
         (kind !== "daily" || day === today()) && api().qualifies(scores[kind], scores.uid, candidate.score));
     }
-    function row(score, text, local = false, you = false) {
+    function row(score, text, rank, local = false, you = false) {
       const item = document.createElement("li");
+      item.dataset.rank = String(rank).padStart(2, "0");
+      item.hidden = compact && Math.floor((rank - 1) / 5) !== page;
       const value = document.createElement("strong"), name = document.createElement("span");
       value.textContent = String(score);
       name.textContent = text;
@@ -8133,69 +8165,63 @@ This typically indicates that your device does not have a healthy Internet conne
       $("leaderboard-results").setAttribute("aria-busy", String(busy));
       const scores = currentBoards();
       const items = mode === "local"
-        ? records.map(record => row(record.score, record.at === null ? "Personal best" :
-          new Date(record.at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }), true))
-        : (scores?.[mode].order || []).map(uid => {
+        ? records.map((record, index) => row(record.score, record.at === null ? "Personal best" :
+          new Date(record.at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }), index + 1, true))
+        : (scores?.[mode].order || []).map((uid, index) => {
           const record = scores[mode].entries[uid];
-          return row(record.score, record.name, false, uid === scores.uid);
+          return row(record.score, record.name, index + 1, false, uid === scores.uid);
         });
+      if (items.length <= 5 || !compact) {
+        page = 0;
+        items.forEach((item, index) => { item.hidden = compact && index >= 5; });
+      }
       $("leaderboard-list").replaceChildren(...items);
       $("leaderboard-empty").hidden = items.length > 0;
-      $("leaderboard-note").textContent = mode === "local"
-        ? "The best flights on this device. No accounts, no uploads."
-        : mode === "daily" ? "Worldwide. One best per guest. Resets at 00:00 UTC."
-        : "Worldwide. One best per guest. Earlier scores win ties.";
+      document.querySelector(".score-page-controls").hidden = !compact || items.length <= 5;
+      $("scores-previous").disabled = page === 0;
+      $("scores-next").disabled = page === 1;
+      $("scores-page").textContent = `${page + 1}/2`;
       $("leaderboard-empty").textContent = mode === "local" ? "Your first flight starts the list. Let's make it a good one."
         : !api()?.enabled ? "The global boards are not connected yet."
         : busy ? "Fetching the high scores..." : !scores ? "Global scores are unavailable right now."
         : "A fresh board. Your next flight could be first.";
-      $("leaderboard-status").textContent = mode === "local" ? localStatus : remoteStatus;
-      $("leaderboard-refresh").hidden = mode === "local" || !api()?.enabled;
-      $("leaderboard-refresh").disabled = busy || publishing || !navigator.onLine;
-      const qualifying = eligible();
-      $("leaderboard-enter").hidden = mode === "local" || qualifying.length === 0;
-      $("leaderboard-enter").textContent = candidate ? `Enter your ${candidate.score} points` : "Enter your score";
-      $("score-submit-open").hidden = !api()?.enabled || !candidate ||
-        document.querySelector(".cabinet").dataset.flightState !== "over";
-      $("score-submit-open").textContent = qualifying.length ? "Enter global Top 10" : "Check global ranking";
+      $("leaderboard-status").textContent = mode === "local" ? localStatus : remoteStatus ||
+        (window.TRUMPET_FIREBASE?.emulators ? "LOCAL PREVIEW / NOT LIVE" :
+          mode === "daily" ? "RESETS 00:00 UTC" : "ONE BEST PER PLAYER");
     }
 
-    async function refresh(force = false) {
-      if (mode === "local") { render(); return; }
-      if (!api()?.enabled) { remoteStatus = "Local scores are ready. Firebase setup can be completed later."; render(); return; }
-      if (!navigator.onLine) { remoteStatus = "Offline. Showing saved scores if available; flights stay on this device."; render(); return; }
-      if (busy || publishing) return;
-      // The explicit refresh button is bounded too; repeated taps must not become polling.
-      if (force && Date.now() - lastReadAttempt < 10000) {
-        remoteStatus = "Please wait a moment before refreshing again."; render(); return;
-      }
-      const token = ++request;
-      busy = true; lastReadAttempt = Date.now(); remoteStatus = "Fetching scores...";
+    function loadBoards() {
+      if (!api()?.enabled) { remoteStatus = "Global scores are not connected."; render(); return Promise.resolve(null); }
+      if (!navigator.onLine) { remoteStatus = "Offline. Your scores stay on this device."; render(); return Promise.resolve(null); }
+      if (reading) return reading;
+      busy = true; remoteStatus = "Loading...";
       render();
-      try {
-        const result = await api().read({ force });
-        if (token !== request) return;
-        remote = result;
-        remoteStatus = window.TRUMPET_FIREBASE?.emulators ? "Local Firebase emulator. These are not live scores." :
-          "Global Top 10. Your tag is highlighted when you rank.";
-      } catch (error) {
-        if (token !== request) return;
-        remoteStatus = error.message || "Could not load global scores. Your local scores are safe.";
-        console.warn("Global scores could not load:", error);
-      } finally {
-        if (token === request) { busy = false; render(); }
-      }
+      reading = (async () => {
+        try {
+          remote = await api().read();
+          remoteStatus = "";
+          return remote;
+        } catch (error) {
+          remoteStatus = "Could not load scores. Try again later.";
+          console.warn("Global scores could not load:", error);
+          return null;
+        } finally { reading = null; busy = false; render(); }
+      })();
+      return reading;
     }
     function closeEntry() {
+      entryFlight = null;
       $("leaderboard-entry").hidden = true;
       $("leaderboard-results").hidden = false;
       document.querySelector(".score-tabs").hidden = false;
+      delete $("leaderboard").dataset.view;
+      $("leaderboard").setAttribute("aria-labelledby", "leaderboard-title");
     }
     function choose(kind, focus = false) {
       if (publishing) return;
-      mode = kind; closeEntry(); render();
+      mode = kind; page = 0; closeEntry(); render();
       if (focus) $("scores-" + mode).focus({ preventScroll: true });
-      refresh();
+      if (mode !== "local") loadBoards();
     }
     for (const kind of boards) {
       $("scores-" + kind).addEventListener("click", () => choose(kind));
@@ -8207,39 +8233,98 @@ This typically indicates that your device does not have a healthy Internet conne
         choose(boards[index], true);
       });
     }
-    $("leaderboard-refresh").addEventListener("click", () => refresh(true));
-    document.addEventListener("scoreboardopen", () => { if (!publishing) closeEntry(); render(); refresh(); });
-    $("score-submit-open").addEventListener("click", () => {
-      mode = eligible().includes("daily") || !remote ? "daily" : "allTime";
-      $("leaderboard-open").click();
+    for (const [id, value] of [["scores-previous", 0], ["scores-next", 1]]) {
+      $(id).addEventListener("click", () => {
+        page = value; render();
+        $(value ? "scores-previous" : "scores-next").focus({ preventScroll: true });
+      });
+    }
+    new ResizeObserver(entries => {
+      const next = entries[0].contentRect.height < 360;
+      if (next !== compact) { compact = next; page = 0; render(); }
+    }).observe($("screen"));
+    document.addEventListener("scoreboardopen", () => {
+      if (openingEntry || publishing) return;
+      closeEntry(); page = 0; render();
+      if (mode !== "local") loadBoards();
     });
-    $("leaderboard-enter").addEventListener("click", () => {
-      if (!eligible().length) { render(); return; }
+    $("leaderboard").addEventListener("close", () => {
+      if (!publishing && entryFlight) { candidate = null; closeEntry(); }
+    });
+    function setTag(value) {
+      $("leaderboard-name").value = value;
+      characters.forEach((node, index) => {
+        node.textContent = value[index];
+        node.setAttribute("aria-valuenow", String(alphabet.indexOf(value[index])));
+        node.setAttribute("aria-valuetext", value[index]);
+      });
+    }
+    function step(slot, direction) {
+      const value = [...$("leaderboard-name").value];
+      value[slot] = alphabet[(alphabet.indexOf(value[slot]) + direction + alphabet.length) % alphabet.length];
+      setTag(value.join(""));
+    }
+    for (const button of document.querySelectorAll("[data-step]")) {
+      button.addEventListener("click", () => {
+        if (!publishing) step(Number(button.dataset.slot), Number(button.dataset.step));
+      });
+    }
+    characters.forEach((node, index) => node.addEventListener("keydown", event => {
+      if (publishing || event.ctrlKey || event.metaKey || event.altKey) return;
+      const key = event.key.toUpperCase();
+      if (/^[A-Z0-9]$/.test(key)) {
+        const value = [...$("leaderboard-name").value];
+        value[index] = key; setTag(value.join(""));
+        characters[Math.min(2, index + 1)].focus({ preventScroll: true });
+      } else if (key === "ARROWUP" || key === "ARROWDOWN") step(index, key === "ARROWUP" ? 1 : -1);
+      else if (key === "ARROWLEFT" || key === "BACKSPACE") characters[Math.max(0, index - 1)].focus({ preventScroll: true });
+      else if (key === "ARROWRIGHT") characters[Math.min(2, index + 1)].focus({ preventScroll: true });
+      else if (key === "ENTER") $("leaderboard-entry").requestSubmit();
+      else return;
+      event.preventDefault(); event.stopPropagation();
+    }));
+    function maybeOffer() {
+      const qualifying = eligible();
+      if (!candidate?.checked || candidate.offered || !qualifying.length || document.querySelector("dialog[open]") ||
+          document.querySelector(".cabinet").dataset.flightState !== "over" || $("overlay").hidden || document.hidden ||
+          document.documentElement.dataset.cabinetView === "intro") return;
+      candidate.offered = true;
+      entryFlight = candidate;
+      openingEntry = true;
+      $("leaderboard-open").click();
+      openingEntry = false;
+      $("leaderboard").dataset.view = "entry";
+      $("leaderboard").setAttribute("aria-labelledby", "leaderboard-entry-title");
       $("leaderboard-results").hidden = true;
       document.querySelector(".score-tabs").hidden = true;
       $("leaderboard-entry").hidden = false;
-      $("leaderboard-entry-score").textContent = String(candidate.score);
-      $("leaderboard-name").value = savedTag;
-      $("leaderboard-submit-status").textContent = eligible().length === 2
-        ? "This run qualifies for both boards." : `This run qualifies for the ${eligible()[0] === "daily" ? "daily" : "all-time"} board.`;
-      $("leaderboard-name").focus({ preventScroll: true });
-    });
+      $("leaderboard-entry-score").textContent = `${candidate.score} POINTS / ${qualifying.length === 2 ? "DAILY + ALL-TIME" : qualifying[0] === "daily" ? "DAILY" : "ALL-TIME"}`;
+      setTag(savedTag || "AAA");
+      $("leaderboard-submit-status").textContent = "";
+      $("leaderboard-submit-status").hidden = true;
+      $("leaderboard-publish").hidden = false;
+      $("leaderboard-cancel").textContent = "Skip";
+      characters[0].focus({ preventScroll: true });
+    }
+    async function checkFlight(flight) {
+      const result = await loadBoards();
+      if (result && candidate === flight) { flight.checked = true; maybeOffer(); }
+    }
     $("leaderboard-cancel").addEventListener("click", () => {
       if (publishing) return;
-      closeEntry(); render(); $("leaderboard-enter").focus({ preventScroll: true });
+      candidate = null; closeEntry(); $("leaderboard").close("retry");
     });
     $("leaderboard-entry").addEventListener("submit", async event => {
       event.preventDefault();
-      if (publishing || !candidate) return;
+      if (publishing || !entryFlight) return;
       let name;
       try { name = api().normalizeName($("leaderboard-name").value); }
-      catch (error) { $("leaderboard-submit-status").textContent = error.message; return; }
-      const submitted = candidate, flight = { ...candidate, name };
+      catch (error) { $("leaderboard-submit-status").hidden = false; $("leaderboard-submit-status").textContent = error.message; return; }
+      const submitted = entryFlight, flight = { score: submitted.score, completedAt: submitted.completedAt, name };
       publishing = true;
-      $("leaderboard-publish").disabled = true;
-      $("leaderboard-cancel").disabled = true;
-      $("leaderboard-name").disabled = true;
-      $("leaderboard-submit-status").textContent = "Saving your place...";
+      for (const button of $("leaderboard-entry").querySelectorAll("button")) button.disabled = true;
+      characters.forEach(node => node.setAttribute("aria-disabled", "true"));
+      $("leaderboard-publish").textContent = "Saving...";
       try {
         const result = await api().submit(flight);
         remote = result;
@@ -8248,19 +8333,34 @@ This typically indicates that your device does not have a healthy Internet conne
         catch (error) { console.warn("Arcade tag cannot be remembered:", error); }
         if (result.accepted.length) {
           mode = result.accepted.includes("daily") ? "daily" : "allTime";
-          remoteStatus = result.accepted.length === 2 ? "You're on both boards. Nicely flown." : "Your place is saved. Nicely flown.";
-        } else remoteStatus = "The board moved ahead before this score was saved. Your local score is kept.";
+          remoteStatus = "";
+        } else {
+          $("leaderboard-submit-status").hidden = false;
+          $("leaderboard-submit-status").textContent = "The board moved ahead. Your score is saved on this device.";
+          $("leaderboard-publish").hidden = true;
+          $("leaderboard-cancel").textContent = "Continue";
+          return;
+        }
         if (candidate === submitted) candidate = null;
-        closeEntry();
-        if ($("leaderboard").open) $("leaderboard-close").focus({ preventScroll: true });
+        if (entryFlight === submitted) {
+          closeEntry();
+          if ($("leaderboard").open) {
+            $("leaderboard").close("retry");
+          }
+        }
       } catch (error) {
-        $("leaderboard-submit-status").textContent = error.message || "Could not save your global score. Your local score is safe.";
+        $("leaderboard-submit-status").hidden = false;
+        $("leaderboard-submit-status").textContent = error.code === "global/submission-unconfirmed"
+          ? "Not confirmed. Check Top 10 before saving again."
+          : error.code === "global/permission" ? "Could not save. Check your clock and try again."
+          : error.code === "global/quota" ? "Daily service limit reached. Try later."
+          : "Saving is unavailable. Your score is kept on this device.";
         console.warn("Global score submission failed:", error);
       } finally {
         publishing = false;
-        $("leaderboard-publish").disabled = false;
-        $("leaderboard-cancel").disabled = false;
-        $("leaderboard-name").disabled = false;
+        for (const button of $("leaderboard-entry").querySelectorAll("button")) button.disabled = false;
+        characters.forEach(node => node.removeAttribute("aria-disabled"));
+        $("leaderboard-publish").textContent = "Save";
         render();
       }
     });
@@ -8268,26 +8368,36 @@ This typically indicates that your device does not have a healthy Internet conne
     document.addEventListener("flightcomplete", event => {
       const at = Date.now();
       records.push({ score: event.detail.score, at });
-      if (event.detail.score > 0 && (!candidate || Math.floor(candidate.completedAt / 86400000) * 86400000 !== today() ||
-        event.detail.score > candidate.score)) candidate = { score: event.detail.score, completedAt: at };
+      candidate = event.detail.score > 0 ? { score: event.detail.score, completedAt: at } : null;
       records.sort((a, b) => b.score - a.score || (b.at ?? 0) - (a.at ?? 0));
       records = records.slice(0, 10);
       if (writable) {
         try {
           localStorage.setItem(key, JSON.stringify(records));
-          localStatus = "Saved in this browser. Clearing browser data clears this list.";
+          localStatus = "SAVED ON THIS DEVICE";
         } catch (error) { unavailable(error); }
       }
       render();
+      if (candidate && api()?.enabled && navigator.onLine) checkFlight(candidate);
     });
-    document.addEventListener("flightstate", render);
+    document.addEventListener("flightstate", event => {
+      if (event.detail === "playing") candidate = null;
+      render(); maybeOffer();
+    });
+    document.addEventListener("flightretryready", maybeOffer);
+    document.addEventListener("cabinetleave", () => { candidate = null; });
+    document.addEventListener("flightmanualopen", () => {
+      if (!openingEntry) candidate = null;
+    }, { capture: true });
     window.addEventListener("offline", () => {
-      if (mode !== "local") remoteStatus = "Offline. Showing saved scores if available; flights stay on this device.";
+      if (mode !== "local") remoteStatus = "Offline. Your scores stay on this device.";
       render();
     });
-    window.addEventListener("online", () => { if ($("leaderboard").open) refresh(); });
+    window.addEventListener("online", () => { if ($("leaderboard").open && !entryFlight && mode !== "local") loadBoards(); });
     document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && $("leaderboard").open) { render(); refresh(); }
+      if (!document.hidden && $("leaderboard").open && !entryFlight) {
+        render(); if (mode !== "local") loadBoards();
+      }
     });
     // Clear yesterday's display at midnight without polling Firestore.
     let midnight;
@@ -8295,7 +8405,9 @@ This typically indicates that your device does not have a healthy Internet conne
       clearTimeout(midnight);
       midnight = setTimeout(() => {
         render();
-        if (!$("leaderboard-entry").hidden && !eligible().length && !publishing) closeEntry();
+        if (entryFlight && !eligible().length && !publishing) {
+          candidate = null; closeEntry(); $("leaderboard").close("retry");
+        }
         scheduleMidnight();
       }, Math.max(1000, today() + 86400000 - Date.now() + 50));
     }

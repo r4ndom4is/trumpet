@@ -1275,7 +1275,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await page.reload();
       await page.locator("#leaderboard-open").click();
       assert.deepEqual(await page.locator("#leaderboard-list strong").allTextContents(), expected.map(String));
-      assert.match(await page.locator("#leaderboard").innerText(), /No accounts, no uploads/);
+      assert.match(await page.locator("#leaderboard").innerText(), /SAVED ON THIS DEVICE/);
       await page.locator("#leaderboard-close").click();
       await page.evaluate(() => window.__flight.start());
       await page.locator("#leaderboard-open").click();

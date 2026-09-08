@@ -6,10 +6,12 @@
   const api = () => window.TRUMPET_GLOBAL_SCORES;
   const boards = ["daily", "allTime", "local"];
   const today = () => Math.floor(Date.now() / 86400000) * 86400000;
-  let records = [], writable = true, localStatus = "Saved in this browser. Clearing browser data clears this list.";
+  let records = [], writable = true, localStatus = "SAVED ON THIS DEVICE";
   let mode = api()?.enabled ? "daily" : "local", remote = null, remoteStatus = "", busy = false;
-  let candidate = null, request = 0, publishing = false, savedTag = "";
-  let lastReadAttempt = 0;
+  let candidate = null, entryFlight = null, reading = null, publishing = false, savedTag = "";
+  let openingEntry = false, page = 0, compact = false;
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const characters = [...document.querySelectorAll(".initial-character")];
   function unavailable(error, corrupt = false) {
     writable = corrupt;
     localStatus = corrupt
@@ -52,8 +54,10 @@
     return ["daily", "allTime"].filter(kind =>
       (kind !== "daily" || day === today()) && api().qualifies(scores[kind], scores.uid, candidate.score));
   }
-  function row(score, text, local = false, you = false) {
+  function row(score, text, rank, local = false, you = false) {
     const item = document.createElement("li");
+    item.dataset.rank = String(rank).padStart(2, "0");
+    item.hidden = compact && Math.floor((rank - 1) / 5) !== page;
     const value = document.createElement("strong"), name = document.createElement("span");
     value.textContent = String(score);
     name.textContent = text;
@@ -73,69 +77,63 @@
     $("leaderboard-results").setAttribute("aria-busy", String(busy));
     const scores = currentBoards();
     const items = mode === "local"
-      ? records.map(record => row(record.score, record.at === null ? "Personal best" :
-        new Date(record.at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }), true))
-      : (scores?.[mode].order || []).map(uid => {
+      ? records.map((record, index) => row(record.score, record.at === null ? "Personal best" :
+        new Date(record.at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }), index + 1, true))
+      : (scores?.[mode].order || []).map((uid, index) => {
         const record = scores[mode].entries[uid];
-        return row(record.score, record.name, false, uid === scores.uid);
+        return row(record.score, record.name, index + 1, false, uid === scores.uid);
       });
+    if (items.length <= 5 || !compact) {
+      page = 0;
+      items.forEach((item, index) => { item.hidden = compact && index >= 5; });
+    }
     $("leaderboard-list").replaceChildren(...items);
     $("leaderboard-empty").hidden = items.length > 0;
-    $("leaderboard-note").textContent = mode === "local"
-      ? "The best flights on this device. No accounts, no uploads."
-      : mode === "daily" ? "Worldwide. One best per guest. Resets at 00:00 UTC."
-      : "Worldwide. One best per guest. Earlier scores win ties.";
+    document.querySelector(".score-page-controls").hidden = !compact || items.length <= 5;
+    $("scores-previous").disabled = page === 0;
+    $("scores-next").disabled = page === 1;
+    $("scores-page").textContent = `${page + 1}/2`;
     $("leaderboard-empty").textContent = mode === "local" ? "Your first flight starts the list. Let's make it a good one."
       : !api()?.enabled ? "The global boards are not connected yet."
       : busy ? "Fetching the high scores..." : !scores ? "Global scores are unavailable right now."
       : "A fresh board. Your next flight could be first.";
-    $("leaderboard-status").textContent = mode === "local" ? localStatus : remoteStatus;
-    $("leaderboard-refresh").hidden = mode === "local" || !api()?.enabled;
-    $("leaderboard-refresh").disabled = busy || publishing || !navigator.onLine;
-    const qualifying = eligible();
-    $("leaderboard-enter").hidden = mode === "local" || qualifying.length === 0;
-    $("leaderboard-enter").textContent = candidate ? `Enter your ${candidate.score} points` : "Enter your score";
-    $("score-submit-open").hidden = !api()?.enabled || !candidate ||
-      document.querySelector(".cabinet").dataset.flightState !== "over";
-    $("score-submit-open").textContent = qualifying.length ? "Enter global Top 10" : "Check global ranking";
+    $("leaderboard-status").textContent = mode === "local" ? localStatus : remoteStatus ||
+      (window.TRUMPET_FIREBASE?.emulators ? "LOCAL PREVIEW / NOT LIVE" :
+        mode === "daily" ? "RESETS 00:00 UTC" : "ONE BEST PER PLAYER");
   }
 
-  async function refresh(force = false) {
-    if (mode === "local") { render(); return; }
-    if (!api()?.enabled) { remoteStatus = "Local scores are ready. Firebase setup can be completed later."; render(); return; }
-    if (!navigator.onLine) { remoteStatus = "Offline. Showing saved scores if available; flights stay on this device."; render(); return; }
-    if (busy || publishing) return;
-    // The explicit refresh button is bounded too; repeated taps must not become polling.
-    if (force && Date.now() - lastReadAttempt < 10000) {
-      remoteStatus = "Please wait a moment before refreshing again."; render(); return;
-    }
-    const token = ++request;
-    busy = true; lastReadAttempt = Date.now(); remoteStatus = "Fetching scores...";
+  function loadBoards() {
+    if (!api()?.enabled) { remoteStatus = "Global scores are not connected."; render(); return Promise.resolve(null); }
+    if (!navigator.onLine) { remoteStatus = "Offline. Your scores stay on this device."; render(); return Promise.resolve(null); }
+    if (reading) return reading;
+    busy = true; remoteStatus = "Loading...";
     render();
-    try {
-      const result = await api().read({ force });
-      if (token !== request) return;
-      remote = result;
-      remoteStatus = window.TRUMPET_FIREBASE?.emulators ? "Local Firebase emulator. These are not live scores." :
-        "Global Top 10. Your tag is highlighted when you rank.";
-    } catch (error) {
-      if (token !== request) return;
-      remoteStatus = error.message || "Could not load global scores. Your local scores are safe.";
-      console.warn("Global scores could not load:", error);
-    } finally {
-      if (token === request) { busy = false; render(); }
-    }
+    reading = (async () => {
+      try {
+        remote = await api().read();
+        remoteStatus = "";
+        return remote;
+      } catch (error) {
+        remoteStatus = "Could not load scores. Try again later.";
+        console.warn("Global scores could not load:", error);
+        return null;
+      } finally { reading = null; busy = false; render(); }
+    })();
+    return reading;
   }
   function closeEntry() {
+    entryFlight = null;
     $("leaderboard-entry").hidden = true;
     $("leaderboard-results").hidden = false;
     document.querySelector(".score-tabs").hidden = false;
+    delete $("leaderboard").dataset.view;
+    $("leaderboard").setAttribute("aria-labelledby", "leaderboard-title");
   }
   function choose(kind, focus = false) {
     if (publishing) return;
-    mode = kind; closeEntry(); render();
+    mode = kind; page = 0; closeEntry(); render();
     if (focus) $("scores-" + mode).focus({ preventScroll: true });
-    refresh();
+    if (mode !== "local") loadBoards();
   }
   for (const kind of boards) {
     $("scores-" + kind).addEventListener("click", () => choose(kind));
@@ -147,39 +145,98 @@
       choose(boards[index], true);
     });
   }
-  $("leaderboard-refresh").addEventListener("click", () => refresh(true));
-  document.addEventListener("scoreboardopen", () => { if (!publishing) closeEntry(); render(); refresh(); });
-  $("score-submit-open").addEventListener("click", () => {
-    mode = eligible().includes("daily") || !remote ? "daily" : "allTime";
-    $("leaderboard-open").click();
+  for (const [id, value] of [["scores-previous", 0], ["scores-next", 1]]) {
+    $(id).addEventListener("click", () => {
+      page = value; render();
+      $(value ? "scores-previous" : "scores-next").focus({ preventScroll: true });
+    });
+  }
+  new ResizeObserver(entries => {
+    const next = entries[0].contentRect.height < 360;
+    if (next !== compact) { compact = next; page = 0; render(); }
+  }).observe($("screen"));
+  document.addEventListener("scoreboardopen", () => {
+    if (openingEntry || publishing) return;
+    closeEntry(); page = 0; render();
+    if (mode !== "local") loadBoards();
   });
-  $("leaderboard-enter").addEventListener("click", () => {
-    if (!eligible().length) { render(); return; }
+  $("leaderboard").addEventListener("close", () => {
+    if (!publishing && entryFlight) { candidate = null; closeEntry(); }
+  });
+  function setTag(value) {
+    $("leaderboard-name").value = value;
+    characters.forEach((node, index) => {
+      node.textContent = value[index];
+      node.setAttribute("aria-valuenow", String(alphabet.indexOf(value[index])));
+      node.setAttribute("aria-valuetext", value[index]);
+    });
+  }
+  function step(slot, direction) {
+    const value = [...$("leaderboard-name").value];
+    value[slot] = alphabet[(alphabet.indexOf(value[slot]) + direction + alphabet.length) % alphabet.length];
+    setTag(value.join(""));
+  }
+  for (const button of document.querySelectorAll("[data-step]")) {
+    button.addEventListener("click", () => {
+      if (!publishing) step(Number(button.dataset.slot), Number(button.dataset.step));
+    });
+  }
+  characters.forEach((node, index) => node.addEventListener("keydown", event => {
+    if (publishing || event.ctrlKey || event.metaKey || event.altKey) return;
+    const key = event.key.toUpperCase();
+    if (/^[A-Z0-9]$/.test(key)) {
+      const value = [...$("leaderboard-name").value];
+      value[index] = key; setTag(value.join(""));
+      characters[Math.min(2, index + 1)].focus({ preventScroll: true });
+    } else if (key === "ARROWUP" || key === "ARROWDOWN") step(index, key === "ARROWUP" ? 1 : -1);
+    else if (key === "ARROWLEFT" || key === "BACKSPACE") characters[Math.max(0, index - 1)].focus({ preventScroll: true });
+    else if (key === "ARROWRIGHT") characters[Math.min(2, index + 1)].focus({ preventScroll: true });
+    else if (key === "ENTER") $("leaderboard-entry").requestSubmit();
+    else return;
+    event.preventDefault(); event.stopPropagation();
+  }));
+  function maybeOffer() {
+    const qualifying = eligible();
+    if (!candidate?.checked || candidate.offered || !qualifying.length || document.querySelector("dialog[open]") ||
+        document.querySelector(".cabinet").dataset.flightState !== "over" || $("overlay").hidden || document.hidden ||
+        document.documentElement.dataset.cabinetView === "intro") return;
+    candidate.offered = true;
+    entryFlight = candidate;
+    openingEntry = true;
+    $("leaderboard-open").click();
+    openingEntry = false;
+    $("leaderboard").dataset.view = "entry";
+    $("leaderboard").setAttribute("aria-labelledby", "leaderboard-entry-title");
     $("leaderboard-results").hidden = true;
     document.querySelector(".score-tabs").hidden = true;
     $("leaderboard-entry").hidden = false;
-    $("leaderboard-entry-score").textContent = String(candidate.score);
-    $("leaderboard-name").value = savedTag;
-    $("leaderboard-submit-status").textContent = eligible().length === 2
-      ? "This run qualifies for both boards." : `This run qualifies for the ${eligible()[0] === "daily" ? "daily" : "all-time"} board.`;
-    $("leaderboard-name").focus({ preventScroll: true });
-  });
+    $("leaderboard-entry-score").textContent = `${candidate.score} POINTS / ${qualifying.length === 2 ? "DAILY + ALL-TIME" : qualifying[0] === "daily" ? "DAILY" : "ALL-TIME"}`;
+    setTag(savedTag || "AAA");
+    $("leaderboard-submit-status").textContent = "";
+    $("leaderboard-submit-status").hidden = true;
+    $("leaderboard-publish").hidden = false;
+    $("leaderboard-cancel").textContent = "Skip";
+    characters[0].focus({ preventScroll: true });
+  }
+  async function checkFlight(flight) {
+    const result = await loadBoards();
+    if (result && candidate === flight) { flight.checked = true; maybeOffer(); }
+  }
   $("leaderboard-cancel").addEventListener("click", () => {
     if (publishing) return;
-    closeEntry(); render(); $("leaderboard-enter").focus({ preventScroll: true });
+    candidate = null; closeEntry(); $("leaderboard").close("retry");
   });
   $("leaderboard-entry").addEventListener("submit", async event => {
     event.preventDefault();
-    if (publishing || !candidate) return;
+    if (publishing || !entryFlight) return;
     let name;
     try { name = api().normalizeName($("leaderboard-name").value); }
-    catch (error) { $("leaderboard-submit-status").textContent = error.message; return; }
-    const submitted = candidate, flight = { ...candidate, name };
+    catch (error) { $("leaderboard-submit-status").hidden = false; $("leaderboard-submit-status").textContent = error.message; return; }
+    const submitted = entryFlight, flight = { score: submitted.score, completedAt: submitted.completedAt, name };
     publishing = true;
-    $("leaderboard-publish").disabled = true;
-    $("leaderboard-cancel").disabled = true;
-    $("leaderboard-name").disabled = true;
-    $("leaderboard-submit-status").textContent = "Saving your place...";
+    for (const button of $("leaderboard-entry").querySelectorAll("button")) button.disabled = true;
+    characters.forEach(node => node.setAttribute("aria-disabled", "true"));
+    $("leaderboard-publish").textContent = "Saving...";
     try {
       const result = await api().submit(flight);
       remote = result;
@@ -188,19 +245,34 @@
       catch (error) { console.warn("Arcade tag cannot be remembered:", error); }
       if (result.accepted.length) {
         mode = result.accepted.includes("daily") ? "daily" : "allTime";
-        remoteStatus = result.accepted.length === 2 ? "You're on both boards. Nicely flown." : "Your place is saved. Nicely flown.";
-      } else remoteStatus = "The board moved ahead before this score was saved. Your local score is kept.";
+        remoteStatus = "";
+      } else {
+        $("leaderboard-submit-status").hidden = false;
+        $("leaderboard-submit-status").textContent = "The board moved ahead. Your score is saved on this device.";
+        $("leaderboard-publish").hidden = true;
+        $("leaderboard-cancel").textContent = "Continue";
+        return;
+      }
       if (candidate === submitted) candidate = null;
-      closeEntry();
-      if ($("leaderboard").open) $("leaderboard-close").focus({ preventScroll: true });
+      if (entryFlight === submitted) {
+        closeEntry();
+        if ($("leaderboard").open) {
+          $("leaderboard").close("retry");
+        }
+      }
     } catch (error) {
-      $("leaderboard-submit-status").textContent = error.message || "Could not save your global score. Your local score is safe.";
+      $("leaderboard-submit-status").hidden = false;
+      $("leaderboard-submit-status").textContent = error.code === "global/submission-unconfirmed"
+        ? "Not confirmed. Check Top 10 before saving again."
+        : error.code === "global/permission" ? "Could not save. Check your clock and try again."
+        : error.code === "global/quota" ? "Daily service limit reached. Try later."
+        : "Saving is unavailable. Your score is kept on this device.";
       console.warn("Global score submission failed:", error);
     } finally {
       publishing = false;
-      $("leaderboard-publish").disabled = false;
-      $("leaderboard-cancel").disabled = false;
-      $("leaderboard-name").disabled = false;
+      for (const button of $("leaderboard-entry").querySelectorAll("button")) button.disabled = false;
+      characters.forEach(node => node.removeAttribute("aria-disabled"));
+      $("leaderboard-publish").textContent = "Save";
       render();
     }
   });
@@ -208,26 +280,36 @@
   document.addEventListener("flightcomplete", event => {
     const at = Date.now();
     records.push({ score: event.detail.score, at });
-    if (event.detail.score > 0 && (!candidate || Math.floor(candidate.completedAt / 86400000) * 86400000 !== today() ||
-      event.detail.score > candidate.score)) candidate = { score: event.detail.score, completedAt: at };
+    candidate = event.detail.score > 0 ? { score: event.detail.score, completedAt: at } : null;
     records.sort((a, b) => b.score - a.score || (b.at ?? 0) - (a.at ?? 0));
     records = records.slice(0, 10);
     if (writable) {
       try {
         localStorage.setItem(key, JSON.stringify(records));
-        localStatus = "Saved in this browser. Clearing browser data clears this list.";
+        localStatus = "SAVED ON THIS DEVICE";
       } catch (error) { unavailable(error); }
     }
     render();
+    if (candidate && api()?.enabled && navigator.onLine) checkFlight(candidate);
   });
-  document.addEventListener("flightstate", render);
+  document.addEventListener("flightstate", event => {
+    if (event.detail === "playing") candidate = null;
+    render(); maybeOffer();
+  });
+  document.addEventListener("flightretryready", maybeOffer);
+  document.addEventListener("cabinetleave", () => { candidate = null; });
+  document.addEventListener("flightmanualopen", () => {
+    if (!openingEntry) candidate = null;
+  }, { capture: true });
   window.addEventListener("offline", () => {
-    if (mode !== "local") remoteStatus = "Offline. Showing saved scores if available; flights stay on this device.";
+    if (mode !== "local") remoteStatus = "Offline. Your scores stay on this device.";
     render();
   });
-  window.addEventListener("online", () => { if ($("leaderboard").open) refresh(); });
+  window.addEventListener("online", () => { if ($("leaderboard").open && !entryFlight && mode !== "local") loadBoards(); });
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && $("leaderboard").open) { render(); refresh(); }
+    if (!document.hidden && $("leaderboard").open && !entryFlight) {
+      render(); if (mode !== "local") loadBoards();
+    }
   });
   // Clear yesterday's display at midnight without polling Firestore.
   let midnight;
@@ -235,7 +317,9 @@
     clearTimeout(midnight);
     midnight = setTimeout(() => {
       render();
-      if (!$("leaderboard-entry").hidden && !eligible().length && !publishing) closeEntry();
+      if (entryFlight && !eligible().length && !publishing) {
+        candidate = null; closeEntry(); $("leaderboard").close("retry");
+      }
       scheduleMidnight();
     }, Math.max(1000, today() + 86400000 - Date.now() + 50));
   }

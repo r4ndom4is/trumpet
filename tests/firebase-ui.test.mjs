@@ -56,16 +56,13 @@ test("Generated cabinet UI publishes through the real Firebase adapter and emula
     enabled = true;
     await page.reload();
     await page.evaluate(() => window.__finishScore(25));
-    assert.equal(requests.some(value => /:8080|:9099/.test(value)), false,
-      "Completing a flight does not automatically read or publish global scores.");
-    await page.locator("#score-submit-open").click();
-    await page.locator("#leaderboard-enter").click();
+    await page.locator(".initial-character").first().waitFor({ state: "visible" });
     assert.equal(requests.some(value => /accounts:signUp/.test(value)), false,
       "A guest identity is created only by deliberate publication.");
-    await page.locator("#leaderboard-name").fill("ace");
+    await page.locator(".initial-character").first().focus();
+    await page.keyboard.type("ace");
     await page.locator("#leaderboard-publish").click();
-    await page.waitForFunction(() => document.querySelector("#leaderboard-entry").hidden &&
-      document.querySelector("#leaderboard-status").textContent.includes("both boards"));
+    await page.waitForFunction(() => !document.querySelector("#leaderboard").open);
     assert.deepEqual(await page.locator("#leaderboard-list strong").allTextContents(), ["25"]);
     assert.equal(await page.locator("#leaderboard-list li").getAttribute("data-you"), "true");
     const first = await page.evaluate(() => window.TRUMPET_GLOBAL_SCORES.read());
@@ -82,18 +79,14 @@ test("Generated cabinet UI publishes through the real Firebase adapter and emula
       "The same anonymous identity is restored after reloading.");
     await page.locator("#leaderboard-close").click();
     await page.evaluate(() => window.__finishScore(9));
-    await page.locator("#score-submit-open").click();
     await page.waitForFunction(() => document.querySelector("#leaderboard-results").getAttribute("aria-busy") === "false");
-    assert.equal(await page.locator("#leaderboard-enter").isVisible(), false,
+    assert.equal(await page.locator("#leaderboard-entry").isVisible(), false,
       "A lower score cannot occupy a second place for the same player.");
-    await page.locator("#leaderboard-close").click();
     await page.evaluate(() => window.__finishScore(34));
-    await page.locator("#score-submit-open").click();
-    await page.locator("#leaderboard-enter").click();
+    await page.locator(".initial-character").first().waitFor({ state: "visible" });
     assert.equal(await page.locator("#leaderboard-name").inputValue(), "ACE");
     await page.locator("#leaderboard-publish").click();
-    await page.waitForFunction(() => document.querySelector("#leaderboard-entry").hidden &&
-      document.querySelector("#leaderboard-status").textContent.includes("both boards"));
+    await page.waitForFunction(() => !document.querySelector("#leaderboard").open);
     const improved = await page.evaluate(() => window.TRUMPET_GLOBAL_SCORES.read());
     for (const kind of ["daily", "allTime"]) {
       assert.deepEqual(improved[kind].order, [first.uid]);
