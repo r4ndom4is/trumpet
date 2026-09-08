@@ -11,7 +11,7 @@ const mock = `
 (() => {
   const scenario = window.__scoreScenario;
   window.TRUMPET_FIREBASE = { enabled: scenario.enabled !== false, emulators: true };
-  window.__scoreCalls = { reads: 0, submits: [] };
+  window.__scoreCalls = { reads: 0, submits: [], completed: 0 };
   const day = Math.floor(Date.now() / 86400000) * 86400000;
   const entries = Object.fromEntries(Array.from({ length: 10 }, (_, i) =>
     ["player" + i, { name: ["ACE", "JET", "SKY", "FLY", "BOP", "ZIP", "POP", "SUN", "TOP", "TEN"][i], score: 20 - i, at: day + i }]));
@@ -34,6 +34,7 @@ const mock = `
       window.__scoreCalls.submits.push(flight);
       if (scenario.delaySubmit) await new Promise(resolve => { window.__releaseSubmit = resolve; });
       if (scenario.submitFails) throw new Error("Global submission unavailable. Your local score is safe.");
+      window.__scoreCalls.completed++;
       return { ...structuredClone(state), accepted: scenario.noLongerQualifies ? [] : ["daily", "allTime"] };
     }
   };
@@ -50,7 +51,7 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
       .replace(/\/\/ BEGIN GENERATED FIREBASE SDK[\s\S]*?\/\/ END GENERATED FIREBASE SDK/,
         () => `// BEGIN GENERATED FIREBASE SDK\n${mock}\n// END GENERATED FIREBASE SDK`)
       .replace(/  requestAnimationFrame\(frame\);\r?\n\}\)\(\);/,
-        "  window.__finishScore = (value, finish = true) => { score = value; state = 'playing'; die(); if (finish) finishDeath(); };\n  window.__finishDeath = finishDeath; window.__startRun = start;\n})();");
+        "  window.__finishScore = (value, finish = true) => { score = value; state = 'playing'; die(); if (finish) finishDeath(); };\n  window.__finishDeath = finishDeath; window.__startRun = start; window.__drawScreen = draw;\n})();");
   } });
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const url = `http://127.0.0.1:${server.address().port}/trumpet/`;
@@ -60,12 +61,17 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
   if (artifacts) await mkdir(artifacts, { recursive: true });
   async function open(scenario = {}, options = {}) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: "block", ...options });
-    await context.addInitScript(scenario => { window.__scoreScenario = scenario; }, scenario);
+    await context.addInitScript(scenario => {
+      window.__scoreScenario = scenario;
+      if (scenario.savedTag) localStorage.setItem("trumpet-flight-arcade-tag", scenario.savedTag);
+      if (scenario.best !== undefined) localStorage.setItem("trumpet-flight-best", String(scenario.best));
+    }, scenario);
     const page = await context.newPage();
     page.on("pageerror", error => errors.push(error.message));
     if (scenario.time) await page.clock.install({ time: new Date(scenario.time) });
     await page.goto(url);
     await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
+    await page.evaluate(() => window.__drawScreen());
     return { context, page };
   }
   async function enterTag(page, value) {
@@ -178,7 +184,114 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
           if (artifacts) await page.screenshot({ path: resolve(artifacts, `retry-${viewport.width}.png`) });
         } finally { await context.close(); }
       });
+      await t.test(`one screen language and stable primary action at ${viewport.width}x${viewport.height}`, async () => {
+        const { context, page } = await open({ enabled: false, best: 12 }, { viewport });
+        try {
+          const primary = await page.locator("#play").boundingBox();
+          assert.equal(await page.locator("#run-best").innerText(), "YOUR BEST 12");
+          assert.equal(await page.locator("#message").isVisible(), false);
+          assert.equal(await page.locator(".scorebar").isVisible(), false);
+          for (const state of ["ready", "paused", "result", "record"]) {
+            if (state === "paused") {
+              await page.locator("#play").click();
+              assert.equal(await page.locator(".scorebar").isVisible(), true);
+              assert.equal(await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById("score")).fontSize) >
+                parseFloat(getComputedStyle(document.getElementById("best")).fontSize)), true);
+              await page.keyboard.press("KeyP");
+              assert.equal(await page.locator("#title").innerText(), "PAUSED");
+              assert.equal(await page.locator("#play").innerText(), "RESUME");
+              assert.equal(await page.locator("#game").isVisible(), true);
+              assert.equal(await page.locator("#overlay").evaluate(node => getComputedStyle(node).backgroundColor), "rgba(20, 37, 44, 0.78)");
+            }
+            if (state === "result" || state === "record") {
+              await page.evaluate(value => window.__finishScore(value), state === "record" ? 24 : 8);
+              assert.equal(await page.locator("#title").innerText(), state === "record" ? "PERSONAL BEST" : "YOUR SCORE");
+              assert.equal(await page.locator("#run-score").innerText(), state === "record" ? "24" : "8");
+              assert.equal(await page.locator("#play").innerText(), "FLY AGAIN");
+              assert.equal(await page.locator("#crash-shot").isVisible(), false);
+            }
+            await fits(page, ".run-screen");
+            const current = await page.locator("#play").boundingBox();
+            assert.ok(Math.abs(current.y - primary.y) < 1 && Math.abs(current.height - primary.height) < 1,
+              "Play, Resume and Fly again retain the same position and target size.");
+            assert.equal(await page.locator(".run-screen").evaluate(node => getComputedStyle(node).backgroundColor), "rgba(0, 0, 0, 0)");
+            await page.evaluate(() => window.__drawScreen());
+            if (artifacts) await page.screenshot({ path: resolve(artifacts, `${state}-${viewport.width}.png`) });
+          }
+        } finally { await context.close(); }
+      });
+      await t.test(`returning qualifiers keep retry live at ${viewport.width}x${viewport.height}`, async () => {
+        const { context, page } = await open({ savedTag: "RMA", delaySubmit: true }, { viewport, hasTouch: true });
+        try {
+          const primary = await page.locator("#play").boundingBox();
+          await page.evaluate(() => window.__finishScore(24));
+          await page.locator("#run-save").waitFor({ state: "visible" });
+          assert.equal(await page.locator("#leaderboard").isVisible(), false);
+          assert.equal(await page.locator("#run-save").innerText(), "Save as RMA");
+          assert.equal(await page.evaluate(() => window.__scoreCalls.submits.length), 0);
+          assert.ok(Math.abs((await page.locator("#play").boundingBox()).y - primary.y) < 1);
+          await fits(page, ".run-screen");
+          if (artifacts) await page.screenshot({ path: resolve(artifacts, `returning-qualifier-${viewport.width}.png`) });
+          await page.locator("#run-change").tap();
+          assert.equal(await page.locator("#leaderboard-name").inputValue(), "RMA");
+          assert.equal(await page.locator("#leaderboard-cancel").innerText(), "Cancel");
+          await page.locator("#leaderboard-cancel").tap();
+          await page.locator("#run-save").tap();
+          await page.waitForFunction(() => window.__scoreCalls.submits.length === 1);
+          assert.equal(await page.locator("#run-save").isDisabled(), true);
+          assert.equal(await page.locator("#play").isEnabled(), true);
+          await page.waitForTimeout(460);
+          await page.locator("#play").tap();
+          assert.equal(await page.locator(".cabinet").getAttribute("data-flight-state"), "playing");
+          await page.evaluate(() => window.__releaseSubmit());
+          await page.waitForFunction(() => window.__scoreCalls.completed === 1);
+          assert.equal(await page.locator("#leaderboard").isVisible(), false);
+          assert.equal(await page.locator("#run-ranking").isVisible(), false);
+          assert.equal(await page.locator(".cabinet").getAttribute("data-flight-state"), "playing");
+        } finally { await context.close(); }
+      });
     }
+    await t.test("first-time ready shows a painted rider and one instruction, without empty counters", async () => {
+      for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 1000 }]) {
+        const { context, page } = await open({ enabled: false }, { viewport, colorScheme: viewport.width > 1000 ? "dark" : "light" });
+        try {
+          assert.equal(await page.locator("#message").innerText(), "Tap or Space to flap.");
+          assert.equal(await page.locator("#run-best").isVisible(), false);
+          assert.equal(await page.locator(".scorebar").isVisible(), false);
+          assert.equal(await page.locator("#rider-preview").isVisible(), true);
+          assert.equal(await page.locator("#rider-preview").evaluate(canvas =>
+            canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data.some(value => value > 0)), true);
+          await fits(page, ".run-screen");
+          if (artifacts) await page.screenshot({ path: resolve(artifacts, `first-ready-${viewport.width}.png`) });
+        } finally { await context.close(); }
+      }
+    });
+    await t.test("returning save confirmation moves keyboard focus to retry without an interstitial", async () => {
+      const { context, page } = await open({ savedTag: "ACE" });
+      try {
+        await page.evaluate(() => window.__finishScore(24));
+        await page.locator("#run-save").click();
+        await page.waitForFunction(() => document.getElementById("run-ranking-status").textContent.includes("Saved as ACE"));
+        assert.equal(await page.locator("#run-ranking-actions").isVisible(), false);
+        assert.equal(await page.evaluate(() => document.activeElement.id), "play");
+        assert.equal(await page.locator("#leaderboard").isVisible(), false);
+      } finally { await context.close(); }
+    });
+    await t.test("browsing scores during an inline save preserves the selected board", async () => {
+      const { context, page } = await open({ savedTag: "ACE", delaySubmit: true });
+      try {
+        await page.evaluate(() => window.__finishScore(24));
+        await page.locator("#run-save").click();
+        await page.locator("#leaderboard-open").click();
+        await page.locator("#scores-allTime").click();
+        assert.equal(await page.locator("#scores-allTime").getAttribute("aria-selected"), "true");
+        assert.equal(await page.evaluate(() => window.__scoreCalls.reads), 1);
+        await page.evaluate(() => window.__releaseSubmit());
+        await page.waitForFunction(() => window.__scoreCalls.completed === 1);
+        assert.equal(await page.locator("#leaderboard").isVisible(), true);
+        assert.equal(await page.locator("#scores-allTime").getAttribute("aria-selected"), "true");
+      } finally { await context.close(); }
+    });
     await t.test("unconfigured Firebase sends no requests and leaves local scores usable", async () => {
       const { context, page } = await open({ enabled: false });
       try {
@@ -214,7 +327,9 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
         assert.equal(await page.locator("#leaderboard").isVisible(), false);
         assert.equal(await page.evaluate(() => localStorage.getItem("trumpet-flight-arcade-tag")), "AB7");
         await page.evaluate(() => window.__finishScore(25));
-        await page.locator(".initial-character").first().waitFor({ state: "visible" });
+        await page.locator("#run-save").waitFor({ state: "visible" });
+        assert.equal(await page.locator("#leaderboard").isVisible(), false);
+        await page.locator("#run-change").click();
         assert.equal(await page.locator("#leaderboard-name").inputValue(), "AB7");
         await page.locator("#leaderboard-cancel").click();
         assert.equal(await page.evaluate(() => window.__scoreCalls.submits.length), 1);
@@ -293,10 +408,27 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
         await page.evaluate(() => window.__finishScore(24));
         await page.locator(".initial-character").first().waitFor({ state: "visible" });
         await page.locator("#leaderboard-publish").click();
-        await page.waitForFunction(() => document.getElementById("leaderboard-cancel").textContent === "Continue");
-        assert.equal(await page.locator("#leaderboard-publish").isVisible(), false);
-        await page.locator("#leaderboard-cancel").click();
+        await page.waitForFunction(() => !document.getElementById("leaderboard").open);
+        assert.match(await page.locator("#run-ranking-status").innerText(), /board moved ahead/);
+        assert.equal(await page.locator("#play").isEnabled(), true);
         assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("trumpet-flight-top10"))[0].score), 24);
+      } finally { await context.close(); }
+    });
+    await t.test("a returning player's failed save stays inline and retains their initials", async () => {
+      const { context, page } = await open({ savedTag: "ACE", submitFails: true });
+      try {
+        await page.evaluate(() => window.__finishScore(24));
+        await page.locator("#run-save").click();
+        await page.waitForFunction(() => document.getElementById("run-ranking-status").textContent.includes("unavailable"));
+        assert.equal(await page.locator("#leaderboard").isVisible(), false);
+        assert.equal(await page.locator("#play").isEnabled(), true);
+        assert.equal(await page.locator("#run-save").innerText(), "Save as ACE");
+        assert.equal(await page.locator("#run-save").isEnabled(), true);
+        for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 },
+          { width: 667, height: 375 }, { width: 1440, height: 1000 }]) {
+          await page.setViewportSize(viewport);
+          await fits(page, ".run-screen");
+        }
       } finally { await context.close(); }
     });
     await t.test("zero and offline runs stay on retry without fetching or offering initials", async () => {

@@ -9,7 +9,7 @@
   let records = [], writable = true, localStatus = "SAVED ON THIS DEVICE";
   let mode = api()?.enabled ? "daily" : "local", remote = null, remoteStatus = "", busy = false;
   let candidate = null, entryFlight = null, reading = null, publishing = false, savedTag = "";
-  let openingEntry = false, page = 0, compact = false;
+  let openingEntry = false, editingTag = false, publishingFlight = null, page = 0, compact = false;
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   const characters = [...document.querySelectorAll(".initial-character")];
   function unavailable(error, corrupt = false) {
@@ -66,6 +66,24 @@
     item.append(value, name);
     return item;
   }
+  function boardLabel(kinds) {
+    return kinds.length === 2 ? "DAILY + ALL-TIME" : kinds[0] === "daily" ? "DAILY" : "ALL-TIME";
+  }
+  function renderRanking() {
+    const visible = candidate?.offered && savedTag &&
+      document.querySelector(".cabinet").dataset.flightState === "over";
+    $("run-ranking").hidden = !visible;
+    if (!visible) return;
+    const saving = publishingFlight === candidate;
+    const qualifying = eligible();
+    $("run-ranking-status").textContent = saving ? "Saving your score..."
+      : candidate.feedback || (!navigator.onLine ? "Offline / saved on this device"
+      : qualifying.length ? `TOP 10 QUALIFIER / ${boardLabel(qualifying)}` : "Saved on this device");
+    $("run-ranking-actions").hidden = Boolean(candidate.finished) || (!saving && qualifying.length === 0);
+    $("run-save").textContent = saving ? "Saving..." : `Save as ${savedTag}`;
+    $("run-save").disabled = publishing;
+    $("run-change").disabled = publishing;
+  }
   function render() {
     records.sort((a, b) => b.score - a.score || (b.at ?? 0) - (a.at ?? 0));
     records = records.slice(0, 10);
@@ -100,6 +118,7 @@
     $("leaderboard-status").textContent = mode === "local" ? localStatus : remoteStatus ||
       (window.TRUMPET_FIREBASE?.emulators ? "LOCAL PREVIEW / NOT LIVE" :
         mode === "daily" ? "RESETS 00:00 UTC" : "ONE BEST PER PLAYER");
+    renderRanking();
   }
 
   function loadBoards() {
@@ -123,6 +142,7 @@
   }
   function closeEntry() {
     entryFlight = null;
+    editingTag = false;
     $("leaderboard-entry").hidden = true;
     $("leaderboard-results").hidden = false;
     document.querySelector(".score-tabs").hidden = false;
@@ -130,10 +150,10 @@
     $("leaderboard").setAttribute("aria-labelledby", "leaderboard-title");
   }
   function choose(kind, focus = false) {
-    if (publishing) return;
+    if (publishing && entryFlight) return;
     mode = kind; page = 0; closeEntry(); render();
     if (focus) $("scores-" + mode).focus({ preventScroll: true });
-    if (mode !== "local") loadBoards();
+    if (mode !== "local" && !publishing) loadBoards();
   }
   for (const kind of boards) {
     $("scores-" + kind).addEventListener("click", () => choose(kind));
@@ -156,12 +176,15 @@
     if (next !== compact) { compact = next; page = 0; render(); }
   }).observe($("screen"));
   document.addEventListener("scoreboardopen", () => {
-    if (openingEntry || publishing) return;
+    if (openingEntry || (publishing && entryFlight)) return;
     closeEntry(); page = 0; render();
-    if (mode !== "local") loadBoards();
+    if (mode !== "local" && !publishing) loadBoards();
   });
   $("leaderboard").addEventListener("close", () => {
-    if (!publishing && entryFlight) { candidate = null; closeEntry(); }
+    if (!publishing && entryFlight) {
+      if (!editingTag) candidate = null;
+      closeEntry(); renderRanking();
+    }
   });
   function setTag(value) {
     $("leaderboard-name").value = value;
@@ -195,12 +218,8 @@
     else return;
     event.preventDefault(); event.stopPropagation();
   }));
-  function maybeOffer() {
-    const qualifying = eligible();
-    if (!candidate?.checked || candidate.offered || !qualifying.length || document.querySelector("dialog[open]") ||
-        document.querySelector(".cabinet").dataset.flightState !== "over" || $("overlay").hidden || document.hidden ||
-        document.documentElement.dataset.cabinetView === "intro") return;
-    candidate.offered = true;
+  function openEntry(qualifying, editing = false) {
+    editingTag = editing;
     entryFlight = candidate;
     openingEntry = true;
     $("leaderboard-open").click();
@@ -210,13 +229,23 @@
     $("leaderboard-results").hidden = true;
     document.querySelector(".score-tabs").hidden = true;
     $("leaderboard-entry").hidden = false;
-    $("leaderboard-entry-score").textContent = `${candidate.score} POINTS / ${qualifying.length === 2 ? "DAILY + ALL-TIME" : qualifying[0] === "daily" ? "DAILY" : "ALL-TIME"}`;
+    $("leaderboard-entry-title").textContent = editing ? "YOUR INITIALS" : "TOP 10 QUALIFIER";
+    $("leaderboard-entry-score").textContent = `${candidate.score} POINTS / ${boardLabel(qualifying)}`;
     setTag(savedTag || "AAA");
     $("leaderboard-submit-status").textContent = "";
     $("leaderboard-submit-status").hidden = true;
     $("leaderboard-publish").hidden = false;
-    $("leaderboard-cancel").textContent = "Skip";
+    $("leaderboard-cancel").textContent = editing ? "Cancel" : "Skip";
     characters[0].focus({ preventScroll: true });
+  }
+  function maybeOffer() {
+    const qualifying = eligible();
+    if (!candidate?.checked || candidate.offered || candidate.suppressOffer || !qualifying.length || document.querySelector("dialog[open]") ||
+        document.querySelector(".cabinet").dataset.flightState !== "over" || $("overlay").hidden || document.hidden ||
+        document.documentElement.dataset.cabinetView === "intro") return;
+    candidate.offered = true;
+    if (savedTag) renderRanking();
+    else openEntry(qualifying);
   }
   async function checkFlight(flight) {
     const result = await loadBoards();
@@ -224,19 +253,21 @@
   }
   $("leaderboard-cancel").addEventListener("click", () => {
     if (publishing) return;
-    candidate = null; closeEntry(); $("leaderboard").close("retry");
+    if (!editingTag) candidate = null;
+    closeEntry(); renderRanking(); $("leaderboard").close("retry");
   });
-  $("leaderboard-entry").addEventListener("submit", async event => {
-    event.preventDefault();
-    if (publishing || !entryFlight) return;
-    let name;
-    try { name = api().normalizeName($("leaderboard-name").value); }
-    catch (error) { $("leaderboard-submit-status").hidden = false; $("leaderboard-submit-status").textContent = error.message; return; }
-    const submitted = entryFlight, flight = { score: submitted.score, completedAt: submitted.completedAt, name };
+  async function publishScore(submitted, name) {
+    if (publishing || !submitted) return;
+    const flight = { score: submitted.score, completedAt: submitted.completedAt, name };
+    const focusRetry = document.activeElement === $("run-save");
     publishing = true;
+    publishingFlight = submitted;
+    submitted.feedback = "";
     for (const button of $("leaderboard-entry").querySelectorAll("button")) button.disabled = true;
     characters.forEach(node => node.setAttribute("aria-disabled", "true"));
     $("leaderboard-publish").textContent = "Saving...";
+    renderRanking();
+    if (focusRetry) $("play").focus({ preventScroll: true });
     try {
       const result = await api().submit(flight);
       remote = result;
@@ -244,16 +275,13 @@
       try { localStorage.setItem("trumpet-flight-arcade-tag", name); }
       catch (error) { console.warn("Arcade tag cannot be remembered:", error); }
       if (result.accepted.length) {
-        mode = result.accepted.includes("daily") ? "daily" : "allTime";
+        if (!$("leaderboard").open || entryFlight === submitted) {
+          mode = result.accepted.includes("daily") ? "daily" : "allTime";
+        }
         remoteStatus = "";
-      } else {
-        $("leaderboard-submit-status").hidden = false;
-        $("leaderboard-submit-status").textContent = "The board moved ahead. Your score is saved on this device.";
-        $("leaderboard-publish").hidden = true;
-        $("leaderboard-cancel").textContent = "Continue";
-        return;
-      }
-      if (candidate === submitted) candidate = null;
+        submitted.feedback = `Saved as ${name} / ${boardLabel(result.accepted)}`;
+      } else submitted.feedback = "The board moved ahead. Kept on this device.";
+      submitted.finished = true;
       if (entryFlight === submitted) {
         closeEntry();
         if ($("leaderboard").open) {
@@ -261,20 +289,39 @@
         }
       }
     } catch (error) {
-      $("leaderboard-submit-status").hidden = false;
-      $("leaderboard-submit-status").textContent = error.code === "global/submission-unconfirmed"
+      submitted.feedback = error.code === "global/submission-unconfirmed"
         ? "Not confirmed. Check Top 10 before saving again."
         : error.code === "global/permission" ? "Could not save. Check your clock and try again."
         : error.code === "global/quota" ? "Daily service limit reached. Try later."
         : "Saving is unavailable. Your score is kept on this device.";
+      if (entryFlight === submitted) {
+        $("leaderboard-submit-status").hidden = false;
+        $("leaderboard-submit-status").textContent = submitted.feedback;
+      }
       console.warn("Global score submission failed:", error);
     } finally {
       publishing = false;
+      publishingFlight = null;
       for (const button of $("leaderboard-entry").querySelectorAll("button")) button.disabled = false;
       characters.forEach(node => node.removeAttribute("aria-disabled"));
       $("leaderboard-publish").textContent = "Save";
-      render();
+      render(); maybeOffer();
     }
+  }
+  $("leaderboard-entry").addEventListener("submit", event => {
+    event.preventDefault();
+    if (publishing || !entryFlight) return;
+    let name;
+    try { name = api().normalizeName($("leaderboard-name").value); }
+    catch (error) { $("leaderboard-submit-status").hidden = false; $("leaderboard-submit-status").textContent = error.message; return; }
+    publishScore(entryFlight, name);
+  });
+  $("run-save").addEventListener("click", () => {
+    if (!publishing && savedTag && eligible().length) publishScore(candidate, savedTag);
+  });
+  $("run-change").addEventListener("click", () => {
+    const qualifying = eligible();
+    if (qualifying.length && !publishing) openEntry(qualifying, true);
   });
 
   document.addEventListener("flightcomplete", event => {
@@ -296,16 +343,19 @@
     if (event.detail === "playing") candidate = null;
     render(); maybeOffer();
   });
-  document.addEventListener("flightretryready", maybeOffer);
-  document.addEventListener("cabinetleave", () => { candidate = null; });
+  document.addEventListener("flightretryready", () => { renderRanking(); maybeOffer(); });
+  document.addEventListener("cabinetleave", () => { candidate = null; renderRanking(); });
   document.addEventListener("flightmanualopen", () => {
-    if (!openingEntry) candidate = null;
+    if (!openingEntry && candidate) candidate.suppressOffer = true;
   }, { capture: true });
   window.addEventListener("offline", () => {
     if (mode !== "local") remoteStatus = "Offline. Your scores stay on this device.";
     render();
   });
-  window.addEventListener("online", () => { if ($("leaderboard").open && !entryFlight && mode !== "local") loadBoards(); });
+  window.addEventListener("online", () => {
+    renderRanking();
+    if ($("leaderboard").open && !entryFlight && mode !== "local") loadBoards();
+  });
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && $("leaderboard").open && !entryFlight) {
       render(); if (mode !== "local") loadBoards();

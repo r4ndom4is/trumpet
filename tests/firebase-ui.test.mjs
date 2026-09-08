@@ -83,10 +83,11 @@ test("Generated cabinet UI publishes through the real Firebase adapter and emula
     assert.equal(await page.locator("#leaderboard-entry").isVisible(), false,
       "A lower score cannot occupy a second place for the same player.");
     await page.evaluate(() => window.__finishScore(34));
-    await page.locator(".initial-character").first().waitFor({ state: "visible" });
-    assert.equal(await page.locator("#leaderboard-name").inputValue(), "ACE");
-    await page.locator("#leaderboard-publish").click();
-    await page.waitForFunction(() => !document.querySelector("#leaderboard").open);
+    await page.locator("#run-save").waitFor({ state: "visible" });
+    assert.equal(await page.locator("#run-save").textContent(), "Save as ACE");
+    assert.equal(await page.locator("#leaderboard").isVisible(), false);
+    await page.locator("#run-save").click();
+    await page.waitForFunction(() => document.querySelector("#run-ranking-status").textContent.includes("Saved as ACE"));
     const improved = await page.evaluate(() => window.TRUMPET_GLOBAL_SCORES.read());
     for (const kind of ["daily", "allTime"]) {
       assert.deepEqual(improved[kind].order, [first.uid]);

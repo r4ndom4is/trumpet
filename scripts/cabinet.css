@@ -56,6 +56,8 @@ body .shell {
 .frame-rim { position: absolute; inset: 0; z-index: 2; background: var(--cabinet-frame) center / 100% 100% no-repeat; pointer-events: none; }
 .bezel-insert { position: absolute; inset: 0; z-index: 3; background: var(--cabinet-bezel) center / 100% 100% no-repeat; pointer-events: none; }
 .shell .screen {
+  --screen-bg: #14252c; --screen-text: #fff6db; --screen-soft: #b5c6c8;
+  --screen-gold: #ffd27b; --screen-action: #a62f43;
   position: absolute; left: var(--screen-left); top: var(--screen-top); width: var(--screen-width); height: var(--screen-height);
   max-width: none; border: 0; border-radius: 0; overflow: hidden; background: #182326;
   box-shadow: none; container-type: size; touch-action: none;
@@ -79,27 +81,55 @@ body .shell {
 .shell .scorebar .best { text-align: right; }
 .shell .scorebar .stat-label { max-width: none; color: inherit; font-size: 9px; line-height: 1.2; letter-spacing: 1px; }
 .shell .scorebar .stat-number { font-size: clamp(18px, 7cqw, 26px); line-height: 1; margin-top: 3px; color: inherit; }
+.shell .scorebar .best .stat-number { font-size: clamp(14px, 5cqw, 20px); }
 .mute-indicator {
-  position: absolute; top: calc(4% + 7px); left: 50%; z-index: 2; transform: translateX(-50%);
+  position: absolute; top: calc(4% + 7px); left: 50%; z-index: 3; transform: translateX(-50%);
   width: 22px; height: 22px; color: #fff6db; pointer-events: none;
   filter: drop-shadow(0 1px 2px #172126) drop-shadow(1px 0 1px #172126);
 }
 .mute-indicator svg { display: block; width: 100%; height: 100%; }
-.shell .overlay { padding: 48px 12px 10px; }
-.shell .dialog, .shell .dialog.crashed { width: min(100%, 316px); max-height: 100%; padding: 12px; }
-.shell .rider-preview { width: auto; height: clamp(32px, 17cqh, 80px); margin: 0 auto; }
-.shell .dialog .pixel-title, .shell .dialog.crashed .pixel-title { font-size: clamp(16px, 7cqw, 24px); margin: 6px 0; }
-.shell .dialog p, .shell .dialog.crashed p { font-size: 11px; line-height: 1.4; margin: 6px 0 8px; }
-.shell .dialog .primary, .shell .dialog.crashed .primary { min-height: 44px; padding: 8px; }
-.shell .dialog .prompt, .shell .dialog.crashed .prompt { margin-top: 8px; font-size: 8px; letter-spacing: .5px; }
-.shell .dialog .crash-shot { margin-bottom: 8px; }
-.shell .dialog .crash-shot canvas { width: auto; max-height: clamp(42px, 40cqh, 172px); }
-.shell .crash-shot figcaption { font-size: 8px; letter-spacing: .5px; }
-.shell .dialog.crashed { display: flex; flex-direction: column; overflow: hidden; }
-.shell .dialog.crashed > :not(.crash-shot) { flex-shrink: 0; }
-.shell .dialog.crashed .crash-shot { display: flex; flex-direction: column; min-height: 54px; flex-shrink: 1; }
-.shell .dialog.crashed .crash-shot canvas { min-height: 0; flex-shrink: 1; object-fit: contain; }
-.shell .dialog.crashed .crash-shot figcaption { flex-shrink: 0; }
+.screen-content:has(#overlay:not([hidden])) > .scorebar { visibility: hidden; }
+.shell .overlay {
+  z-index: 2; padding: clamp(10px, 4cqw, 20px); background: var(--screen-bg);
+  align-items: stretch; justify-content: stretch; backdrop-filter: none;
+}
+.shell .overlay[data-state="paused"] { background: rgb(20 37 44 / .78); }
+.shell .dialog, .shell .dialog.crashed {
+  display: flex; flex-direction: column; width: 100%; height: 100%; max-height: none;
+  margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none;
+  overflow: hidden; background: transparent; color: var(--screen-text); text-shadow: none;
+  font-family: ui-monospace, "Cascadia Code", "Courier New", monospace;
+}
+.run-summary { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; }
+.shell .rider-preview { flex: none; width: 136px; height: 120px; max-height: 28cqh; object-fit: contain; margin: 0; }
+.shell .dialog .pixel-title, .shell .dialog.crashed .pixel-title {
+  margin: 0; font: 700 clamp(16px, 5cqw, 22px)/1.2 monospace; color: inherit; letter-spacing: 0; text-shadow: none;
+}
+.shell .dialog .run-score { font: 800 clamp(48px, 22cqw, 96px)/1 monospace; font-variant-numeric: tabular-nums; }
+.shell .dialog p { margin: 0; color: var(--screen-soft); font: 12px/1.4 monospace; }
+.shell .dialog .run-best { font-size: 12px; }
+.run-footer { flex: none; display: flex; flex-direction: column; gap: 12px; }
+.shell .dialog .primary, .shell .dialog.crashed .primary, #leaderboard-publish {
+  min-height: 48px; padding: 10px; border: 0; border-radius: 2px;
+  background: var(--screen-action); color: var(--screen-text); box-shadow: none;
+  font: 700 14px/1.2 monospace; letter-spacing: .04em; cursor: pointer;
+}
+.shell .dialog .primary:focus-visible { outline: 2px solid var(--screen-gold); outline-offset: -4px; }
+.shell .overlay[data-record="true"] :is(#title, #run-score) { color: var(--screen-gold); }
+.run-ranking { flex: none; padding-top: 10px; border-top: 1px solid #435c62; }
+.shell .run-ranking p { font-size: 10px; color: var(--screen-gold); }
+#run-ranking-actions { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
+#run-ranking-actions button {
+  min-height: 44px; padding: 6px 10px; background: transparent; border: 1px solid #637b80; border-radius: 2px;
+  color: var(--screen-text); font: 700 12px/1.2 monospace; cursor: pointer; touch-action: manipulation;
+}
+#run-ranking-actions #run-change { border-color: transparent; font-size: 11px; color: var(--screen-soft); }
+#run-ranking-actions button:focus-visible { outline: 2px solid var(--screen-gold); outline-offset: -2px; }
+#run-ranking-actions button:disabled { opacity: .6; cursor: wait; }
+@media (hover: hover) and (pointer: fine) {
+  .shell .dialog .primary:hover, #leaderboard-publish:hover { background: #be4054; color: var(--screen-text); }
+  #run-ranking-actions button:hover:not(:disabled) { background: #29414a; }
+}
 .control-deck { --deck-render-height: max(56px, var(--deck-height, 64px)); position: relative; height: var(--deck-render-height); background: var(--cabinet-deck) center / 100% 100% no-repeat; container-type: inline-size; }
 .shell .tools { --control-size: max(44px, 11cqw); position: absolute; inset: 0; display: block; }
 .shell .tool {
@@ -158,7 +188,8 @@ body .shell {
 .manual .instructions { border-radius: 0; }
 .screen-content:has(.score-screen[open]) > :not(.score-screen) { visibility: hidden; }
 .score-screen {
-  --score-bg: #14252c; --score-text: #fff6db; --score-soft: #b5c6c8; --score-gold: #ffd27b;
+  --score-bg: var(--screen-bg); --score-text: var(--screen-text);
+  --score-soft: var(--screen-soft); --score-gold: var(--screen-gold);
   position: absolute; inset: 0; z-index: 4; width: 100%; height: 100%; max-width: none; max-height: none;
   margin: 0; padding: clamp(8px, 3cqw, 16px); border: 0; border-radius: 0;
   background: var(--score-bg); color: var(--score-text); overflow: hidden; box-sizing: border-box;
@@ -196,7 +227,6 @@ body .shell {
 #leaderboard-list .local-date { font: 11px/1.4 sans-serif; color: var(--score-soft); }
 #leaderboard-empty { margin: 24px 4px; max-width: 25ch; color: var(--score-soft); font: 14px/1.6 sans-serif; }
 #leaderboard-status { flex: none; margin: 5px 0 0; color: var(--score-soft); font: 11px/1.4 sans-serif; }
-#leaderboard-publish { background: var(--score-gold); border-color: var(--score-gold); color: var(--score-bg); }
 .score-screen[data-view="entry"] > :not(#leaderboard-entry) { display: none; }
 #leaderboard-entry { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; text-align: center; }
 .score-entry-heading { flex: none; padding-top: 8px; }
@@ -300,15 +330,16 @@ body .shell {
   :root[data-cabinet-view="handoff"] .cabinet { animation: none; }
 }
 @container (max-height: 400px) {
-  .shell .dialog.crashed p, .shell .dialog.crashed .prompt { display: none; }
+  .run-summary { gap: 8px; }
+  .run-footer { gap: 8px; }
+  .shell .dialog .run-score { font-size: clamp(40px, 18cqh, 72px); }
 }
 @container (max-height: 320px) {
-  .shell .overlay { padding: 36px 8px 6px; }
-  .shell .dialog, .shell .dialog.crashed { padding: 8px; }
-  .shell .dialog p, .shell .dialog .prompt { display: none; }
-  .shell .dialog .pixel-title, .shell .dialog.crashed .pixel-title { font-size: 16px; margin: 4px 0; }
-  .shell .dialog .crash-shot canvas { max-height: 28cqh; }
-  .shell .crash-shot figcaption { font-size: 7px; margin-top: 3px; }
+  .shell .overlay { padding: 8px; }
+  .run-summary { gap: 6px; }
+  .run-ranking { padding-top: 6px; }
+  .shell .dialog .pixel-title { font-size: 16px; }
+  .shell .dialog .primary, .shell .dialog.crashed .primary, #leaderboard-publish { min-height: 44px; }
 }
 @media (max-width: 600px) {
   body .shell { gap: 8px; padding-top: max(8px, env(safe-area-inset-top)); padding-left: max(4px, env(safe-area-inset-left)); padding-right: max(4px, env(safe-area-inset-right)); }

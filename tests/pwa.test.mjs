@@ -202,14 +202,15 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await page.keyboard.press("Space");
       assert.equal(await page.locator("#overlay").isHidden(), true);
       await page.keyboard.press("KeyP");
-      assert.equal(await page.locator("#title").innerText(), "TAKE A BREATHER");
+      assert.equal(await page.locator("#title").innerText(), "PAUSED");
       await page.keyboard.press("KeyM");
       assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "false");
       await page.keyboard.press("Space");
       await page.locator("#screen").click({ position: { x: 50, y: 250 } });
-      await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?" &&
+      await page.waitForFunction(() => document.getElementById("title").textContent === "YOUR SCORE" &&
         !document.getElementById("overlay").hidden);
-      assert.equal(await page.locator("#crash-shot").isVisible(), true);
+      assert.equal(await page.locator("#crash-shot").isVisible(), false);
+      assert.equal(await page.locator("#run-score").isVisible(), true);
       await page.screenshot({ path: "test-results/desktop-retry.png", fullPage: true });
       await page.goto(url + "?scoutTheme=dark");
       assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
@@ -252,7 +253,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.ok(score >= 5, `Expected at least five real pipe passes, got ${score}`);
       assert.equal(await page.evaluate(() => localStorage.getItem("trumpet-flight-best")), String(score));
       await page.reload();
-      assert.equal(Number(await page.locator("#best").innerText()), score);
+      assert.equal(Number(await page.locator("#best").textContent()), score);
       for (const y of [20, 240, 464]) {
         const result = await page.evaluate(y => {
           const game = window.__flight;
@@ -271,7 +272,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         await page.waitForTimeout(60);
         const fits = await page.evaluate(() => {
           document.querySelector(".dialog").scrollTop = 0;
-          const image = document.getElementById("crash-closeup").getBoundingClientRect();
+          const image = document.getElementById("run-score").getBoundingClientRect();
           const dialog = document.querySelector(".dialog").getBoundingClientRect();
           const title = document.getElementById("title").getBoundingClientRect();
           const retry = document.getElementById("play").getBoundingClientRect();
@@ -366,7 +367,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         assert.ok(result.samples.every(sample => sample.pixels.bottom < 468), "visual fall stays above ground");
         assert.deepEqual(result.afterCapsules, result.capsules, "contact snapshot never follows the visual tumble");
         assert.equal(result.settled, result.later, "landing is stationary");
-        assert.equal(result.title, y === 27 ? "NEW HIGH SCORE!" : "ONE MORE TRY?");
+        assert.equal(result.title, y === 27 ? "PERSONAL BEST" : "YOUR SCORE");
       }
       await context.close();
     });
@@ -511,7 +512,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await context.close();
     });
 
-    await t.test("larger decorative retry stays readable without scrolling on portrait and short landscape phones", async () => {
+    await t.test("score-first retry stays readable without scrolling on portrait and short landscape phones", async () => {
       const context = await browser.newContext({ serviceWorkers: "block", reducedMotion: "reduce" });
       await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
       const page = await context.newPage();
@@ -523,7 +524,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         // This fixture disables animation frames; invoke the layout's resize listener normally.
         await page.waitForTimeout(60);
         const layout = await page.evaluate(() => {
-          const dialog = document.querySelector(".dialog"), image = document.getElementById("crash-closeup");
+          const dialog = document.querySelector(".dialog"), image = document.getElementById("run-score");
           const box = image.getBoundingClientRect(), retry = document.getElementById("play").getBoundingClientRect();
           const bounds = dialog.getBoundingClientRect();
           return { width: box.width, height: box.height, overflow: dialog.scrollHeight > dialog.clientHeight,
@@ -534,7 +535,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         assert.equal(layout.overflow, false, JSON.stringify(viewport));
         assert.equal(layout.fits, true, JSON.stringify(viewport));
         if (viewport.width === 360 || viewport.width === 390) {
-          assert.ok(layout.width >= 175 && layout.height >= 128, `enlarged close-up: ${JSON.stringify(layout)}`);
+          assert.ok(layout.height >= 48, `prominent result score: ${JSON.stringify(layout)}`);
         }
         assert.equal(layout.pose.vy, 0);
         assert.equal(layout.pose.finished, true);
@@ -1116,7 +1117,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       assert.equal(await page.locator("#overlay").isHidden(), true);
       await page.locator("#screen").tap({ position: { x: 40, y: 230 } });
       await page.locator("#pause").tap();
-      assert.equal(await page.locator("#title").innerText(), "TAKE A BREATHER");
+      assert.equal(await page.locator("#title").innerText(), "PAUSED");
       await context.close();
     });
 
@@ -1152,7 +1153,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
               const selectors = ["#game", "#score", "#best", "#pause", "#sound", "#manual-open", "#theme-switch", "#leaderboard-open",
                 ".brand", ".edition", ".compact-tagline .eyebrow"];
               if (state !== "playing") selectors.push("#play", "#title");
-              if (state === "over") selectors.push("#crash-closeup");
+              if (state === "over") selectors.push("#run-score");
               const canvas = document.getElementById("game").getBoundingClientRect();
               const brand = document.querySelector(".brand").getBoundingClientRect();
               const edition = document.querySelector(".edition").getBoundingClientRect();
@@ -1435,7 +1436,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await fallback.locator("#play").click();
       await fallback.locator("#manual-open").click();
       assert.equal(await fallback.locator("#manual").evaluate(dialog => dialog.open), true);
-      assert.equal(await fallback.locator("#title").innerText(), "TAKE A BREATHER");
+      assert.equal(await fallback.locator("#title").innerText(), "PAUSED");
       await context.close();
     });
 
@@ -1513,7 +1514,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       }), 12, "all six environment backgrounds and obstacles remain usable offline");
       await page.locator("#play").click();
       assert.equal(await page.locator("#overlay").isHidden(), true);
-      await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?");
+      await page.waitForFunction(() => document.getElementById("title").textContent === "YOUR SCORE");
       await context.setOffline(false);
       await page.reload();
 
@@ -1534,7 +1535,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await context.setOffline(true);
       await page.reload();
       await page.waitForFunction(() => navigator.serviceWorker.controller);
-      assert.equal(await page.locator("#title").innerText(), "TRUMPET FLIGHT");
+      assert.equal(await page.locator("#title").innerText(), "READY TO FLY?");
       await context.setOffline(false);
 
       // Refresh obtains the new coherent shell; another loaded flight never reloads.
@@ -1552,16 +1553,16 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         const reg = await navigator.serviceWorker.getRegistration();
         return reg.active?.state === "activated" && !reg.waiting;
       });
-      assert.equal(await second.locator("#title").innerText(), "TAKE A BREATHER");
+      assert.equal(await second.locator("#title").innerText(), "PAUSED");
       assert.equal(await second.evaluate(() => window.keepFlight), "untouched");
       await waitForAsync(page, async () => {
         const keys = await caches.keys();
         return keys.some(key => key.endsWith(":v2")) && !keys.some(key => key.endsWith(":v1") || key.endsWith(":broken"));
       });
-      assert.equal(Number(await page.locator("#best").innerText()), 9);
+      assert.equal(Number(await page.locator("#best").textContent()), 9);
       await context.setOffline(true);
       await page.reload();
-      assert.equal(await page.locator("#title").innerText(), "TRUMPET FLIGHT");
+      assert.equal(await page.locator("#title").innerText(), "READY TO FLY?");
       assert.equal(await page.locator("#update").count(), 0);
       assert.deepEqual(errors, []);
       await context.close();
@@ -1625,7 +1626,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           })
         }));
         assert.equal(await page.locator("#update").count(), 0);
-        assert.equal(Number(await page.locator("#best").innerText()), 17);
+        assert.equal(Number(await page.locator("#best").textContent()), 17);
         assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
         await page.locator("#manual-open").click();
         assert.equal(await page.locator("#manual").evaluate(dialog => dialog.open), true);
@@ -1644,9 +1645,9 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         await context.setOffline(true);
         await page.reload();
         assert.equal(await page.locator("body").getAttribute("data-release"), "v5");
-        assert.equal(Number(await page.locator("#best").innerText()), 17);
+        assert.equal(Number(await page.locator("#best").textContent()), 17);
         await page.locator("#play").click();
-        await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?");
+        await page.waitForFunction(() => document.getElementById("title").textContent === "YOUR SCORE");
         await context.setOffline(false);
         // A failed online navigation must not replace a healthy offline shell with an error page.
         failNavigation = true;

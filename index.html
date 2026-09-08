@@ -318,6 +318,8 @@ body .shell {
 .frame-rim { position: absolute; inset: 0; z-index: 2; background: var(--cabinet-frame) center / 100% 100% no-repeat; pointer-events: none; }
 .bezel-insert { position: absolute; inset: 0; z-index: 3; background: var(--cabinet-bezel) center / 100% 100% no-repeat; pointer-events: none; }
 .shell .screen {
+  --screen-bg: #14252c; --screen-text: #fff6db; --screen-soft: #b5c6c8;
+  --screen-gold: #ffd27b; --screen-action: #a62f43;
   position: absolute; left: var(--screen-left); top: var(--screen-top); width: var(--screen-width); height: var(--screen-height);
   max-width: none; border: 0; border-radius: 0; overflow: hidden; background: #182326;
   box-shadow: none; container-type: size; touch-action: none;
@@ -341,27 +343,55 @@ body .shell {
 .shell .scorebar .best { text-align: right; }
 .shell .scorebar .stat-label { max-width: none; color: inherit; font-size: 9px; line-height: 1.2; letter-spacing: 1px; }
 .shell .scorebar .stat-number { font-size: clamp(18px, 7cqw, 26px); line-height: 1; margin-top: 3px; color: inherit; }
+.shell .scorebar .best .stat-number { font-size: clamp(14px, 5cqw, 20px); }
 .mute-indicator {
-  position: absolute; top: calc(4% + 7px); left: 50%; z-index: 2; transform: translateX(-50%);
+  position: absolute; top: calc(4% + 7px); left: 50%; z-index: 3; transform: translateX(-50%);
   width: 22px; height: 22px; color: #fff6db; pointer-events: none;
   filter: drop-shadow(0 1px 2px #172126) drop-shadow(1px 0 1px #172126);
 }
 .mute-indicator svg { display: block; width: 100%; height: 100%; }
-.shell .overlay { padding: 48px 12px 10px; }
-.shell .dialog, .shell .dialog.crashed { width: min(100%, 316px); max-height: 100%; padding: 12px; }
-.shell .rider-preview { width: auto; height: clamp(32px, 17cqh, 80px); margin: 0 auto; }
-.shell .dialog .pixel-title, .shell .dialog.crashed .pixel-title { font-size: clamp(16px, 7cqw, 24px); margin: 6px 0; }
-.shell .dialog p, .shell .dialog.crashed p { font-size: 11px; line-height: 1.4; margin: 6px 0 8px; }
-.shell .dialog .primary, .shell .dialog.crashed .primary { min-height: 44px; padding: 8px; }
-.shell .dialog .prompt, .shell .dialog.crashed .prompt { margin-top: 8px; font-size: 8px; letter-spacing: .5px; }
-.shell .dialog .crash-shot { margin-bottom: 8px; }
-.shell .dialog .crash-shot canvas { width: auto; max-height: clamp(42px, 40cqh, 172px); }
-.shell .crash-shot figcaption { font-size: 8px; letter-spacing: .5px; }
-.shell .dialog.crashed { display: flex; flex-direction: column; overflow: hidden; }
-.shell .dialog.crashed > :not(.crash-shot) { flex-shrink: 0; }
-.shell .dialog.crashed .crash-shot { display: flex; flex-direction: column; min-height: 54px; flex-shrink: 1; }
-.shell .dialog.crashed .crash-shot canvas { min-height: 0; flex-shrink: 1; object-fit: contain; }
-.shell .dialog.crashed .crash-shot figcaption { flex-shrink: 0; }
+.screen-content:has(#overlay:not([hidden])) > .scorebar { visibility: hidden; }
+.shell .overlay {
+  z-index: 2; padding: clamp(10px, 4cqw, 20px); background: var(--screen-bg);
+  align-items: stretch; justify-content: stretch; backdrop-filter: none;
+}
+.shell .overlay[data-state="paused"] { background: rgb(20 37 44 / .78); }
+.shell .dialog, .shell .dialog.crashed {
+  display: flex; flex-direction: column; width: 100%; height: 100%; max-height: none;
+  margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none;
+  overflow: hidden; background: transparent; color: var(--screen-text); text-shadow: none;
+  font-family: ui-monospace, "Cascadia Code", "Courier New", monospace;
+}
+.run-summary { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; }
+.shell .rider-preview { flex: none; width: 136px; height: 120px; max-height: 28cqh; object-fit: contain; margin: 0; }
+.shell .dialog .pixel-title, .shell .dialog.crashed .pixel-title {
+  margin: 0; font: 700 clamp(16px, 5cqw, 22px)/1.2 monospace; color: inherit; letter-spacing: 0; text-shadow: none;
+}
+.shell .dialog .run-score { font: 800 clamp(48px, 22cqw, 96px)/1 monospace; font-variant-numeric: tabular-nums; }
+.shell .dialog p { margin: 0; color: var(--screen-soft); font: 12px/1.4 monospace; }
+.shell .dialog .run-best { font-size: 12px; }
+.run-footer { flex: none; display: flex; flex-direction: column; gap: 12px; }
+.shell .dialog .primary, .shell .dialog.crashed .primary, #leaderboard-publish {
+  min-height: 48px; padding: 10px; border: 0; border-radius: 2px;
+  background: var(--screen-action); color: var(--screen-text); box-shadow: none;
+  font: 700 14px/1.2 monospace; letter-spacing: .04em; cursor: pointer;
+}
+.shell .dialog .primary:focus-visible { outline: 2px solid var(--screen-gold); outline-offset: -4px; }
+.shell .overlay[data-record="true"] :is(#title, #run-score) { color: var(--screen-gold); }
+.run-ranking { flex: none; padding-top: 10px; border-top: 1px solid #435c62; }
+.shell .run-ranking p { font-size: 10px; color: var(--screen-gold); }
+#run-ranking-actions { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
+#run-ranking-actions button {
+  min-height: 44px; padding: 6px 10px; background: transparent; border: 1px solid #637b80; border-radius: 2px;
+  color: var(--screen-text); font: 700 12px/1.2 monospace; cursor: pointer; touch-action: manipulation;
+}
+#run-ranking-actions #run-change { border-color: transparent; font-size: 11px; color: var(--screen-soft); }
+#run-ranking-actions button:focus-visible { outline: 2px solid var(--screen-gold); outline-offset: -2px; }
+#run-ranking-actions button:disabled { opacity: .6; cursor: wait; }
+@media (hover: hover) and (pointer: fine) {
+  .shell .dialog .primary:hover, #leaderboard-publish:hover { background: #be4054; color: var(--screen-text); }
+  #run-ranking-actions button:hover:not(:disabled) { background: #29414a; }
+}
 .control-deck { --deck-render-height: max(56px, var(--deck-height, 64px)); position: relative; height: var(--deck-render-height); background: var(--cabinet-deck) center / 100% 100% no-repeat; container-type: inline-size; }
 .shell .tools { --control-size: max(44px, 11cqw); position: absolute; inset: 0; display: block; }
 .shell .tool {
@@ -420,7 +450,8 @@ body .shell {
 .manual .instructions { border-radius: 0; }
 .screen-content:has(.score-screen[open]) > :not(.score-screen) { visibility: hidden; }
 .score-screen {
-  --score-bg: #14252c; --score-text: #fff6db; --score-soft: #b5c6c8; --score-gold: #ffd27b;
+  --score-bg: var(--screen-bg); --score-text: var(--screen-text);
+  --score-soft: var(--screen-soft); --score-gold: var(--screen-gold);
   position: absolute; inset: 0; z-index: 4; width: 100%; height: 100%; max-width: none; max-height: none;
   margin: 0; padding: clamp(8px, 3cqw, 16px); border: 0; border-radius: 0;
   background: var(--score-bg); color: var(--score-text); overflow: hidden; box-sizing: border-box;
@@ -458,7 +489,6 @@ body .shell {
 #leaderboard-list .local-date { font: 11px/1.4 sans-serif; color: var(--score-soft); }
 #leaderboard-empty { margin: 24px 4px; max-width: 25ch; color: var(--score-soft); font: 14px/1.6 sans-serif; }
 #leaderboard-status { flex: none; margin: 5px 0 0; color: var(--score-soft); font: 11px/1.4 sans-serif; }
-#leaderboard-publish { background: var(--score-gold); border-color: var(--score-gold); color: var(--score-bg); }
 .score-screen[data-view="entry"] > :not(#leaderboard-entry) { display: none; }
 #leaderboard-entry { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; text-align: center; }
 .score-entry-heading { flex: none; padding-top: 8px; }
@@ -562,15 +592,16 @@ body .shell {
   :root[data-cabinet-view="handoff"] .cabinet { animation: none; }
 }
 @container (max-height: 400px) {
-  .shell .dialog.crashed p, .shell .dialog.crashed .prompt { display: none; }
+  .run-summary { gap: 8px; }
+  .run-footer { gap: 8px; }
+  .shell .dialog .run-score { font-size: clamp(40px, 18cqh, 72px); }
 }
 @container (max-height: 320px) {
-  .shell .overlay { padding: 36px 8px 6px; }
-  .shell .dialog, .shell .dialog.crashed { padding: 8px; }
-  .shell .dialog p, .shell .dialog .prompt { display: none; }
-  .shell .dialog .pixel-title, .shell .dialog.crashed .pixel-title { font-size: 16px; margin: 4px 0; }
-  .shell .dialog .crash-shot canvas { max-height: 28cqh; }
-  .shell .crash-shot figcaption { font-size: 7px; margin-top: 3px; }
+  .shell .overlay { padding: 8px; }
+  .run-summary { gap: 6px; }
+  .run-ranking { padding-top: 6px; }
+  .shell .dialog .pixel-title { font-size: 16px; }
+  .shell .dialog .primary, .shell .dialog.crashed .primary, #leaderboard-publish { min-height: 44px; }
 }
 @media (max-width: 600px) {
   body .shell { gap: 8px; padding-top: max(8px, env(safe-area-inset-top)); padding-left: max(4px, env(safe-area-inset-left)); padding-right: max(4px, env(safe-area-inset-right)); }
@@ -671,20 +702,34 @@ body .shell {
             <path d="M3 9h4l5-4v14l-5-4H3Z M16 9l6 6m0-6-6 6"/>
           </svg>
         </span>
-        <div class="overlay" id="overlay">
-          <div class="dialog">
-            <canvas id="rider-preview" class="rider-preview" width="136" height="120" aria-label="Pocket Trump-inspired rider on a backward-facing golden trumpet, with a full comb-over and fluttering tie"></canvas>
-            <div class="pixel-title" id="title">TRUMPET FLIGHT</div>
-            <figure class="crash-shot" id="crash-shot" hidden>
-              <canvas id="crash-image" width="280" height="180" hidden aria-hidden="true"></canvas>
-              <canvas id="crash-closeup" width="280" height="208" role="img" aria-label="Collision close-up with a decorative surprised expression"></canvas>
-              <figcaption class="mono">IMPACT / COMIC REACTION</figcaption>
-            </figure>
-            <p id="message">Stay airborne. Dodge the pipes.<br>Your next high score starts here.</p>
-            <button class="primary mono" id="play">LET'S FLY &gt;</button>
-            <div class="prompt mono" id="prompt">OR PRESS SPACE TO START</div>
+        <!-- One electronic screen language: score first, one stable primary action,
+             and optional ranking feedback that never blocks the next flight. -->
+        <div class="overlay" id="overlay" data-state="ready">
+          <div class="dialog run-screen">
+            <div class="run-summary">
+              <canvas id="rider-preview" class="rider-preview" width="136" height="120" aria-label="Pocket Trump-inspired rider on a backward-facing golden trumpet, with a full comb-over and fluttering tie"></canvas>
+              <h2 class="pixel-title" id="title">READY TO FLY?</h2>
+              <div class="run-score" id="run-score" hidden></div>
+              <p class="run-best" id="run-best" hidden></p>
+              <p id="message">Tap or Space to flap.</p>
+            </div>
+            <div class="run-footer">
+              <div class="run-ranking" id="run-ranking" hidden>
+                <p id="run-ranking-status" role="status"></p>
+                <div id="run-ranking-actions">
+                  <button id="run-save" type="button">Save score</button>
+                  <button id="run-change" type="button">Change initials</button>
+                </div>
+              </div>
+              <button class="primary mono" id="play">PLAY</button>
+              <div class="prompt mono" id="prompt" hidden></div>
+            </div>
           </div>
          </div>
+          <div id="crash-shot" hidden aria-hidden="true">
+            <canvas id="crash-image" width="280" height="180"></canvas>
+            <canvas id="crash-closeup" width="280" height="208"></canvas>
+          </div>
           <dialog class="score-screen" id="leaderboard" aria-labelledby="leaderboard-title">
             <div class="score-heading">
               <h2 id="leaderboard-title">TOP 10</h2>
@@ -712,7 +757,7 @@ body .shell {
             </div>
             <form id="leaderboard-entry" hidden>
               <div class="score-entry-heading">
-                <h2 id="leaderboard-entry-title">NEW HIGH SCORE</h2>
+                <h2 id="leaderboard-entry-title">TOP 10 QUALIFIER</h2>
                 <p id="leaderboard-entry-score"></p>
               </div>
               <input type="hidden" id="leaderboard-name" name="arcadeName" value="AAA">
@@ -2305,15 +2350,22 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     $("sound-mark").setAttribute("d", muted ? "m16 9 6 6m0-6-6 6" : "M15 8q5 4 0 8M18 4q9 8 0 16");
     if (!muted && await prepareAudio()) tone(392, .16);
   }
-  function overlay(title, message, button, prompt) {
+  function overlay(record = false, previousBest = best) {
     const crashed = state === "over";
-    $("crash-shot").hidden = !crashed;
-    $("crash-shot").parentElement.classList.toggle("crashed", crashed);
-    portrait.hidden = crashed;
-    $("title").textContent = title;
-    $("message").textContent = message;
-    $("play").textContent = button;
-    $("prompt").textContent = prompt;
+    const paused = state === "paused";
+    $("overlay").dataset.state = crashed ? "result" : paused ? "paused" : "ready";
+    $("overlay").dataset.record = String(crashed && record);
+    document.querySelector(".run-screen").classList.toggle("crashed", crashed);
+    portrait.hidden = crashed || paused;
+    $("title").textContent = crashed ? (record ? "PERSONAL BEST" : "YOUR SCORE") : paused ? "PAUSED" : "READY TO FLY?";
+    $("run-score").hidden = !crashed;
+    $("run-score").textContent = String(score);
+    $("run-best").hidden = paused || (record ? previousBest === 0 : best === 0 && !crashed);
+    $("run-best").textContent = record ? `PREVIOUS BEST ${previousBest}` : `YOUR BEST ${best}`;
+    $("message").hidden = crashed || (!paused && best > 0);
+    $("message").textContent = paused ? `SCORE ${score}` : "Tap or Space to flap.";
+    $("play").textContent = crashed ? "FLY AGAIN" : paused ? "RESUME" : "PLAY";
+    $("prompt").hidden = true;
     $("overlay").hidden = false;
   }
   function flap() { bird.vy = -310; flapSound(); }
@@ -2350,7 +2402,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     if (state === "playing") {
       state = "paused";
       silence();
-      overlay("TAKE A BREATHER", "Your tiny adventure can wait.", "KEEP FLYING >", "P OR SPACE TO RESUME");
+      overlay();
       $("status").textContent = "FLIGHT ON HOLD";
       $("pause").setAttribute("aria-label", "Resume game");
     } else if (state === "paused") {
@@ -2390,7 +2442,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     closeupCtx.restore();
     state = "over"; deadAt = performance.now(); $("pause").disabled = true;
     crashSound();
-    const record = score > best;
+    const previousBest = best, record = score > best;
     if (record) {
       best = score;
       if (storageAvailable) {
@@ -2400,7 +2452,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     }
     updateScore();
     document.dispatchEvent(new CustomEvent("flightcomplete", { detail: { score, best } }));
-    overlay(record ? "NEW HIGH SCORE!" : "ONE MORE TRY?", "You cleared " + score + (score === 1 ? " pipe. " : " pipes. ") + (record ? "A golden performance." : "A little rhythm goes a long way."), "FLY AGAIN >", "SPACE OR TAP TO TRY AGAIN");
+    overlay(record, previousBest);
     // Keep the collision bird/capsules and crop immutable; only this visual pose falls.
     death = { elapsed: 0, fromY: bird.y, fromTilt: riderTilt(), y: bird.y, vy: bird.vy, tilt: riderTilt(),
       landed: false, landedAt: null, finished: false, dust: [] };
@@ -2886,7 +2938,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     if (state === "playing" || (death && !death.finished)) pause();
   });
   document.addEventListener("cabinetleave", silence);
-  overlay("TRUMPET FLIGHT", "Golden brass. Windswept hair. Keep this tiny air solo in the sky.", "LET'S TOOT >", "OR PRESS SPACE TO START");
+  overlay();
   requestAnimationFrame(frame);
 })();
 </script>
@@ -8097,7 +8149,7 @@ This typically indicates that your device does not have a healthy Internet conne
     let records = [], writable = true, localStatus = "SAVED ON THIS DEVICE";
     let mode = api()?.enabled ? "daily" : "local", remote = null, remoteStatus = "", busy = false;
     let candidate = null, entryFlight = null, reading = null, publishing = false, savedTag = "";
-    let openingEntry = false, page = 0, compact = false;
+    let openingEntry = false, editingTag = false, publishingFlight = null, page = 0, compact = false;
     const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     const characters = [...document.querySelectorAll(".initial-character")];
     function unavailable(error, corrupt = false) {
@@ -8154,6 +8206,24 @@ This typically indicates that your device does not have a healthy Internet conne
       item.append(value, name);
       return item;
     }
+    function boardLabel(kinds) {
+      return kinds.length === 2 ? "DAILY + ALL-TIME" : kinds[0] === "daily" ? "DAILY" : "ALL-TIME";
+    }
+    function renderRanking() {
+      const visible = candidate?.offered && savedTag &&
+        document.querySelector(".cabinet").dataset.flightState === "over";
+      $("run-ranking").hidden = !visible;
+      if (!visible) return;
+      const saving = publishingFlight === candidate;
+      const qualifying = eligible();
+      $("run-ranking-status").textContent = saving ? "Saving your score..."
+        : candidate.feedback || (!navigator.onLine ? "Offline / saved on this device"
+        : qualifying.length ? `TOP 10 QUALIFIER / ${boardLabel(qualifying)}` : "Saved on this device");
+      $("run-ranking-actions").hidden = Boolean(candidate.finished) || (!saving && qualifying.length === 0);
+      $("run-save").textContent = saving ? "Saving..." : `Save as ${savedTag}`;
+      $("run-save").disabled = publishing;
+      $("run-change").disabled = publishing;
+    }
     function render() {
       records.sort((a, b) => b.score - a.score || (b.at ?? 0) - (a.at ?? 0));
       records = records.slice(0, 10);
@@ -8188,6 +8258,7 @@ This typically indicates that your device does not have a healthy Internet conne
       $("leaderboard-status").textContent = mode === "local" ? localStatus : remoteStatus ||
         (window.TRUMPET_FIREBASE?.emulators ? "LOCAL PREVIEW / NOT LIVE" :
           mode === "daily" ? "RESETS 00:00 UTC" : "ONE BEST PER PLAYER");
+      renderRanking();
     }
 
     function loadBoards() {
@@ -8211,6 +8282,7 @@ This typically indicates that your device does not have a healthy Internet conne
     }
     function closeEntry() {
       entryFlight = null;
+      editingTag = false;
       $("leaderboard-entry").hidden = true;
       $("leaderboard-results").hidden = false;
       document.querySelector(".score-tabs").hidden = false;
@@ -8218,10 +8290,10 @@ This typically indicates that your device does not have a healthy Internet conne
       $("leaderboard").setAttribute("aria-labelledby", "leaderboard-title");
     }
     function choose(kind, focus = false) {
-      if (publishing) return;
+      if (publishing && entryFlight) return;
       mode = kind; page = 0; closeEntry(); render();
       if (focus) $("scores-" + mode).focus({ preventScroll: true });
-      if (mode !== "local") loadBoards();
+      if (mode !== "local" && !publishing) loadBoards();
     }
     for (const kind of boards) {
       $("scores-" + kind).addEventListener("click", () => choose(kind));
@@ -8244,12 +8316,15 @@ This typically indicates that your device does not have a healthy Internet conne
       if (next !== compact) { compact = next; page = 0; render(); }
     }).observe($("screen"));
     document.addEventListener("scoreboardopen", () => {
-      if (openingEntry || publishing) return;
+      if (openingEntry || (publishing && entryFlight)) return;
       closeEntry(); page = 0; render();
-      if (mode !== "local") loadBoards();
+      if (mode !== "local" && !publishing) loadBoards();
     });
     $("leaderboard").addEventListener("close", () => {
-      if (!publishing && entryFlight) { candidate = null; closeEntry(); }
+      if (!publishing && entryFlight) {
+        if (!editingTag) candidate = null;
+        closeEntry(); renderRanking();
+      }
     });
     function setTag(value) {
       $("leaderboard-name").value = value;
@@ -8283,12 +8358,8 @@ This typically indicates that your device does not have a healthy Internet conne
       else return;
       event.preventDefault(); event.stopPropagation();
     }));
-    function maybeOffer() {
-      const qualifying = eligible();
-      if (!candidate?.checked || candidate.offered || !qualifying.length || document.querySelector("dialog[open]") ||
-          document.querySelector(".cabinet").dataset.flightState !== "over" || $("overlay").hidden || document.hidden ||
-          document.documentElement.dataset.cabinetView === "intro") return;
-      candidate.offered = true;
+    function openEntry(qualifying, editing = false) {
+      editingTag = editing;
       entryFlight = candidate;
       openingEntry = true;
       $("leaderboard-open").click();
@@ -8298,13 +8369,23 @@ This typically indicates that your device does not have a healthy Internet conne
       $("leaderboard-results").hidden = true;
       document.querySelector(".score-tabs").hidden = true;
       $("leaderboard-entry").hidden = false;
-      $("leaderboard-entry-score").textContent = `${candidate.score} POINTS / ${qualifying.length === 2 ? "DAILY + ALL-TIME" : qualifying[0] === "daily" ? "DAILY" : "ALL-TIME"}`;
+      $("leaderboard-entry-title").textContent = editing ? "YOUR INITIALS" : "TOP 10 QUALIFIER";
+      $("leaderboard-entry-score").textContent = `${candidate.score} POINTS / ${boardLabel(qualifying)}`;
       setTag(savedTag || "AAA");
       $("leaderboard-submit-status").textContent = "";
       $("leaderboard-submit-status").hidden = true;
       $("leaderboard-publish").hidden = false;
-      $("leaderboard-cancel").textContent = "Skip";
+      $("leaderboard-cancel").textContent = editing ? "Cancel" : "Skip";
       characters[0].focus({ preventScroll: true });
+    }
+    function maybeOffer() {
+      const qualifying = eligible();
+      if (!candidate?.checked || candidate.offered || candidate.suppressOffer || !qualifying.length || document.querySelector("dialog[open]") ||
+          document.querySelector(".cabinet").dataset.flightState !== "over" || $("overlay").hidden || document.hidden ||
+          document.documentElement.dataset.cabinetView === "intro") return;
+      candidate.offered = true;
+      if (savedTag) renderRanking();
+      else openEntry(qualifying);
     }
     async function checkFlight(flight) {
       const result = await loadBoards();
@@ -8312,19 +8393,21 @@ This typically indicates that your device does not have a healthy Internet conne
     }
     $("leaderboard-cancel").addEventListener("click", () => {
       if (publishing) return;
-      candidate = null; closeEntry(); $("leaderboard").close("retry");
+      if (!editingTag) candidate = null;
+      closeEntry(); renderRanking(); $("leaderboard").close("retry");
     });
-    $("leaderboard-entry").addEventListener("submit", async event => {
-      event.preventDefault();
-      if (publishing || !entryFlight) return;
-      let name;
-      try { name = api().normalizeName($("leaderboard-name").value); }
-      catch (error) { $("leaderboard-submit-status").hidden = false; $("leaderboard-submit-status").textContent = error.message; return; }
-      const submitted = entryFlight, flight = { score: submitted.score, completedAt: submitted.completedAt, name };
+    async function publishScore(submitted, name) {
+      if (publishing || !submitted) return;
+      const flight = { score: submitted.score, completedAt: submitted.completedAt, name };
+      const focusRetry = document.activeElement === $("run-save");
       publishing = true;
+      publishingFlight = submitted;
+      submitted.feedback = "";
       for (const button of $("leaderboard-entry").querySelectorAll("button")) button.disabled = true;
       characters.forEach(node => node.setAttribute("aria-disabled", "true"));
       $("leaderboard-publish").textContent = "Saving...";
+      renderRanking();
+      if (focusRetry) $("play").focus({ preventScroll: true });
       try {
         const result = await api().submit(flight);
         remote = result;
@@ -8332,16 +8415,13 @@ This typically indicates that your device does not have a healthy Internet conne
         try { localStorage.setItem("trumpet-flight-arcade-tag", name); }
         catch (error) { console.warn("Arcade tag cannot be remembered:", error); }
         if (result.accepted.length) {
-          mode = result.accepted.includes("daily") ? "daily" : "allTime";
+          if (!$("leaderboard").open || entryFlight === submitted) {
+            mode = result.accepted.includes("daily") ? "daily" : "allTime";
+          }
           remoteStatus = "";
-        } else {
-          $("leaderboard-submit-status").hidden = false;
-          $("leaderboard-submit-status").textContent = "The board moved ahead. Your score is saved on this device.";
-          $("leaderboard-publish").hidden = true;
-          $("leaderboard-cancel").textContent = "Continue";
-          return;
-        }
-        if (candidate === submitted) candidate = null;
+          submitted.feedback = `Saved as ${name} / ${boardLabel(result.accepted)}`;
+        } else submitted.feedback = "The board moved ahead. Kept on this device.";
+        submitted.finished = true;
         if (entryFlight === submitted) {
           closeEntry();
           if ($("leaderboard").open) {
@@ -8349,20 +8429,39 @@ This typically indicates that your device does not have a healthy Internet conne
           }
         }
       } catch (error) {
-        $("leaderboard-submit-status").hidden = false;
-        $("leaderboard-submit-status").textContent = error.code === "global/submission-unconfirmed"
+        submitted.feedback = error.code === "global/submission-unconfirmed"
           ? "Not confirmed. Check Top 10 before saving again."
           : error.code === "global/permission" ? "Could not save. Check your clock and try again."
           : error.code === "global/quota" ? "Daily service limit reached. Try later."
           : "Saving is unavailable. Your score is kept on this device.";
+        if (entryFlight === submitted) {
+          $("leaderboard-submit-status").hidden = false;
+          $("leaderboard-submit-status").textContent = submitted.feedback;
+        }
         console.warn("Global score submission failed:", error);
       } finally {
         publishing = false;
+        publishingFlight = null;
         for (const button of $("leaderboard-entry").querySelectorAll("button")) button.disabled = false;
         characters.forEach(node => node.removeAttribute("aria-disabled"));
         $("leaderboard-publish").textContent = "Save";
-        render();
+        render(); maybeOffer();
       }
+    }
+    $("leaderboard-entry").addEventListener("submit", event => {
+      event.preventDefault();
+      if (publishing || !entryFlight) return;
+      let name;
+      try { name = api().normalizeName($("leaderboard-name").value); }
+      catch (error) { $("leaderboard-submit-status").hidden = false; $("leaderboard-submit-status").textContent = error.message; return; }
+      publishScore(entryFlight, name);
+    });
+    $("run-save").addEventListener("click", () => {
+      if (!publishing && savedTag && eligible().length) publishScore(candidate, savedTag);
+    });
+    $("run-change").addEventListener("click", () => {
+      const qualifying = eligible();
+      if (qualifying.length && !publishing) openEntry(qualifying, true);
     });
 
     document.addEventListener("flightcomplete", event => {
@@ -8384,16 +8483,19 @@ This typically indicates that your device does not have a healthy Internet conne
       if (event.detail === "playing") candidate = null;
       render(); maybeOffer();
     });
-    document.addEventListener("flightretryready", maybeOffer);
-    document.addEventListener("cabinetleave", () => { candidate = null; });
+    document.addEventListener("flightretryready", () => { renderRanking(); maybeOffer(); });
+    document.addEventListener("cabinetleave", () => { candidate = null; renderRanking(); });
     document.addEventListener("flightmanualopen", () => {
-      if (!openingEntry) candidate = null;
+      if (!openingEntry && candidate) candidate.suppressOffer = true;
     }, { capture: true });
     window.addEventListener("offline", () => {
       if (mode !== "local") remoteStatus = "Offline. Your scores stay on this device.";
       render();
     });
-    window.addEventListener("online", () => { if ($("leaderboard").open && !entryFlight && mode !== "local") loadBoards(); });
+    window.addEventListener("online", () => {
+      renderRanking();
+      if ($("leaderboard").open && !entryFlight && mode !== "local") loadBoards();
+    });
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden && $("leaderboard").open && !entryFlight) {
         render(); if (mode !== "local") loadBoards();

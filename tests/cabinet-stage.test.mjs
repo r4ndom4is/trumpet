@@ -326,7 +326,7 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
         await page.locator("#enter-cabinet").click();
         await entered(page);
         assert.equal(await page.locator(".cabinet").getAttribute("data-flight-state"), "over");
-        assert.equal(await page.locator("#title").textContent(), "ONE MORE TRY?");
+        assert.equal(await page.locator("#title").textContent(), "YOUR SCORE");
       } finally {
         await context.close();
       }
