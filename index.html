@@ -303,7 +303,7 @@ body .shell {
   position: relative; aspect-ratio: 696 / 145; background: var(--cabinet-hood) center / 100% 100% no-repeat;
   display: flex; align-items: center; justify-content: center; padding: 0 12% 1.5%; container-type: inline-size;
 }
-.marquee span { color: #4d211b; font-weight: 800; font-size: clamp(17px, 8cqw, 34px); letter-spacing: -.04em; }
+.marquee span { color: #4d211b; font-weight: 800; font-size: max(17px, 8cqw); letter-spacing: -.04em; }
 .shell .playfield { position: relative; display: block; width: 100%; aspect-ratio: var(--frame-ratio, .9218); overflow: visible; }
 .frame-rim { position: absolute; inset: 0; z-index: 2; background: var(--cabinet-frame) center / 100% 100% no-repeat; pointer-events: none; }
 .shell .screen {
@@ -333,22 +333,22 @@ body .shell {
 .shell .dialog .crash-shot canvas { width: auto; max-height: clamp(42px, 40cqh, 172px); }
 .shell .crash-shot figcaption { font-size: 8px; letter-spacing: .5px; }
 .control-deck { position: relative; height: max(56px, var(--deck-height, 64px)); background: var(--cabinet-deck) center / 100% 100% no-repeat; container-type: inline-size; }
-.shell .tools { position: absolute; inset: 0; display: block; }
+.shell .tools { --control-size: max(44px, 11cqw); position: absolute; inset: 0; display: block; }
 .shell .tool {
-  position: absolute; top: calc(36.444922% - 22px); width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+  position: absolute; top: calc(36.444922% - var(--control-size) / 2); width: var(--control-size); height: var(--control-size); min-width: 44px; min-height: 44px;
   padding: 0; border: 0; border-radius: 50%; background: none; color: inherit; box-shadow: none;
   touch-action: manipulation; opacity: 1;
 }
-.shell #sound { left: calc(34.74% - max(44px, 12.45cqw) - 22px); }
-.shell #theme-switch { left: calc(34.74% - 22px); }
-.shell #leaderboard-open { left: calc(34.74% + max(44px, 12.45cqw) - 22px); }
-.shell #pause { left: calc(78.9% - 22px); }
+.shell #sound { left: calc(34.74% - max(44px, 12.45cqw) - var(--control-size) / 2); }
+.shell #theme-switch { left: calc(34.74% - var(--control-size) / 2); }
+.shell #leaderboard-open { left: calc(34.74% + max(44px, 12.45cqw) - var(--control-size) / 2); }
+.shell #pause { left: calc(78.9% - var(--control-size) / 2); }
 .shell .tool svg, .control-name { display: none; }
 .shell .tool:hover { background: rgb(255 240 195 / .09); }
 .shell .tool:active:not(:disabled) { background: rgb(38 14 10 / .18); }
 .shell .tool:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 1px; background: rgb(255 246 220 / .18); }
 .shell #sound[aria-pressed="false"]::after, .shell #pause[aria-label="Resume game"]::after {
-  content: ""; position: absolute; width: 6px; height: 6px; bottom: 1px; left: 19px;
+  content: ""; position: absolute; width: 6px; height: 6px; bottom: 1px; left: calc(50% - 3px);
   border-radius: 50%; background: #ffcc6d; box-shadow: 0 0 3px #a7211e;
 }
 .lower-cabinet { position: relative; height: var(--apron-height, 64px); overflow: hidden; background: var(--cabinet-apron) top center / 100% auto no-repeat; }
@@ -2713,7 +2713,7 @@ body .shell {
   new MutationObserver(loadArtwork).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   loadArtwork();
   const landscape = matchMedia("(max-height: 560px) and (orientation: landscape)");
-  const compact = matchMedia("(max-width: 900px)");
+  const compact = matchMedia("(max-width: 600px)");
   // Preserve the original 448 x 512 game world. Only the cabinet frame flexes to fit it.
   const frameHeight = .8455334 * 512 / 448 / .8907378;
   cabinet.style.setProperty("--frame-ratio", String(1 / frameHeight));
@@ -2725,7 +2725,8 @@ body .shell {
     }
     const hood = 145 / 696, deck = 124 / 696, apron = 254 / 696;
     const cropped = compact.matches;
-    let width = Math.min(main.clientWidth, 480, (height - (cropped ? 64 : 0)) / (hood + frameHeight + deck + (cropped ? 0 : apron)));
+    const availableWidth = cropped ? Math.min(main.clientWidth, 480) : main.clientWidth;
+    let width = Math.min(availableWidth, (height - (cropped ? 64 : 0)) / (hood + frameHeight + deck + (cropped ? 0 : apron)));
     if (width * deck < 56) width = Math.min(width, (height - 56 - (cropped ? 64 : 0)) / (hood + frameHeight + (cropped ? 0 : apron)));
     width = Math.max(1, width);
     cabinet.style.setProperty("--cabinet-width", `${width}px`);
