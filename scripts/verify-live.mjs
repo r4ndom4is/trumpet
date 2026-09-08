@@ -20,7 +20,7 @@ try {
   assert.equal(await page.locator(".marquee").innerText(), "trumpet flight.");
   const cachedArt = await page.evaluate(async () => {
     const keys = await caches.keys();
-    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v18")));
+    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v19")));
     return (await cache.keys()).filter(request => request.url.includes("/assets/cabinet/v2/")).map(request => new URL(request.url).pathname.split("/").at(-1)).sort();
   });
   assert.deepEqual(cachedArt, (await readdir(new URL("../assets/cabinet/v2/", import.meta.url))).filter(file => file.endsWith(".webp")).sort());
@@ -111,6 +111,23 @@ try {
   assert.match(await page.locator("#leaderboard").innerText(), /No accounts, no uploads/);
   await page.locator("#leaderboard-close").tap();
   await page.screenshot({ path: "test-results/live-offline-retry.png", fullPage: true });
+  const desktop = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: "no-preference" });
+  const desktopPage = await desktop.newPage();
+  desktopPage.on("pageerror", error => errors.push(error.message));
+  await desktopPage.goto(url);
+  await desktopPage.locator("#enter-cabinet").click();
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "powering");
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "play");
+  await desktopPage.reload();
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "intro" &&
+    !document.getElementById("enter-cabinet").disabled);
+  assert.equal(await desktopPage.locator(".cabinet").getAttribute("data-power"), "off");
+  await desktopPage.locator("#skip-arrival").click();
+  await desktopPage.locator("#pause").hover();
+  assert.equal(await desktopPage.locator("#pause").evaluate(node => getComputedStyle(node).cursor), "pointer");
+  await desktopPage.locator("#manual-open").hover();
+  await desktopPage.waitForFunction(() => getComputedStyle(document.getElementById("manual-open")).filter === "brightness(1.09)");
+  await desktop.close();
   assert.deepEqual(errors, []);
   console.log(`Live HTTPS app, matching source, viewport fit, remembered theme, manual, manifest/icons, installability and offline gameplay verified: ${url}`);
 } finally { await browser.close(); }

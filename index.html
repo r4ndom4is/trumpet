@@ -357,21 +357,28 @@ body .shell {
 .shell .dialog .crash-shot { margin-bottom: 8px; }
 .shell .dialog .crash-shot canvas { width: auto; max-height: clamp(42px, 40cqh, 172px); }
 .shell .crash-shot figcaption { font-size: 8px; letter-spacing: .5px; }
-.control-deck { position: relative; height: max(56px, var(--deck-height, 64px)); background: var(--cabinet-deck) center / 100% 100% no-repeat; container-type: inline-size; }
+.control-deck { --deck-render-height: max(56px, var(--deck-height, 64px)); position: relative; height: var(--deck-render-height); background: var(--cabinet-deck) center / 100% 100% no-repeat; container-type: inline-size; }
 .shell .tools { --control-size: max(44px, 11cqw); position: absolute; inset: 0; display: block; }
 .shell .tool {
   position: absolute; top: calc(36.444922% - var(--control-size) / 2); width: var(--control-size); height: var(--control-size); min-width: 44px; min-height: 44px;
   padding: 0; border: 0; border-radius: 50%; background: none; color: inherit; box-shadow: none;
-  touch-action: manipulation; opacity: 1;
+  touch-action: manipulation; opacity: 1; cursor: pointer;
+  left: calc(var(--control-center) - var(--control-size) / 2);
 }
-.shell #sound { left: calc(34.74% - max(44px, 12.45cqw) - var(--control-size) / 2); }
-.shell #theme-switch { left: calc(34.74% - var(--control-size) / 2); }
-.shell #leaderboard-open { left: calc(34.74% + max(44px, 12.45cqw) - var(--control-size) / 2); }
-.shell #pause { left: calc(78.9% - var(--control-size) / 2); }
+.shell #sound { --control-center: calc(34.74cqw - max(44px, 12.45cqw)); }
+.shell #theme-switch { --control-center: 34.74cqw; }
+.shell #leaderboard-open { --control-center: calc(34.74cqw + max(44px, 12.45cqw)); }
+.shell #pause { --control-center: 78.9cqw; }
 .shell .tool svg, .control-name { display: none; }
-.shell .tool:hover { background: rgb(255 240 195 / .09); }
-.shell .tool:active:not(:disabled) { background: rgb(38 14 10 / .18); }
-.shell .tool:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 1px; background: rgb(255 246 220 / .18); }
+.cabinet[data-art="ready"] .tool::before {
+  content: ""; position: absolute; left: calc(50% + var(--cap-center) - var(--control-center)); top: 50%;
+  width: var(--cap-width); height: var(--cap-height); transform: translate(-50%, -50%);
+  border-radius: 50%; background: rgb(255 246 220 / .16); opacity: 0; pointer-events: none;
+  transition: opacity 140ms ease-out, background-color 80ms ease-out;
+}
+.shell .tool:active:not(:disabled)::before { opacity: 1; background: rgb(38 14 10 / .18); }
+.shell .tool:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 1px; }
+.shell .tool:focus-visible::before { opacity: 1; }
 .shell #pause[aria-label="Resume game"]::after {
   content: ""; position: absolute; width: 6px; height: 6px; bottom: 1px; left: calc(50% - 3px);
   border-radius: 50%; background: #ffcc6d; box-shadow: 0 0 3px #a7211e;
@@ -380,8 +387,15 @@ body .shell {
 .shell .manual-trigger {
   position: absolute; left: 9%; top: 0; width: 40%; height: 100%; min-height: 44px; padding: 0; border: 0; border-radius: 0;
   background: var(--cabinet-manual) 15% 0 / 250% auto no-repeat; color: inherit; touch-action: manipulation;
+  transition: filter 160ms ease-out;
 }
-.shell .manual-trigger:focus-visible { outline: 3px solid var(--cp-accent); outline-offset: -4px; background-color: rgb(255 240 195 / .08); }
+.shell .manual-trigger:focus-visible { outline: 3px solid var(--cp-accent); outline-offset: -4px; filter: brightness(1.09); }
+.shell .manual-trigger:active { filter: brightness(.96); }
+@media (hover: hover) and (pointer: fine) {
+  .cabinet[data-art="ready"] .tool:hover::before { opacity: 1; }
+  .shell .manual-trigger:hover:not(:active) { filter: brightness(1.09); }
+  .cabinet:not([data-art="ready"]) .tool:hover:not(:disabled) { background: var(--cp-panel-strong); border-color: var(--cp-accent); }
+}
 .manual-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .shell .cabinet-footer { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; overflow: hidden; clip-path: inset(50%); font-size: 10px; }
 .shell .cabinet > .notice { position: fixed; bottom: 8px; left: 12px; right: 12px; z-index: 4; width: min(460px, calc(100% - 24px)); margin: 0 auto; padding: 10px; background: var(--cp-panel-strong); }
@@ -403,6 +417,7 @@ body .shell {
 .cabinet:not([data-art="ready"]) .marquee span { color: #f4e6c8; }
 .cabinet:not([data-art="ready"]) .frame-rim, .cabinet:not([data-art="ready"]) .bezel-insert { background: none; }
 .cabinet:not([data-art="ready"]) .tool { background: var(--cp-bg-elevated); color: var(--cp-text); border: 1px solid var(--cp-border); font-size: 10px; font-weight: 700; }
+.cabinet:not([data-art="ready"]) .tool:active:not(:disabled) { background: var(--cp-panel-strong); }
 .cabinet:not([data-art="ready"]) .control-name { display: inline; }
 .cabinet:not([data-art="ready"]) .manual-trigger { background: var(--cp-bg-elevated); color: var(--cp-text); }
 .cabinet:not([data-art="ready"]) .manual-name { position: static; width: auto; height: auto; clip-path: none; font-size: 12px; }
@@ -461,6 +476,7 @@ body .shell {
 @keyframes cabinet-arrive { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .room-backdrop, .arrival-object, .arrival-scene::before { transition: none; }
+  .shell .tool::before, .shell .manual-trigger { transition: none; }
   :root[data-cabinet-view="handoff"] .cabinet { animation: none; }
 }
 @container (max-height: 400px) {
@@ -490,11 +506,15 @@ body .shell {
   .shell .tools { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .shell .tool { position: static; width: 100%; height: 48px; border-radius: 8px; border: 1px solid var(--cp-border-strong); background: var(--cp-bg-elevated); font-weight: 700; font-size: 12px; }
   .shell .tool:disabled { opacity: .45; }
-  .shell .tool::after { display: none; }
+  .shell .tool:active:not(:disabled) { background: var(--cp-panel-strong); }
+  .shell .tool::before, .shell .tool::after { display: none; }
   .control-name { display: inline; }
   .lower-cabinet { grid-column: 2; grid-row: 3; height: 48px; background: none; overflow: visible; }
   .shell .manual-trigger { position: static; width: 100%; height: 44px; min-height: 44px; border-radius: 6px; background: var(--cp-bg-elevated); border: 1px solid var(--cp-border); }
   .manual-name { position: static; width: auto; height: auto; clip-path: none; font-size: 12px; font-weight: 600; color: var(--cp-text); }
+  @media (hover: hover) and (pointer: fine) {
+    .shell .tool:hover:not(:disabled) { background: var(--cp-panel-strong); border-color: var(--cp-accent); }
+  }
 }
 /* END GENERATED CABINET */
 </style>
@@ -599,7 +619,7 @@ body .shell {
             <button class="tool" id="leaderboard-open" aria-label="Top 10 on this device" aria-haspopup="dialog" aria-controls="leaderboard" title="Your Top 10">
               <span class="control-name" aria-hidden="true">Top 10</span>
             </button>
-            <button class="tool" id="pause" disabled aria-label="Pause game" title="Pause (P)">
+            <button class="tool" id="pause" disabled aria-label="Pause game" title="Pause is available during a flight">
               <span class="control-name" aria-hidden="true">Pause</span>
             </button>
           </div>
@@ -2004,6 +2024,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
   const fadingVoices = new Set();
   function notifyState() {
     $("pause").querySelector(".control-name").textContent = state === "paused" ? "Resume" : "Pause";
+    $("pause").title = state === "paused" ? "Resume game (P)" : state === "playing" ? "Pause game (P)" : "Pause is available during a flight";
     document.dispatchEvent(new CustomEvent("flightstate", { detail: state }));
   }
   function storageError(error) {
@@ -2809,6 +2830,12 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
   themeButton();
   const main = document.querySelector("main"), cabinet = document.querySelector(".cabinet");
   const geometry = window.TRUMPET_CABINET;
+  for (const [name, id] of Object.entries({ sound: "sound", theme: "theme-switch", leaderboard: "leaderboard-open", pause: "pause" })) {
+    const control = geometry.controls.buttons[name];
+    $(id).style.setProperty("--cap-center", control.centerPercent[0] + "cqw");
+    $(id).style.setProperty("--cap-width", control.capSizePercent[0] + "cqw");
+    $(id).style.setProperty("--cap-height", `calc(var(--deck-render-height) * ${control.capSizePercent[1] / 100})`);
+  }
   const screenGeometry = geometry.screen;
   for (const dimension of ["left", "top", "width", "height"]) {
     cabinet.style.setProperty("--screen-" + dimension, screenGeometry[dimension + "Percent"] + "%");
@@ -2887,6 +2914,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
     const pointer = matchMedia("(hover: hover) and (pointer: fine)");
     const requested = new URLSearchParams(location.search).get("entry");
+    const reloading = performance.getEntriesByType("navigation").some(entry => entry.type === "reload");
     const preferenceKey = "trumpet-flight-cabinet-entered";
     const assetRoot = "./assets/cabinet/v2/";
     let state = "play", generation = 0, entered = false, currentMode;
@@ -3084,7 +3112,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
       if (state === "intro" && root.dataset.theme !== currentMode) show();
     }).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
     if (desktop.matches && requested !== "direct" && document.body.dataset.cabinetEntry !== "direct" &&
-        (!entered || requested === "room")) show();
+        (!entered || reloading || requested === "room")) show();
     else {
       root.dataset.cabinetView = "play";
       cabinet.dataset.power = "on";

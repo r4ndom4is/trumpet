@@ -1689,6 +1689,56 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       }
     });
 
+    await t.test("physical hover matches cap geometry without shrinking hit targets; magazine feedback stays grounded", async () => {
+      for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 568 }]) {
+        const context = await browser.newContext({ viewport, serviceWorkers: "block" });
+        const page = await context.newPage();
+        try {
+          await page.goto(fixture);
+          await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
+          assert.equal(await page.locator("#pause").isDisabled(), true);
+          for (const [name, id] of Object.entries({ sound: "sound", theme: "theme-switch", leaderboard: "leaderboard-open", pause: "pause" })) {
+            await page.locator("#" + id).hover();
+            await page.waitForFunction(id => getComputedStyle(document.getElementById(id), "::before").opacity === "1", id);
+            const result = await page.evaluate(({ name, id }) => {
+              const button = document.getElementById(id), box = button.getBoundingClientRect();
+              const deck = document.querySelector(".control-deck").getBoundingClientRect();
+              const cap = window.TRUMPET_CABINET.controls.buttons[name], style = getComputedStyle(button, "::before");
+              return {
+                targetSize: Math.min(box.width, box.height), cursor: getComputedStyle(button).cursor,
+                widthError: Math.abs(parseFloat(style.width) - deck.width * cap.capSizePercent[0] / 100),
+                heightError: Math.abs(parseFloat(style.height) - deck.height * cap.capSizePercent[1] / 100),
+                xError: Math.abs(box.left + parseFloat(style.left) - deck.left - deck.width * cap.centerPercent[0] / 100),
+                yError: Math.abs(box.top + parseFloat(style.top) - deck.top - deck.height * cap.centerPercent[1] / 100)
+              };
+            }, { name, id });
+            assert.ok(result.targetSize >= 44);
+            assert.equal(result.cursor, "pointer");
+            for (const dimension of ["widthError", "heightError", "xError", "yError"]) assert.ok(result[dimension] < 1, `${id}: ${JSON.stringify(result)}`);
+          }
+          const book = page.locator("#manual-open"), before = await book.boundingBox();
+          await book.hover();
+          await page.waitForFunction(() => getComputedStyle(document.getElementById("manual-open")).filter === "brightness(1.09)");
+          assert.deepEqual(await book.boundingBox(), before);
+          await book.click();
+          assert.equal(await page.locator("#manual").isVisible(), true);
+        } finally {
+          await context.close();
+        }
+      }
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: "block" });
+      try {
+        const page = await context.newPage();
+        await page.goto(fixture);
+        await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
+        await page.locator("#sound").tap();
+        await page.waitForFunction(() => getComputedStyle(document.getElementById("sound"), "::before").opacity === "0");
+        assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "false");
+      } finally {
+        await context.close();
+      }
+    });
+
     await t.test("muted HUD replaces the button light across phone, landscape and desktop layouts", async () => {
       for (const viewport of [{ width: 390, height: 844 }, { width: 667, height: 375 }, { width: 1440, height: 1000 }]) {
         const context = await browser.newContext({ viewport, hasTouch: true, serviceWorkers: "block" });
