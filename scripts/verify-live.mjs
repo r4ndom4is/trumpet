@@ -20,7 +20,7 @@ try {
   assert.equal(await page.locator(".marquee").innerText(), "trumpet flight.");
   const cachedArt = await page.evaluate(async () => {
     const keys = await caches.keys();
-    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v19")));
+    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v20")));
     return (await cache.keys()).filter(request => request.url.includes("/assets/cabinet/v2/")).map(request => new URL(request.url).pathname.split("/").at(-1)).sort();
   });
   assert.deepEqual(cachedArt, (await readdir(new URL("../assets/cabinet/v2/", import.meta.url))).filter(file => file.endsWith(".webp")).sort());
@@ -115,14 +115,29 @@ try {
   const desktopPage = await desktop.newPage();
   desktopPage.on("pageerror", error => errors.push(error.message));
   await desktopPage.goto(url);
-  await desktopPage.locator("#enter-cabinet").click();
-  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "powering");
-  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "play");
+  assert.equal(await desktopPage.locator("#preview-arrival-motion").isHidden(), true);
+  assert.equal(await desktopPage.locator("#skip-arrival").isHidden(), true);
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "intro" &&
+    !document.getElementById("enter-cabinet").disabled);
   await desktopPage.reload();
   await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "intro" &&
     !document.getElementById("enter-cabinet").disabled);
   assert.equal(await desktopPage.locator(".cabinet").getAttribute("data-power"), "off");
-  await desktopPage.locator("#skip-arrival").click();
+  await desktopPage.locator("#enter-cabinet").click();
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "powering");
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "play");
+  await desktopPage.reload();
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "powering");
+  assert.equal(await desktopPage.locator("#arrival-scene").isHidden(), true);
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "play");
+  await desktopPage.mouse.click(24, 500);
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "intro");
+  await desktopPage.reload();
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "intro" &&
+    !document.getElementById("enter-cabinet").disabled);
+  assert.equal(await desktopPage.locator(".cabinet").getAttribute("data-power"), "off");
+  await desktopPage.locator("#enter-cabinet").click();
+  await desktopPage.waitForFunction(() => document.documentElement.dataset.cabinetView === "play");
   await desktopPage.locator("#pause").hover();
   assert.equal(await desktopPage.locator("#pause").evaluate(node => getComputedStyle(node).cursor), "pointer");
   await desktopPage.locator("#manual-open").hover();
