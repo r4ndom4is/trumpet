@@ -912,10 +912,11 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     return out;
   }
 
-  /* Each concept's obstacle. `x` is the left edge of the 66 px cap footprint. */
+  /* `x` moves across the screen; decoration uses a fixed seed, defaulting to the
+   * gap's vertical position, so details never re-randomize during scrolling. */
   const OBSTACLES = {
     /* Fluted shaft under a square abacus over a cornice fillet. */
-    "obst-colonnade-66": (g, x, top, gap, floorY) => {
+    "obst-colonnade-66": (g, x, top, gap, floorY, seed = top) => {
       const sw = SHAFT["obst-colonnade-66"], ch = CAP_H["obst-colonnade-66"];
       const stone = (y0, h, key, gapAtEnd) => {
         const o = body(g, x, y0, h, sw, [[0, 9, "OBST-LIT"], [-10, 10, "OBST-SHADE"]]);
@@ -936,9 +937,9 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
         band(16, 4, "OBST-BASE");      // necking
         band(19, 1, "OBST-SHADE");
       };
-      stone(0, top - ch, x * .07, true);
+      stone(0, top - ch, seed * .07, true);
       cap(g, x, top, false, ch, sw, abacus);
-      stone(top + gap + ch, floorY - top - gap - ch, x * .07 + 40, false);
+      stone(top + gap + ch, floorY - top - gap - ch, seed * .07 + 40, false);
       cap(g, x, top + gap, true, ch, sw, abacus);
     },
 
@@ -1005,7 +1006,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     },
 
     /* Clipped yew under a crown at the ceiling and over a planter base at the floor. */
-    "obst-topiary-pillar-66": (g, x, top, gap, floorY) => {
+    "obst-topiary-pillar-66": (g, x, top, gap, floorY, seed = top) => {
       const sw = SHAFT["obst-topiary-pillar-66"], ch = CAP_H["obst-topiary-pillar-66"];
       const yew = (y0, h, key, gapAtEnd) => {
         const o = body(g, x, y0, h, sw, [[0, 11, "OBST-LIT"], [-12, 12, "OBST-SHADE"]]);
@@ -1037,7 +1038,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
       const crown = (band, inlay) => {
         band(2, 3, "OBST-SHADE");      // shadow under the clipped crown
         band(5, 7, "OBST-BASE");
-        for (let i = 0; i < 8; i++) inlay(6, 4, 3 + i * 8, 4, hash(x + i) > .5 ? "OBST-LIT" : "OBST-SHADE", .55);
+        for (let i = 0; i < 8; i++) inlay(6, 4, 3 + i * 8, 4, hash(seed + i) > .5 ? "OBST-LIT" : "OBST-SHADE", .55);
         band(12, 4, "OBST-LIT");
         band(16, 4, "OBST-BASE");
       };
@@ -1048,14 +1049,14 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
         band(14, 2, "OBST-SHADE");
         band(16, 4, "OBST-BASE");
       };
-      yew(0, top - ch, x * .11, true);
+      yew(0, top - ch, seed * .11, true);
       cap(g, x, top, false, ch, sw, crown);
-      yew(top + gap + ch, floorY - top - gap - ch, x * .11 + 70, false);
+      yew(top + gap + ch, floorY - top - gap - ch, seed * .11 + 70, false);
       cap(g, x, top + gap, true, ch, sw, planter);
     },
 
     /* Scaffolded stack under a flared vent hood with a louvred back. */
-    "obst-rooftop-stack-66": (g, x, top, gap, floorY) => {
+    "obst-rooftop-stack-66": (g, x, top, gap, floorY, seed = top) => {
       const sw = SHAFT["obst-rooftop-stack-66"], ch = CAP_H["obst-rooftop-stack-66"];
       const stack = (y0, h, key, gapAtEnd) => {
         const o = body(g, x, y0, h, sw, [[8, 14, "OBST-LIT"], [-11, 11, "OBST-SHADE"]]);
@@ -1079,14 +1080,14 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
         band(17, 5, "OBST-SHADE");     // louvred back
         for (let i = 0; i < 4; i++) inlay(18, 3, 8 + i * 14, 7, "OBST-LIT", .5);
       };
-      stack(0, top - ch, x * .09, true);
+      stack(0, top - ch, seed * .09, true);
       cap(g, x, top, false, ch, sw, hood);
-      stack(top + gap + ch, floorY - top - gap - ch, x * .09 + 50, false);
+      stack(top + gap + ch, floorY - top - gap - ch, seed * .09 + 50, false);
       cap(g, x, top + gap, true, ch, sw, hood);
     },
 
     /* Truss tower under a grated maintenance platform with a kick rail. */
-    "obst-gantry-tower-66": (g, x, top, gap, floorY) => {
+    "obst-gantry-tower-66": (g, x, top, gap, floorY, seed = top) => {
       const sw = SHAFT["obst-gantry-tower-66"], ch = CAP_H["obst-gantry-tower-66"];
       const tower = (y0, h, key, gapAtEnd) => {
         const o = body(g, x, y0, h, sw, [[6, 15, "OBST-LIT"], [-12, 12, "OBST-SHADE"]]);
@@ -1116,9 +1117,9 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
         band(11, 5, "OBST-SHADE");     // kick rail
         for (let i = 0; i < 6; i++) inlay(12, 2, 6 + i * 10, 2, "OBST-LIT", .8);
       };
-      tower(0, top - ch, x * .05, true);
+      tower(0, top - ch, seed * .05, true);
       cap(g, x, top, false, ch, sw, platform);
-      tower(top + gap + ch, floorY - top - gap - ch, x * .05 + 55, false);
+      tower(top + gap + ch, floorY - top - gap - ch, seed * .05 + 55, false);
       cap(g, x, top + gap, true, ch, sw, platform);
     }
   };
@@ -1804,7 +1805,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     g.marks = [];
     const boxes = [];
     for (const pair of pairs) {
-      obstacle(g, pair.x, pair.top, pair.gap, FLOOR);
+      obstacle(g, pair.x, pair.top, pair.gap, FLOOR, pair.seed);
       boxes.push(...hitboxes(env.obstacleId, pair.x, pair.top, pair.gap, FLOOR));
     }
 
@@ -1826,7 +1827,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     const theme = opts.theme === "night" ? "night" : "day";
     const g = painter(ctx, env.ramps[theme], !!opts.reduced);
     ctx.imageSmoothingEnabled = false;
-    OBSTACLES[env.obstacleId](g, opts.x, opts.top, opts.gap, FLOOR);
+    OBSTACLES[env.obstacleId](g, opts.x, opts.top, opts.gap, FLOOR, opts.seed);
     return { hitboxes: hitboxes(env.obstacleId, opts.x, opts.top, opts.gap, FLOOR), decor: g.marks };
   }
 
@@ -1841,7 +1842,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     const x = Math.round((w - COLLIDE) / 2);
     const top = Math.round(h * .34), gap = Math.round(h * .3);
     g.marks = [];
-    OBSTACLES[env.obstacleId](g, x, top, gap, h);
+    OBSTACLES[env.obstacleId](g, x, top, gap, h, opts.seed);
     return {
       x, top, gap, width: COLLIDE,
       shaft: SHAFT[env.obstacleId], wing: wingOf(env.obstacleId), capHeight: CAP_H[env.obstacleId],

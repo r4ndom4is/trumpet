@@ -20,7 +20,7 @@ try {
   assert.equal(await page.locator(".marquee").innerText(), "trumpet flight.");
   const cachedArt = await page.evaluate(async () => {
     const keys = await caches.keys();
-    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v21")));
+    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v22")));
     return (await cache.keys()).filter(request => request.url.includes("/assets/cabinet/v2/")).map(request => new URL(request.url).pathname.split("/").at(-1)).sort();
   });
   assert.deepEqual(cachedArt, (await readdir(new URL("../assets/cabinet/v2/", import.meta.url))).filter(file => file.endsWith(".webp")).sort());

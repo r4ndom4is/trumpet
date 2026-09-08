@@ -171,6 +171,7 @@ test("the opt-in atmosphere option is a no-op by default and only softens far/mi
 
 test("four retained obstacle sets keep their approved pixels, decoration and collision", () => {
   // Stages 1, 4, 5, 6 from main 21fc6bd, not a blessing of the replacement artwork.
+  // Freeze the original x-derived seed to preserve the historical artwork samples.
   const expected = "8fb85e5e0ee1fa0307318d67bbc1d15353bdbc3973b28989d74c90d008c61f3d";
   const snapshots = [];
   for (const env of ["env-a-gilded-mile-16", "env-d-links-and-lightning-16",
@@ -178,12 +179,53 @@ test("four retained obstacle sets keep their approved pixels, decoration and col
     for (const theme of ["day", "night"]) {
       for (const [x, top, gap] of [[0, 96, 158], [113, 174, 144], [326, 212, 132]]) {
         const ctx = recorder();
-        const result = art.drawPair(ctx, { env, theme, x, top, gap, reduced: true });
+        const result = art.drawPair(ctx, { env, theme, x, top, gap, seed: x, reduced: true });
         snapshots.push({ calls: ctx.calls, result });
       }
     }
   }
   assert.equal(createHash("sha256").update(JSON.stringify(snapshots)).digest("hex"), expected);
+});
+
+test("obstacle pixels and non-lethal details translate intact instead of re-seeding with screen position", () => {
+  for (const env of art.list) for (const theme of ["day", "night"]) {
+    for (const reduced of [false, true]) for (const seed of [undefined, 0, 371]) {
+      for (const [top, gap] of [[96, 158], [174, 144], [212, 132]]) {
+        const frame = x => {
+          const ctx = recorder();
+          const result = art.drawPair(ctx, { env, theme, x, top, gap, reduced, seed });
+          return {
+            calls: ctx.calls.map(([kind, px, ...rest]) => [kind, px - x, ...rest]),
+            hitboxes: plain(result.hitboxes).map(box => ({ ...box, x: box.x - x })),
+            decor: plain(result.decor).map(box => ({ ...box, x: box.x - x }))
+          };
+        };
+        const baseline = frame(400);
+        for (const x of [399, 398, 250, 110, 0, -30, -66]) {
+          assert.deepEqual(frame(x), baseline, `${env.name}, ${theme}, seed ${seed}, x ${x}`);
+        }
+      }
+    }
+  }
+});
+
+test("scene and obstacle-study renderers use the same fixed decoration seed as the game", () => {
+  for (const env of art.list) for (const seed of [undefined, 0, 371]) {
+    const study = recorder();
+    study.canvas.height = art.world.FLOOR;
+    const result = art.drawObstacle(study, { env, seed });
+    const pair = recorder();
+    const expected = art.drawPair(pair, { env, seed, x: result.x, top: result.top, gap: result.gap });
+    assert.deepEqual(study.calls.slice(1), pair.calls);
+    assert.deepEqual(plain(result.decor), plain(expected.decor));
+    const scene = recorder();
+    const sceneResult = art.drawScene(scene, {
+      env, gaps: [{ x: result.x, top: result.top, gap: result.gap, seed }]
+    });
+    const start = scene.calls.findIndex(c => c[0] === "rect" && c[5] === env.ramps.day["OBST-BASE"]);
+    assert.deepEqual(scene.calls.slice(start, start + pair.calls.length), pair.calls);
+    assert.deepEqual(plain(sceneResult.decor), plain(expected.decor));
+  }
 });
 
 test("replacement columns and paperwork fill exactly the original stepped collision envelope", () => {
@@ -284,7 +326,7 @@ test("sky transitions are broad tonal bands, not checkerboards", () => {
   }
 });
 
-test("phone-size day/night contact sheets render with readable signs", { timeout: 60000 }, async () => {
+test("phone-size day/night scenes have readable signs and stable moving obstacle pixels", { timeout: 60000 }, async () => {
   // Exercise the inline runtime without writing generated index.html in this worktree.
   const server = serve({ transform(file, content) {
     if (file !== "index.html") return content;
@@ -316,6 +358,35 @@ test("phone-size day/night contact sheets render with readable signs", { timeout
       document.body.append(game, sheet);
     });
     for (const theme of ["day", "night"]) {
+      const obstacleMotion = await page.evaluate(theme => {
+        const art = window.TRUMPET_ENVIRONMENTS, canvas = document.createElement("canvas");
+        canvas.width = 448; canvas.height = 468;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        return art.list.map(env => {
+          const draw = x => {
+            ctx.clearRect(0, 0, 448, 468);
+            art.drawPair(ctx, { env, theme, x, top: 174, gap: 144 });
+          };
+          draw(0);
+          const reference = ctx.getImageData(0, 0, 66, 468).data;
+          let changed = 0;
+          for (const x of [430, 400, 399, 398, 113, 1, 0, -1, -30, -65]) {
+            draw(x);
+            const left = Math.max(0, x), width = Math.min(448, x + 66) - left;
+            const actual = ctx.getImageData(left, 0, width, 468).data;
+            for (let y = 0; y < 468; y++) for (let col = 0; col < width; col++) {
+              const pixel = (y * width + col) * 4;
+              const expected = (y * 66 + left - x + col) * 4;
+              for (let channel = 0; channel < 4; channel++) {
+                if (actual[pixel + channel] !== reference[expected + channel]) { changed++; break; }
+              }
+            }
+          }
+          return { env: env.name, changed };
+        });
+      }, theme);
+      for (const result of obstacleMotion) assert.equal(result.changed, 0,
+        `${result.env} ${theme}: pixels stay attached while moving and clipping at both screen edges`);
       const measurements = await page.evaluate(theme => {
         const art = window.TRUMPET_ENVIRONMENTS, root = document.querySelector("#scenery-sheet");
         root.replaceChildren();
