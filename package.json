@@ -9,7 +9,7 @@
     "icons": "node scripts/icons.mjs",
     "embed:environments": "node scripts/embed-environments.mjs",
     "embed:assets": "node scripts/embed-assets.mjs",
-    "test": "node --test tests/pwa.test.mjs tests/scenery.test.mjs",
+    "test": "node --test tests/pwa.test.mjs tests/scenery.test.mjs tests/cabinet-stage.test.mjs",
     "test:live": "node scripts/verify-live.mjs"
   },
   "devDependencies": {

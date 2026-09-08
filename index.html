@@ -262,18 +262,20 @@ a { color: var(--cp-link); }
 @media (prefers-reduced-motion: reduce) { .primary:active { transform: none; } }
 /* BEGIN GENERATED CABINET */
 :root {
-  --cabinet-hood: url("./assets/cabinet/v1/hood-light.webp");
-  --cabinet-frame: url("./assets/cabinet/v1/frame-light.webp");
-  --cabinet-deck: url("./assets/cabinet/v1/deck-light.webp");
-  --cabinet-apron: url("./assets/cabinet/v1/apron-light.webp");
-  --cabinet-manual: url("./assets/cabinet/v1/manual-light.webp");
+  --cabinet-hood: url("./assets/cabinet/v2/hood-light.webp");
+  --cabinet-frame: url("./assets/cabinet/v2/frame-light.webp");
+  --cabinet-bezel: url("./assets/cabinet/v2/bezel-light.webp");
+  --cabinet-deck: url("./assets/cabinet/v2/deck-light.webp");
+  --cabinet-apron: url("./assets/cabinet/v2/apron-light.webp");
+  --cabinet-manual: url("./assets/cabinet/v2/manual-light.webp");
 }
 :root[data-theme="dark"] {
-  --cabinet-hood: url("./assets/cabinet/v1/hood-dark.webp");
-  --cabinet-frame: url("./assets/cabinet/v1/frame-dark.webp");
-  --cabinet-deck: url("./assets/cabinet/v1/deck-dark.webp");
-  --cabinet-apron: url("./assets/cabinet/v1/apron-dark.webp");
-  --cabinet-manual: url("./assets/cabinet/v1/manual-dark.webp");
+  --cabinet-hood: url("./assets/cabinet/v2/hood-dark.webp");
+  --cabinet-frame: url("./assets/cabinet/v2/frame-dark.webp");
+  --cabinet-bezel: url("./assets/cabinet/v2/bezel-dark.webp");
+  --cabinet-deck: url("./assets/cabinet/v2/deck-dark.webp");
+  --cabinet-apron: url("./assets/cabinet/v2/apron-dark.webp");
+  --cabinet-manual: url("./assets/cabinet/v2/manual-dark.webp");
 }
 html, body { height: 100%; overflow: hidden; }
 body { background: var(--cp-bg); }
@@ -283,6 +285,7 @@ body .shell {
   padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(0px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
 }
 .shell > header {
+  position: relative; z-index: 2;
   width: min(100%, 640px); align-self: center; flex: none;
   display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 34px auto;
   align-items: center; gap: 6px 12px; border: 0; padding: 0;
@@ -292,9 +295,10 @@ body .shell {
 .shell header .edition { font-size: 10px; letter-spacing: 1px; white-space: nowrap; }
 .shell .compact-tagline { display: block; grid-column: 1 / -1; padding: 0; }
 .shell .compact-tagline .eyebrow { font-size: clamp(10px, 2.6vw, 11px); line-height: 1.4; letter-spacing: .8px; color: var(--cp-accent); }
-.shell > main { flex: 1; width: 100%; min-height: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0; gap: 0; }
+.shell > main { position: relative; flex: 1; width: 100%; min-height: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0; gap: 0; }
 .shell > main > .intro-panel, .shell > footer, .shell > .unofficial { display: none; }
 .shell .cabinet {
+  z-index: 1;
   position: relative; display: block; flex: none; width: var(--cabinet-width, 360px);
   min-height: 0; padding: 0; gap: 0; border: 0; border-radius: 0; background: none;
   box-shadow: none; overflow: visible; user-select: none; -webkit-user-select: none;
@@ -303,14 +307,29 @@ body .shell {
   position: relative; aspect-ratio: 696 / 145; background: var(--cabinet-hood) center / 100% 100% no-repeat;
   display: flex; align-items: center; justify-content: center; padding: 0 12% 1.5%; container-type: inline-size;
 }
-.marquee span { color: #4d211b; font-weight: 800; font-size: max(17px, 8cqw); letter-spacing: -.04em; }
+.marquee span { position: relative; z-index: 1; color: #4d211b; font-weight: 800; font-size: max(17px, 8cqw); letter-spacing: -.04em; }
+.marquee-light {
+  position: absolute; inset: 13% 2.9% 18%; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, rgb(255 249 221 / .72), rgb(255 230 170 / .16));
+  box-shadow: 0 4px 16px rgb(242 186 92 / .2); opacity: 1;
+}
+:root[data-theme="dark"] .marquee-light { box-shadow: 0 5px 20px rgb(242 186 92 / .3); }
 .shell .playfield { position: relative; display: block; width: 100%; aspect-ratio: var(--frame-ratio, .9218); overflow: visible; }
 .frame-rim { position: absolute; inset: 0; z-index: 2; background: var(--cabinet-frame) center / 100% 100% no-repeat; pointer-events: none; }
+.bezel-insert { position: absolute; inset: 0; z-index: 3; background: var(--cabinet-bezel) center / 100% 100% no-repeat; pointer-events: none; }
 .shell .screen {
-  position: absolute; left: 7.72333%; top: 5.10342%; width: 84.55334%; height: 89.07378%;
+  position: absolute; left: var(--screen-left); top: var(--screen-top); width: var(--screen-width); height: var(--screen-height);
   max-width: none; border: 0; border-radius: 0; overflow: hidden; background: #182326;
   box-shadow: none; container-type: size; touch-action: none;
 }
+.screen-content { position: absolute; inset: 0; }
+.screen-power-glow {
+  position: absolute; left: 6%; right: 6%; top: calc(50% - 1px); height: 2px; z-index: 4;
+  background: #d9dfc9; box-shadow: 0 1px 12px rgb(204 223 195 / .6);
+  opacity: 0; pointer-events: none;
+}
+.cabinet:is([data-power="off"], [data-power="warming"]) .marquee-light { opacity: 0; }
+.cabinet:is([data-power="off"], [data-power="warming"]) .screen-content { clip-path: inset(50% 0); }
 .shell #game { display: block; width: 100%; height: 100%; }
 .shell .screen:focus-visible { outline: 3px solid var(--cp-accent); outline-offset: -7px; }
 .shell .scorebar {
@@ -322,6 +341,12 @@ body .shell {
 .shell .scorebar .best { text-align: right; }
 .shell .scorebar .stat-label { max-width: none; color: inherit; font-size: 9px; line-height: 1.2; letter-spacing: 1px; }
 .shell .scorebar .stat-number { font-size: clamp(18px, 7cqw, 26px); line-height: 1; margin-top: 3px; color: inherit; }
+.mute-indicator {
+  position: absolute; top: calc(4% + 7px); left: 50%; z-index: 2; transform: translateX(-50%);
+  width: 22px; height: 22px; color: #fff6db; pointer-events: none;
+  filter: drop-shadow(0 1px 2px #172126) drop-shadow(1px 0 1px #172126);
+}
+.mute-indicator svg { display: block; width: 100%; height: 100%; }
 .shell .overlay { padding: 48px 12px 10px; }
 .shell .dialog, .shell .dialog.crashed { width: min(100%, 316px); max-height: 100%; padding: 12px; }
 .shell .rider-preview { width: auto; height: clamp(32px, 17cqh, 80px); margin: 0 auto; }
@@ -347,7 +372,7 @@ body .shell {
 .shell .tool:hover { background: rgb(255 240 195 / .09); }
 .shell .tool:active:not(:disabled) { background: rgb(38 14 10 / .18); }
 .shell .tool:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 1px; background: rgb(255 246 220 / .18); }
-.shell #sound[aria-pressed="false"]::after, .shell #pause[aria-label="Resume game"]::after {
+.shell #pause[aria-label="Resume game"]::after {
   content: ""; position: absolute; width: 6px; height: 6px; bottom: 1px; left: calc(50% - 3px);
   border-radius: 50%; background: #ffcc6d; box-shadow: 0 0 3px #a7211e;
 }
@@ -376,11 +401,68 @@ body .shell {
 .cabinet:not([data-art="ready"]) .lower-cabinet { background: #682a27; }
 .cabinet:not([data-art="ready"]) .playfield { background: #682a27; }
 .cabinet:not([data-art="ready"]) .marquee span { color: #f4e6c8; }
-.cabinet:not([data-art="ready"]) .frame-rim { background: none; }
+.cabinet:not([data-art="ready"]) .frame-rim, .cabinet:not([data-art="ready"]) .bezel-insert { background: none; }
 .cabinet:not([data-art="ready"]) .tool { background: var(--cp-bg-elevated); color: var(--cp-text); border: 1px solid var(--cp-border); font-size: 10px; font-weight: 700; }
 .cabinet:not([data-art="ready"]) .control-name { display: inline; }
 .cabinet:not([data-art="ready"]) .manual-trigger { background: var(--cp-bg-elevated); color: var(--cp-text); }
 .cabinet:not([data-art="ready"]) .manual-name { position: static; width: auto; height: auto; clip-path: none; font-size: 12px; }
+.room-backdrop {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at 45% 35%, #fffdf7 0, transparent 65%),
+    linear-gradient(#f0ede6 0%, #ece8df 62%, #d9d4c9 100%);
+  transition: opacity 400ms ease-out;
+}
+:root[data-theme="dark"] .room-backdrop {
+  background: radial-gradient(ellipse at 45% 35%, #45413c 0, transparent 65%),
+    linear-gradient(#302f2d 0%, #302d29 62%, #201e1c 100%);
+}
+:root[data-cabinet-view="intro"] .room-backdrop, :root[data-cabinet-view="waking"] .room-backdrop { opacity: 1; }
+:root[data-cabinet-view="intro"] .cabinet, :root[data-cabinet-view="waking"] .cabinet { visibility: hidden; opacity: 0; }
+:root[data-cabinet-view="handoff"] .cabinet { animation: cabinet-arrive 220ms ease-out both; }
+.arrival {
+  position: absolute; inset: 0; z-index: 5; display: grid; grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: center; padding: 20px 16px 24px; gap: 12px;
+}
+.arrival-scene {
+  position: relative; height: 100%; width: auto; max-width: 100%; max-height: 960px;
+  aspect-ratio: var(--arrival-ratio, 900 / 1280); align-self: end;
+}
+.arrival-scene::before {
+  content: ""; position: absolute; inset: 15% -35% 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 65%, rgb(221 161 76 / .16), transparent 66%);
+  opacity: .2; transition: opacity 280ms ease-out;
+}
+.arrival-shadow, .arrival-object, .arrival-motion { position: absolute; inset: 0; width: 100%; height: 100%; }
+.arrival-shadow { object-fit: contain; pointer-events: none; opacity: 0; mix-blend-mode: multiply; }
+.arrival-object {
+  padding: 0; border: 0; background: none; border-radius: 6px; touch-action: manipulation;
+  opacity: 0; transition: filter 240ms ease-out; -webkit-tap-highlight-color: transparent;
+}
+.arrival-object:disabled { cursor: progress; }
+.arrival-object img, .arrival-motion { display: block; width: 100%; height: 100%; object-fit: contain; }
+.arrival-motion { pointer-events: none; }
+.arrival-scene.is-loaded .arrival-shadow, .arrival-scene.is-loaded .arrival-object { opacity: 1; }
+.arrival-object:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 4px; }
+.arrival-scene:has(.arrival-object:focus-visible)::before { opacity: 1; }
+.arrival-invitation { position: relative; grid-row: 2; text-align: center; }
+:root[data-cabinet-view="powering"] .arrival { pointer-events: none; }
+:root[data-cabinet-view="powering"] .arrival-invitation {
+  position: absolute; grid-row: 1 / -1; top: 12px; right: 12px; max-width: 180px; text-align: right; pointer-events: auto;
+}
+.arrival-invitation p { margin: 0 0 2px; font-size: 14px; font-weight: 600; color: var(--cp-text); }
+.arrival-skip { min-height: 44px; padding: 8px 16px; border: 0; background: none; color: var(--cp-text-muted); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.arrival-skip:hover { color: var(--cp-accent); }
+:root[data-cabinet-view="waking"] .arrival-object, :root[data-cabinet-view="waking"] .arrival-shadow { visibility: hidden; }
+:root[data-cabinet-view="waking"] .arrival-invitation { opacity: .5; }
+@media (hover: hover) and (pointer: fine) {
+  .arrival-object:hover:not(:disabled) { filter: brightness(1.06); }
+  .arrival-scene:has(.arrival-object:hover:not(:disabled))::before { opacity: 1; }
+}
+@keyframes cabinet-arrive { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .room-backdrop, .arrival-object, .arrival-scene::before { transition: none; }
+  :root[data-cabinet-view="handoff"] .cabinet { animation: none; }
+}
 @container (max-height: 400px) {
   .shell .dialog.crashed p, .shell .dialog.crashed .prompt { display: none; }
 }
@@ -417,7 +499,7 @@ body .shell {
 /* END GENERATED CABINET */
 </style>
 </head>
-<body>
+<body data-cabinet-entry="auto">
 <div class="shell">
   <header>
     <div class="brand">
@@ -428,6 +510,25 @@ body .shell {
     <div class="compact-tagline" id="compact-tagline"></div>
   </header>
   <main>
+    <!-- A physical Crimson cabinet in a quiet room on arrival, then a focused arcade.
+         The shell, thin bezel, display and cast shadows remain separate layers.
+         Desktop entry uses a real rendered camera move when available; phones enter
+         the undistorted live game directly. No hover activation or gameplay during entry. -->
+    <div class="room-backdrop" aria-hidden="true"></div>
+    <section class="arrival" id="arrival" aria-label="Enter the arcade" hidden>
+      <div class="arrival-scene" id="arrival-scene">
+        <img class="arrival-shadow" id="arrival-shadow" alt="" draggable="false">
+        <button class="arrival-object" id="enter-cabinet" aria-label="Wake the arcade and move to the game" disabled>
+          <img id="arrival-cabinet" alt="Crimson arcade cabinet, viewed from an angle with its screen off" draggable="false">
+        </button>
+        <img class="arrival-motion" id="arrival-motion" alt="" draggable="false" hidden>
+      </div>
+      <div class="arrival-invitation">
+        <p id="arrival-cue" role="status">Preparing the cabinet...</p>
+        <button class="arrival-skip" id="preview-arrival-motion" hidden>Preview power-on sequence</button>
+        <button class="arrival-skip" id="skip-arrival">Go straight to the game</button>
+      </div>
+    </section>
     <section class="intro-panel">
       <div class="eyebrow mono">SMALL GAME. BIG ONE-MORE-TRY ENERGY.</div>
       <h1><span id="headline" style="color:var(--cp-text)">Big brass.</span><br> <span>Big dreams.</span></h1>
@@ -451,15 +552,22 @@ body .shell {
       </div>
     </section>
     <section class="cabinet" aria-label="Trumpet Flight arcade game" data-art="loading">
-      <div class="marquee" aria-hidden="true"><span>trumpet flight.</span></div>
+      <div class="marquee" aria-hidden="true"><div class="marquee-light"></div><span>trumpet flight.</span></div>
       <div class="playfield">
        <div class="frame-rim" aria-hidden="true"></div>
+       <div class="bezel-insert" aria-hidden="true"></div>
        <div class="screen" id="screen" tabindex="0" role="group" aria-label="Game area. Space, Arrow Up, click or tap to flap. P to pause.">
+        <div class="screen-content">
         <canvas id="game" width="448" height="512" aria-label="Trumpet Flight: miniature Trump-inspired rider on a flying trumpet, dodging pipes">Use a browser with HTML canvas support to play.</canvas>
         <div class="scorebar" aria-label="Current and best score">
           <div><div class="stat-label mono">SCORE</div><div class="stat-number mono" id="score">00</div></div>
           <div class="best"><div class="stat-label mono">BEST</div><div class="stat-number mono" id="best">00</div></div>
         </div>
+        <span class="mute-indicator" id="mute-indicator" role="img" aria-label="Sound muted" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9h4l5-4v14l-5-4H3Z M16 9l6 6m0-6-6 6"/>
+          </svg>
+        </span>
         <div class="overlay" id="overlay">
           <div class="dialog">
             <canvas id="rider-preview" class="rider-preview" width="136" height="120" aria-label="Pocket Trump-inspired rider on a backward-facing golden trumpet, with a full comb-over and fluttering tie"></canvas>
@@ -474,6 +582,8 @@ body .shell {
             <div class="prompt mono" id="prompt">OR PRESS SPACE TO START</div>
           </div>
          </div>
+        </div>
+        <div class="screen-power-glow" aria-hidden="true"></div>
         </div>
       </div>
          <div class="control-deck">
@@ -531,6 +641,11 @@ body .shell {
   <p class="unofficial">An original, unofficial caricature game. Not affiliated with or endorsed by Donald Trump or any campaign or organization. <a href="https://github.com/r4ndom4is/trumpet">Source on GitHub</a>.</p>
 </div>
 <noscript><p class="notice">Trumpet Flight needs JavaScript enabled to play and prepare its offline copy.</p></noscript>
+<script>
+// BEGIN GENERATED CABINET GEOMETRY
+window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["light","dark"],"referenceRender":{"width":900,"height":1280},"render":{"width":1800,"height":2560,"scale":2,"samples":32,"denoise":true},"camera":{"location":[0,-6,0.837],"target":[0,0,0.837],"orthoScale":1.94},"parts":{"hood":{"referenceCrop":[102,19,798,164],"width":696,"height":145,"pixelWidth":1392,"pixelHeight":290,"files":{"light":"hood-light.webp","dark":"hood-dark.webp"}},"frame":{"referenceCrop":[102,164,798,864],"width":696,"height":700,"pixelWidth":1392,"pixelHeight":1400,"files":{"light":"frame-light.webp","dark":"frame-dark.webp"}},"deck":{"referenceCrop":[102,864,798,988],"width":696,"height":124,"pixelWidth":1392,"pixelHeight":248,"files":{"light":"deck-light.webp","dark":"deck-dark.webp"}},"apron":{"referenceCrop":[102,988,798,1242],"width":696,"height":254,"pixelWidth":1392,"pixelHeight":508,"files":{"light":"apron-light.webp","dark":"apron-dark.webp"}},"manual":{"referenceCrop":[102,988,798,1242],"width":696,"height":254,"pixelWidth":1392,"pixelHeight":508,"files":{"light":"manual-light.webp","dark":"manual-dark.webp"}},"bezel":{"referenceCrop":[102,164,798,864],"width":696,"height":700,"pixelWidth":1392,"pixelHeight":1400,"files":{"light":"bezel-light.webp","dark":"bezel-dark.webp"}}},"screen":{"relativeTo":"frame","leftPercent":2.790616,"topPercent":1.9294,"widthPercent":94.418767,"heightPercent":96.141379,"referenceBounds":[121.42269,177.505798,778.57731,850.495453],"contourPercent":[[100,1.078425],[99.990547,0.937659],[99.962368,0.799308],[99.915928,0.665729],[99.852036,0.539201],[99.771776,0.421913],[99.676521,0.31586],[99.567911,0.222843],[99.447791,0.144485],[99.318226,0.082088],[99.181429,0.036742],[99.039734,0.009217],[98.895582,0],[1.104418,0],[0.960264,0.009217],[0.818575,0.036742],[0.681776,0.082088],[0.552209,0.144485],[0.432093,0.222843],[0.323475,0.31586],[0.228224,0.421913],[0.147964,0.539201],[0.08407,0.665729],[0.037634,0.799308],[0.009451,0.937659],[0,1.078425],[0,98.921569],[0.009451,99.062335],[0.037634,99.200687],[0.08407,99.334266],[0.147964,99.460787],[0.228224,99.578081],[0.323475,99.684135],[0.432093,99.777146],[0.552209,99.855515],[0.681776,99.917906],[0.818575,99.963253],[0.960264,99.990778],[1.104418,100],[98.895582,100],[99.039734,99.990778],[99.181429,99.963253],[99.318226,99.917906],[99.447791,99.855515],[99.567911,99.777146],[99.676521,99.684135],[99.771776,99.578081],[99.852036,99.460787],[99.915928,99.334266],[99.962368,99.200687],[99.990547,99.062335],[100,98.921569]],"clipPath":"polygon(100.000000% 1.078425%, 99.990547% 0.937659%, 99.962368% 0.799308%, 99.915928% 0.665729%, 99.852036% 0.539201%, 99.771776% 0.421913%, 99.676521% 0.315860%, 99.567911% 0.222843%, 99.447791% 0.144485%, 99.318226% 0.082088%, 99.181429% 0.036742%, 99.039734% 0.009217%, 98.895582% 0.000000%, 1.104418% 0.000000%, 0.960264% 0.009217%, 0.818575% 0.036742%, 0.681776% 0.082088%, 0.552209% 0.144485%, 0.432093% 0.222843%, 0.323475% 0.315860%, 0.228224% 0.421913%, 0.147964% 0.539201%, 0.084070% 0.665729%, 0.037634% 0.799308%, 0.009451% 0.937659%, 0.000000% 1.078425%, 0.000000% 98.921569%, 0.009451% 99.062335%, 0.037634% 99.200687%, 0.084070% 99.334266%, 0.147964% 99.460787%, 0.228224% 99.578081%, 0.323475% 99.684135%, 0.432093% 99.777146%, 0.552209% 99.855515%, 0.681776% 99.917906%, 0.818575% 99.963253%, 0.960264% 99.990778%, 1.104418% 100.000000%, 98.895582% 100.000000%, 99.039734% 99.990778%, 99.181429% 99.963253%, 99.318226% 99.917906%, 99.447791% 99.855515%, 99.567911% 99.777146%, 99.676521% 99.684135%, 99.771776% 99.578081%, 99.852036% 99.460787%, 99.915928% 99.334266%, 99.962368% 99.200687%, 99.990547% 99.062335%, 100.000000% 98.921569%)","logicalCanvas":{"width":448,"height":512},"recommendedFrameAspect":0.8909638337577528},"controls":{"relativeTo":"deck","buttons":{"sound":{"centerPercent":[22.318998,36.444922],"capSizePercent":[7.204641,40.950837]},"theme":{"centerPercent":[34.737529,36.444922],"capSizePercent":[7.204645,40.950837]},"leaderboard":{"centerPercent":[47.156061,36.444922],"capSizePercent":[7.204648,40.950837]},"pause":{"centerPercent":[78.913381,36.444922],"capSizePercent":[9.669387,53.509928]}}},"manual":{"relativeTo":"apron","leftPercent":0,"topPercent":0,"widthPercent":100,"heightPercent":100,"occlusion":"Hardware holdout; full apron-sized transparent layer."},"bezel":{"relativeTo":"frame","independentLayer":true,"objectName":"Rounded CRT bezel","order":["live-canvas","frame","bezel"],"innerRadiusMetres":0.011,"outerRadiusMetres":0.017,"lipWidthMetres":0.0052,"lipHeightMetres":0.008,"glassUnderlapMetres":0.004},"localPreviewOnly":false,"intro":{"width":900,"height":1280,"files":{"light":"intro-light.webp","dark":"intro-dark.webp"},"shadowFiles":{"light":"intro-shadow-light.webp","dark":"intro-shadow-dark.webp"},"camera":{"location":[3.4,-6,1.45],"target":[0,0,0.837],"orthoScale":2.9,"groundAnchor":[461.6419,1039.3844],"groundAnchorPercent":[51.293546,81.201908]},"groundWorld":[0,0.0535,-0.07556000351905823],"screenPowered":false,"titleBaked":true,"shadowSeparate":true,"shadowMatte":{"source":"Physically rendered Cycles shadow catcher","densityThreshold":0.4,"processing":"Ambient veil removed with a linear alpha grade; cabinet image unmodified."},"cabinetBounds":{"light":[185,203,739,1062],"dark":[185,203,739,1062]},"shadowBounds":{"light":[51,1002,762,1064],"dark":[25,1003,742,1068]}},"approach":{"available":true,"width":900,"height":1280,"samples":12,"durationMs":840,"motion":"Actual 3D camera orbit, elevation and orthographic approach","timing":"Frames already contain cubic ease-out; advance them at uniform intervals.","shadowIncluded":true,"screenPowered":false,"titleBaked":true,"shadowMatte":"Same alpha grade as intro; neutral shadow-only pixels feather at canvas margins.","finalReferenceCrop":[102,19,798,1242],"frames":{"light":[{"index":0,"progress":0,"file":"approach-light-00.webp","camera":{"location":[3.4,-6,1.45],"target":[0,0,0.837],"orthoScale":2.9,"groundAnchor":[461.6419,1039.3844],"groundAnchorPercent":[51.293546,81.201908]}},{"index":1,"progress":0.370262,"file":"approach-light-01.webp","camera":{"location":[2.093985,-6.221547,1.223029],"target":[0,0,0.837],"orthoScale":2.544548,"groundAnchor":[458.5849,1096.7626],"groundAnchorPercent":[50.953883,85.684575]}},{"index":2,"progress":0.635569,"file":"approach-light-02.webp","camera":{"location":[1.181688,-6.215331,1.060397],"target":[0,0,0.837],"orthoScale":2.289854,"groundAnchor":[455.5858,1148.7559],"groundAnchorPercent":[50.620639,89.746555]}},{"index":3,"progress":0.813411,"file":"approach-light-03.webp","camera":{"location":[0.592349,-6.138741,0.951379],"target":[0,0,0.837],"orthoScale":2.119125,"groundAnchor":[453.1037,1190.5154],"groundAnchorPercent":[50.344861,93.009014]}},{"index":4,"progress":0.921283,"file":"approach-light-04.webp","camera":{"location":[0.246291,-6.065562,0.885254],"target":[0,0,0.837],"orthoScale":2.015568,"groundAnchor":[451.3784,1219.2392],"groundAnchorPercent":[50.15316,95.253064]}},{"index":5,"progress":0.976676,"file":"approach-light-05.webp","camera":{"location":[0.072396,-6.020472,0.851297],"target":[0,0,0.837],"orthoScale":1.962391,"groundAnchor":[450.4196,1235.1475],"groundAnchorPercent":[50.046623,96.495899]}},{"index":6,"progress":0.997085,"file":"approach-light-06.webp","camera":{"location":[0.009022,-6.002606,0.838787],"target":[0,0,0.837],"orthoScale":1.942799,"groundAnchor":[450.053,1241.2239],"groundAnchorPercent":[50.005889,96.97062]}},{"index":7,"progress":1,"file":"approach-light-07.webp","camera":{"location":[0,-6,0.837],"target":[0,0,0.837],"orthoScale":1.94,"groundAnchor":[450,1242.1021],"groundAnchorPercent":[50,97.039225]}}],"dark":[{"index":0,"progress":0,"file":"approach-dark-00.webp","camera":{"location":[3.4,-6,1.45],"target":[0,0,0.837],"orthoScale":2.9,"groundAnchor":[461.6419,1039.3844],"groundAnchorPercent":[51.293546,81.201908]}},{"index":1,"progress":0.370262,"file":"approach-dark-01.webp","camera":{"location":[2.093985,-6.221547,1.223029],"target":[0,0,0.837],"orthoScale":2.544548,"groundAnchor":[458.5849,1096.7626],"groundAnchorPercent":[50.953883,85.684575]}},{"index":2,"progress":0.635569,"file":"approach-dark-02.webp","camera":{"location":[1.181688,-6.215331,1.060397],"target":[0,0,0.837],"orthoScale":2.289854,"groundAnchor":[455.5858,1148.7559],"groundAnchorPercent":[50.620639,89.746555]}},{"index":3,"progress":0.813411,"file":"approach-dark-03.webp","camera":{"location":[0.592349,-6.138741,0.951379],"target":[0,0,0.837],"orthoScale":2.119125,"groundAnchor":[453.1037,1190.5154],"groundAnchorPercent":[50.344861,93.009014]}},{"index":4,"progress":0.921283,"file":"approach-dark-04.webp","camera":{"location":[0.246291,-6.065562,0.885254],"target":[0,0,0.837],"orthoScale":2.015568,"groundAnchor":[451.3784,1219.2392],"groundAnchorPercent":[50.15316,95.253064]}},{"index":5,"progress":0.976676,"file":"approach-dark-05.webp","camera":{"location":[0.072396,-6.020472,0.851297],"target":[0,0,0.837],"orthoScale":1.962391,"groundAnchor":[450.4196,1235.1475],"groundAnchorPercent":[50.046623,96.495899]}},{"index":6,"progress":0.997085,"file":"approach-dark-06.webp","camera":{"location":[0.009022,-6.002606,0.838787],"target":[0,0,0.837],"orthoScale":1.942799,"groundAnchor":[450.053,1241.2239],"groundAnchorPercent":[50.005889,96.97062]}},{"index":7,"progress":1,"file":"approach-dark-07.webp","camera":{"location":[0,-6,0.837],"target":[0,0,0.837],"orthoScale":1.94,"groundAnchor":[450,1242.1021],"groundAnchorPercent":[50,97.039225]}}]}},"manifest":[{"file":"approach-dark-00.webp","bytes":41606},{"file":"approach-dark-01.webp","bytes":44850},{"file":"approach-dark-02.webp","bytes":44566},{"file":"approach-dark-03.webp","bytes":42188},{"file":"approach-dark-04.webp","bytes":37816},{"file":"approach-dark-05.webp","bytes":35454},{"file":"approach-dark-06.webp","bytes":35590},{"file":"approach-dark-07.webp","bytes":34112},{"file":"approach-light-00.webp","bytes":42838},{"file":"approach-light-01.webp","bytes":44942},{"file":"approach-light-02.webp","bytes":44364},{"file":"approach-light-03.webp","bytes":43980},{"file":"approach-light-04.webp","bytes":40068},{"file":"approach-light-05.webp","bytes":38704},{"file":"approach-light-06.webp","bytes":39268},{"file":"approach-light-07.webp","bytes":37394},{"file":"apron-dark.webp","bytes":9250},{"file":"apron-light.webp","bytes":10808},{"file":"bezel-dark.webp","bytes":14982},{"file":"bezel-light.webp","bytes":18218},{"file":"deck-dark.webp","bytes":11562},{"file":"deck-light.webp","bytes":12692},{"file":"frame-dark.webp","bytes":16220},{"file":"frame-light.webp","bytes":19244},{"file":"hood-dark.webp","bytes":12060},{"file":"hood-light.webp","bytes":13800},{"file":"intro-dark.webp","bytes":22882},{"file":"intro-light.webp","bytes":25282},{"file":"intro-shadow-dark.webp","bytes":7862},{"file":"intro-shadow-light.webp","bytes":7854},{"file":"manual-dark.webp","bytes":12992},{"file":"manual-light.webp","bytes":13636}],"totalWebpBytes":877084};
+// END GENERATED CABINET GEOMETRY
+</script>
 <script>
 // BEGIN GENERATED ENVIRONMENTS
 /* Trumpet Flight - six original pixel-art scenes. Stable environment/obstacle IDs
@@ -1962,8 +2077,8 @@ body .shell {
   // BEGIN GENERATED SOUNDS
   window.TRUMPET_SOUNDS = {
     flap: { id: "flap-phrase-1", notes: [
-      { freq: 196, dur: 0.026, to: 196, at: 0, wave: "brass", cutoff: 650, gain: 0.034, attack: 0.005 },
-      { freq: 174.44, dur: 0.032, to: 174.44, at: 0.026, wave: "brass", cutoff: 700, gain: 0.03, attack: 0.005 }
+      { freq: 196, dur: 0.026, to: 196, at: 0, wave: "brass", cutoff: 650, gain: 0.0425, attack: 0.005 },
+      { freq: 174.44, dur: 0.032, to: 174.44, at: 0.026, wave: "brass", cutoff: 700, gain: 0.0375, attack: 0.005 }
     ] },
     score: { id: "score-chord-5", notes: [
       { freq: 294, dur: 0.13, to: 294, at: 0, wave: "sine", cutoff: 840, gain: 0.044, attack: 0.012 },
@@ -2034,6 +2149,7 @@ body .shell {
     if (muted) silence();
     $("sound").setAttribute("aria-pressed", String(!muted));
     $("sound").setAttribute("aria-label", muted ? "Enable sound" : "Mute sound");
+    $("mute-indicator").hidden = !muted;
     $("sound").querySelector(".control-name").textContent = muted ? "Muted" : "Sound";
     $("sound").title = muted ? "Enable sound (M)" : "Mute sound (M)";
     $("sound-mark").setAttribute("d", muted ? "m16 9 6 6m0-6-6 6" : "M15 8q5 4 0 8M18 4q9 8 0 16");
@@ -2574,6 +2690,11 @@ body .shell {
     }
   }
   function frame(now) {
+    if (["intro", "waking"].includes(document.documentElement.dataset.cabinetView)) {
+      last = now;
+      requestAnimationFrame(frame);
+      return;
+    }
     const elapsed = Math.min((now - (last || now)) / 1000, .05);
     last = now;
     if (state === "playing" || state === "ready") time += elapsed;
@@ -2595,6 +2716,7 @@ body .shell {
   $("pause").addEventListener("click", pause);
   $("sound").addEventListener("click", toggleSound);
   window.addEventListener("keydown", event => {
+    if (!$("arrival").hidden) return;
     if (document.querySelector("dialog[open]")) return;
     if (event.ctrlKey || event.altKey || event.metaKey || event.target.matches("input, textarea, select, [contenteditable]")) return;
     if (event.code === "Space" || event.code === "ArrowUp") {
@@ -2686,16 +2808,22 @@ body .shell {
   if (document.documentElement.dataset.themeStorage === "unavailable") themeNotice();
   themeButton();
   const main = document.querySelector("main"), cabinet = document.querySelector(".cabinet");
+  const geometry = window.TRUMPET_CABINET;
+  const screenGeometry = geometry.screen;
+  for (const dimension of ["left", "top", "width", "height"]) {
+    cabinet.style.setProperty("--screen-" + dimension, screenGeometry[dimension + "Percent"] + "%");
+  }
+  $("screen").style.clipPath = screenGeometry.clipPath;
   const artwork = new Map();
   function loadArtwork() {
     const mode = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
     cabinet.dataset.art = "loading";
-    if (!artwork.has(mode)) artwork.set(mode, Promise.all(["hood", "frame", "deck", "apron", "manual"].map(part =>
+    if (!artwork.has(mode)) artwork.set(mode, Promise.all(["hood", "frame", "bezel", "deck", "apron", "manual"].map(part =>
       new Promise((resolve, reject) => {
         const image = new Image();
         image.onload = resolve;
         image.onerror = () => reject(new Error(`Unable to load ${part}-${mode}.webp`));
-        image.src = `./assets/cabinet/v1/${part}-${mode}.webp`;
+        image.src = `./assets/cabinet/v2/${part}-${mode}.webp`;
       })
     )));
     artwork.get(mode).then(() => {
@@ -2715,7 +2843,7 @@ body .shell {
   const landscape = matchMedia("(max-height: 560px) and (orientation: landscape)");
   const compact = matchMedia("(max-width: 600px)");
   // Preserve the original 448 x 512 game world. Only the cabinet frame flexes to fit it.
-  const frameHeight = .8455334 * 512 / 448 / .8907378;
+  const frameHeight = screenGeometry.widthPercent * 512 / 448 / screenGeometry.heightPercent;
   cabinet.style.setProperty("--frame-ratio", String(1 / frameHeight));
   function fitGame() {
     const height = main.clientHeight;
@@ -2746,6 +2874,223 @@ body .shell {
   window.addEventListener("resize", viewportHeight);
   viewportHeight(); fitGame();
 })();
+</script>
+<script>
+// BEGIN GENERATED CABINET STAGE
+  (() => {
+    "use strict";
+    const $ = id => document.getElementById(id);
+    const root = document.documentElement, cabinet = document.querySelector(".cabinet");
+    const arrival = $("arrival"), enter = $("enter-cabinet"), scene = $("arrival-scene");
+    const previewMotion = $("preview-arrival-motion");
+    const desktop = matchMedia("(min-width: 1100px) and (min-height: 600px)");
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    const pointer = matchMedia("(hover: hover) and (pointer: fine)");
+    const requested = new URLSearchParams(location.search).get("entry");
+    const preferenceKey = "trumpet-flight-cabinet-entered";
+    const assetRoot = "./assets/cabinet/v2/";
+    let state = "play", generation = 0, entered = false, currentMode;
+    let frames = [], frameRequest = 0, dissolve;
+    let framesReady = Promise.resolve();
+    let motionOptIn = false, powerAnimations = [];
+    try { entered = sessionStorage.getItem(preferenceKey) === "true"; }
+    catch (error) { console.warn("Cabinet arrival preference is unavailable:", error); }
+
+    function rememberEntry() {
+      entered = true;
+      try { sessionStorage.setItem(preferenceKey, "true"); }
+      catch (error) { console.warn("Cabinet arrival preference could not be saved:", error); }
+    }
+    function finish(focus = true) {
+      generation++;
+      cancelAnimationFrame(frameRequest);
+      dissolve?.cancel();
+      state = root.dataset.cabinetView = "play";
+      cabinet.dataset.power = "on";
+      for (const animation of powerAnimations) animation.cancel();
+      powerAnimations = [];
+      arrival.hidden = true;
+      $("arrival-motion").hidden = true;
+      cabinet.inert = false;
+      rememberEntry();
+      if (focus) $("screen").focus({ preventScroll: true });
+      document.dispatchEvent(new Event("cabinetready"));
+    }
+    function loadImage(file) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => image.decode().then(() => resolve(image), reject);
+        image.onerror = () => reject(new Error("Unable to load cabinet arrival asset: " + file));
+        image.src = assetRoot + file;
+      });
+    }
+    function cue() {
+      previewMotion.hidden = !reduced.matches;
+      $("arrival-cue").textContent = reduced.matches
+        ? "Reduced motion is on. Enter without animation, or preview the full power-on sequence."
+        : pointer.matches ? "Click the cabinet to wake it" : "Tap the cabinet to wake it";
+    }
+    async function prepareMotion(mode, token) {
+      const sequence = window.TRUMPET_CABINET.approach?.frames?.[mode] ?? [];
+      if (!sequence.length) return;
+      scene.dataset.motion = "loading";
+      try {
+        const loaded = await Promise.all(sequence.map(frame => loadImage(frame.file)));
+        if (token === generation && state === "intro") {
+          frames = loaded;
+          scene.dataset.motion = "ready";
+        }
+      } catch (error) {
+        if (token !== generation) return;
+        scene.dataset.motion = "unavailable";
+        console.warn("Camera sequence unavailable; using a direct dissolve:", error);
+      }
+    }
+    function powerOn() {
+      if (state !== "handoff") return;
+      state = root.dataset.cabinetView = "powering";
+      cabinet.dataset.power = "warming";
+      scene.hidden = true;
+      previewMotion.hidden = true;
+      $("arrival-cue").textContent = "Powering on...";
+      dissolve?.cancel();
+      dissolve = null;
+      const duration = 1000;
+      const marqueeLight = cabinet.querySelector(".marquee-light").animate([
+        { opacity: 0 }, { opacity: 1 }
+      ], { duration: 650, easing: "cubic-bezier(.16, 1, .3, 1)", fill: "forwards" });
+      const screenGlow = cabinet.querySelector(".screen-power-glow").animate([
+        { opacity: 0, transform: "scaleX(.18)", offset: 0 },
+        { opacity: .5, transform: "scaleX(.4)", offset: .22 },
+        { opacity: .08, transform: "scaleX(1)", offset: .38 },
+        { opacity: 0, transform: "scaleX(1)", offset: .46 },
+        { opacity: 0, transform: "scaleX(1)", offset: 1 }
+      ], { duration, fill: "forwards" });
+      const screenReveal = cabinet.querySelector(".screen-content").animate([
+        { clipPath: "inset(50% 0)", filter: "brightness(.45)", offset: 0 },
+        { clipPath: "inset(50% 0)", filter: "brightness(.55)", offset: .22, easing: "cubic-bezier(.16, 1, .3, 1)" },
+        { clipPath: "inset(0% 0)", filter: "brightness(.9)", offset: .82 },
+        { clipPath: "inset(0% 0)", filter: "brightness(1)", offset: 1 }
+      ], { duration, fill: "forwards" });
+      powerAnimations = [marqueeLight, screenGlow, screenReveal];
+      screenReveal.onfinish = () => { if (state === "powering") finish(); };
+    }
+    function handoff() {
+      if (state !== "waking") return;
+      state = root.dataset.cabinetView = "handoff";
+      if (reduced.matches && !motionOptIn) { finish(); return; }
+      dissolve = arrival.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: "ease-out", fill: "forwards" });
+      dissolve.onfinish = powerOn;
+    }
+    async function wake(forceMotion = false) {
+      if (state !== "intro" || enter.disabled) return;
+      enter.disabled = true;
+      previewMotion.disabled = true;
+      motionOptIn = forceMotion;
+      const token = generation;
+      if (reduced.matches && !forceMotion) { finish(); return; }
+      if (forceMotion && !frames.length && scene.dataset.motion !== "loading") {
+        framesReady = prepareMotion(currentMode, token);
+      }
+      if (scene.dataset.motion === "loading") {
+        $("arrival-cue").textContent = "Loading the camera movement...";
+        let timeout;
+        try {
+          await Promise.race([framesReady, new Promise(resolve => { timeout = setTimeout(resolve, 5000); })]);
+        } finally {
+          clearTimeout(timeout);
+        }
+        if (token !== generation || state !== "intro") return;
+        if (scene.dataset.motion === "loading") console.warn("Camera sequence timed out; using a direct dissolve.");
+      }
+      if ((reduced.matches && !forceMotion) || document.hidden) { finish(); return; }
+      state = root.dataset.cabinetView = "waking";
+      $("arrival-cue").textContent = "Opening the arcade...";
+      if (!frames.length) {
+        $("announcement").textContent = "The camera movement could not load. You can play the game directly.";
+        handoff();
+        return;
+      }
+      const motion = $("arrival-motion");
+      motion.src = frames[0].src;
+      motion.hidden = false;
+      const started = performance.now(), duration = window.TRUMPET_CABINET.approach.durationMs;
+      let lastIndex = -1;
+      function tick(now) {
+        if (state !== "waking") return;
+        const progress = Math.min(1, (now - started) / duration);
+        const index = Math.min(frames.length - 1, Math.floor(progress * frames.length));
+        if (index !== lastIndex) { motion.src = frames[index].src; lastIndex = index; }
+        if (progress === 1) handoff();
+        else frameRequest = requestAnimationFrame(tick);
+      }
+      frameRequest = requestAnimationFrame(tick);
+    }
+    async function show() {
+      const token = ++generation;
+      currentMode = root.dataset.theme === "dark" ? "dark" : "light";
+      const mode = currentMode;
+      state = root.dataset.cabinetView = "intro";
+      cabinet.dataset.power = "off";
+      cabinet.inert = true;
+      scene.hidden = false;
+      arrival.hidden = false;
+      enter.disabled = true;
+      previewMotion.disabled = false;
+      previewMotion.hidden = true;
+      frames = [];
+      framesReady = Promise.resolve();
+      scene.dataset.motion = "unavailable";
+      scene.classList.remove("is-loaded");
+      $("arrival-cue").textContent = "Preparing the cabinet...";
+      try {
+        const [image, shadow] = await Promise.all([
+          loadImage("intro-" + mode + ".webp"), loadImage("intro-shadow-" + mode + ".webp")
+        ]);
+        if (token !== generation || state !== "intro") return;
+        $("arrival-cabinet").src = image.src;
+        $("arrival-shadow").src = shadow.src;
+        scene.style.setProperty("--arrival-ratio", image.width + " / " + image.height);
+        scene.classList.add("is-loaded");
+        enter.disabled = false;
+        cue();
+      } catch (error) {
+        if (token !== generation) return;
+        console.warn("Cabinet introduction unavailable:", error);
+        finish(false);
+        $("announcement").textContent = "The cabinet introduction could not load. You can play the game directly.";
+        return;
+      }
+      if (!reduced.matches) framesReady = prepareMotion(mode, token);
+    }
+    enter.addEventListener("click", () => wake());
+    previewMotion.addEventListener("click", () => wake(true));
+    $("skip-arrival").addEventListener("click", () => finish());
+    pointer.addEventListener("change", () => { if (state === "intro" && !enter.disabled) cue(); });
+    desktop.addEventListener("change", () => { if (!desktop.matches && state !== "play") finish(false); });
+    reduced.addEventListener("change", () => {
+      if (reduced.matches && (["waking", "handoff", "powering"].includes(state) || (state === "intro" && enter.disabled))) finish();
+      else if (state === "intro" && !enter.disabled) {
+        cue();
+        if (!reduced.matches && !frames.length && scene.dataset.motion !== "loading") {
+          framesReady = prepareMotion(currentMode, generation);
+        }
+      }
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && ["waking", "handoff", "powering"].includes(state)) finish(false);
+    });
+    new MutationObserver(() => {
+      if (state === "intro" && root.dataset.theme !== currentMode) show();
+    }).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    if (desktop.matches && requested !== "direct" && document.body.dataset.cabinetEntry !== "direct" &&
+        (!entered || requested === "room")) show();
+    else {
+      root.dataset.cabinetView = "play";
+      cabinet.dataset.power = "on";
+    }
+  })();
+  // END GENERATED CABINET STAGE
 </script>
 <script>
 // BEGIN GENERATED LEADERBOARD

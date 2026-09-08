@@ -10,8 +10,8 @@
  */
 window.TRUMPET_SOUNDS = {
   flap: { id: "flap-phrase-1", notes: [
-    { freq: 196, dur: 0.026, to: 196, at: 0, wave: "brass", cutoff: 650, gain: 0.034, attack: 0.005 },
-    { freq: 174.44, dur: 0.032, to: 174.44, at: 0.026, wave: "brass", cutoff: 700, gain: 0.03, attack: 0.005 }
+    { freq: 196, dur: 0.026, to: 196, at: 0, wave: "brass", cutoff: 650, gain: 0.0425, attack: 0.005 },
+    { freq: 174.44, dur: 0.032, to: 174.44, at: 0.026, wave: "brass", cutoff: 700, gain: 0.0375, attack: 0.005 }
   ] },
   score: { id: "score-chord-5", notes: [
     { freq: 294, dur: 0.13, to: 294, at: 0, wave: "sine", cutoff: 840, gain: 0.044, attack: 0.012 },
