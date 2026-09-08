@@ -2,7 +2,7 @@
 
 **Play: https://r4ndom4is.github.io/trumpet/**
 
-A small, polished, installable arcade game: a miniature Trump-inspired rider, a golden backward-facing trumpet, a windswept comb-over, and a fluttering tie. Dodge pipes, find your rhythm, and chase your personal best. Original pixel artwork and synthesized sound; no accounts, analytics, external assets, or runtime dependencies.
+A small, polished, installable arcade game inside an original Crimson coin-op cabinet: a miniature Trump-inspired rider, a golden backward-facing trumpet, a windswept comb-over, and a fluttering tie. Dodge pipes, find your rhythm, and chase your personal best. Original pixel artwork, rendered hardware and synthesized sound; no accounts, analytics, third-party assets, or runtime dependencies.
 
 The sound stays proudly 8-bit: rounded pulse-wave trumpet toots, stepped pitch and brass-like filtering, a little major-key score fanfare, and a descending arcade wah-wah. Soft note endings and a tiny crossfade between taps avoid sharp clicks. Low-volume voices replace previous notes during rapid tapping; mute, pause, and backgrounding silence them. Sound is on by default, but audio is created only on the first play/flap gesture and resumes on a fresh gesture when required by mobile browsers. You can mute before starting.
 
@@ -15,8 +15,11 @@ This is an original, unofficial caricature game. It is not affiliated with or en
 | Space / Arrow Up / click or tap the game | Start, flap, or retry |
 | P / Escape / pause button | Pause or resume |
 | M / sound button | Toggle synthesized sound (on by default) |
+| Sun button | Switch light/dark appearance |
+| 10 button | Open your local Top 10 |
+| Flight manual magazine | Instructions, installation and about |
 
-One point per pipe pair. The personal best is saved in this browser, not synced between devices. If browser storage is blocked, the game explains that the best lasts only for the current visit. Switching windows or hiding the page pauses a flight. Reduced-motion preferences suppress decorative animation.
+One point per pipe pair. The personal best and ten highest completed flights are saved in this browser, not uploaded or synced between devices. Existing personal bests remain eligible for the list. If browser storage is blocked, the game explains that scores last only for the current visit. Switching windows or hiding the page pauses a flight. Reduced-motion preferences suppress decorative animation.
 
 The 42px source sprite is displayed at 48px (scale 48/42, about 14% larger), with both fitted capsule hitboxes scaled by the same factor. In source pixels these are a body capsule (21px centreline, 18px diameter, 90 degrees) and a trumpet capsule (27px centreline, 10px diameter, -25 degrees), centred at (-2, -8) and (3, 3) relative to the live anchor. The imported studio fit is translated up 8 source pixels, then scaled and rotated with the artwork; the visual fit is preserved. Rounded ends determine contact with pipes, ceiling, and floor; scoring waits until both capsules clear a pipe. The crash fall also uses the enlarged sprite bounds. Flight physics, gap sizes, source artwork, and sound phrases are unchanged.
 
@@ -37,21 +40,23 @@ Each stage has a mounted entry sign in the background. It holds for eight second
 
 West Wing It has a stylized residence with a six-column portico, attached wings, lawn and iron fence, with DC's distant obelisk beyond. File Another Day replaces the former atrium with archive shelves, a sorting desk and obstacles made of paper bundles, tabbed folders and labelled file boxes. Fore More Years is a fictional Mar-a-Lago-inspired Florida golf resort with cream/pink arcades, terracotta roofs, palms, curved fairways, bunkers and water. Long scenery segments retain supporting wings and grounds after entry signs leave; the hero buildings are not repeated every screen. Broad tonal sky bands replace checkerboard dithering across all six stages. Original environment and obstacle IDs remain stable for saved selections.
 
-The single **sun/moon icon beside mute** switches light/dark appearance and remembers your choice, including offline. Its icon and accessible label describe the theme you can switch to. Your saved choice takes precedence over system appearance and the optional `?scoutTheme=light` / `?scoutTheme=dark` preview parameter. Until you choose, the parameter or system appearance sets the initial theme. If storage is denied, the palette still switches and an explicit notice explains that it cannot be remembered.
+The **sun button beside mute** switches light/dark appearance and remembers your choice, including offline. The same light Crimson physical finish is lit for day or night, alongside the game's scenery. Its accessible label describes the theme you can switch to. Your saved choice takes precedence over system appearance and the optional `?scoutTheme=light` / `?scoutTheme=dark` preview parameter. Until you choose, the parameter or system appearance sets the initial theme. If storage is denied, the palette still switches and an explicit notice explains that it cannot be remembered.
 
 ## A pocket-sized, screen-fitting arcade
 
-On phones and short landscape screens, the complete game canvas fits the available viewport, including browser chrome and safe-area insets. Scores, sound, pause, start, and retry stay within reach without scrolling the page. Landscape moves score and sound/pause controls beside the game; resizing preserves its aspect ratio, physics, and collision shapes. Installed standalone windows use their extra available height automatically. This does not request native fullscreen or assume iOS supports the Fullscreen API.
+The straight-on cabinet contains the real, undistorted 448 x 512 game, not a perspective-skewed screenshot. Its hood, CRT surround, low button deck, coin slot and magazine tray are rendered hardware; gameplay, scores, marquee lettering and accessible controls remain live HTML/canvas. Button symbols are rendered into the physical caps, with no flat SVG overlays or tiny legends underneath.
 
-The header keeps **trumpet flight.** on the left and **POCKET ARCADE / NO. 001** on the right. **SMALL GAME. BIG ONE-MORE-TRY ENERGY.** stays visible below it on mobile. The Flight manual button sits beneath the game, separate from the mute, theme, and pause controls.
+Desktop shows the full cabinet. Phones crop the lower apron while keeping the magazine within reach. On short landscape screens, a compact control bank sits beside the CRT. Scores, four controls, start, and retry fit the viewport, including browser chrome and safe-area insets, without scrolling the page. Resizing preserves the game's aspect ratio, physics and collision shapes. Installed standalone windows use their extra available height automatically; no Fullscreen API is required.
 
-**Flight manual** keeps every line of the original introduction, tips, controls, installation details, and footer in an accessible, scrollable dialog. Opening it pauses an active flight. Close it with **Close**, Escape, or the backdrop; keyboard focus returns to the opener, and the game stays paused until you resume. Desktop keeps the spacious original layout.
+The header keeps **pocket arcade.** on the left and **NO. 001** on the right, with **SMALL GAME. BIG ONE-MORE-TRY ENERGY.** below. **trumpet flight.** belongs on the cabinet marquee.
+
+The separate **Flight manual** magazine opens every line of the original introduction, tips, controls, installation details, and footer in an accessible, scrollable dialog on all devices. The **10** button opens local scores. Opening either pauses an active flight. Close it with **Close**, Escape, or the backdrop; keyboard focus returns to the opener, and the game stays paused until you resume.
 
 The game preserves the exact initial collision frame as an untouched 2x, nearest-neighbor crop in `crash-image`. The retry panel displays a separate, tighter close-up of that same frame with a labelled decorative surprised expression; it never replaces the raw capture with a later landing frame. The original sprite is unchanged: only the post-impact face gets small eyes and raised brows, masked to its existing face pixels. The visual fall retains incoming vertical velocity and uses flight's gravity (940px/s squared) and terminal speed (470px/s), rather than a fixed-duration trajectory. Ceiling contact cancels upward motion. Rotation follows downward speed with a 1.8rad/s limit and a 0.65rad maximum; the first floor contact permanently stops translation and rotation, with no squash or rebound. Support comes from the opaque sprite pixels, not empty bounding-box corners. Direct floor crashes land immediately. Four fading dust motes occupy a 100ms grounded hold; the world, horizontal anchor, score, and raw capture stay frozen throughout. Short screens retain the close-up and retry button while omitting redundant prose and the keyboard hint. Tap or press Space to skip the fall; the existing 450ms guard requires a separate deliberate input to retry. Reduced-motion mode shows the static reaction without the fall or dust, and pausing or leaving the page settles it immediately.
 
 ## Install and play offline
 
-Open the live HTTPS URL and wait for **Ready for offline play**. The app shell, manifest, and all icons are then cached locally. Subsequent visits and installed launches can work offline.
+Open the live HTTPS URL, open the Flight manual and wait for **Ready for offline play**. The app shell, manifest, all icons and both sets of cabinet artwork are then cached locally. Subsequent visits and installed launches can work offline, including switching cabinet lighting.
 
 - On supported desktop or Android browsers, use **Install game** or the browser's install menu.
 - On iPhone/iPad, open in Safari, tap **Share > Add to Home Screen**, and enable **Open as Web App** if offered.
@@ -67,7 +72,7 @@ Background updates activate only after their offline assets have downloaded succ
 
 **Migrating from the original v3 app:** its cache-first worker may show the old page on your first online visit while the replacement downloads. Wait a moment and refresh once more if the old update button is still visible. There is no need to close other games, clear site data, or reinstall.
 
-For every release that changes app assets, bump `VERSION` in `sw.js`. Keep the manifest, service-worker asset list, and generated icons consistent. Pages may take a few minutes to publish; refreshing cannot fetch a deployment that the server has not published yet.
+For every release that changes app assets, bump `VERSION` in `sw.js`. Cabinet artwork uses immutable versioned paths under `assets/cabinet/v1/`; put changed artwork in a new version directory and update both the CSS and service-worker asset list. Keep the manifest, service-worker asset list, and generated icons consistent. Pages may take a few minutes to publish; refreshing cannot fetch a deployment that the server has not published yet.
 
 ## Local development
 
@@ -92,5 +97,7 @@ npm run test:live
 Playwright is only a development dependency; nothing from `node_modules` is requested by the app. Icons are real PNGs rendered from the same `drawTrumpet` function used in the game, including separate padded maskable variants.
 
 Environment artwork lives in `scripts/environments.js`. After editing it, run `npm run embed:environments` and commit the regenerated `index.html` as well. The rider sprite (`scripts/sprite.js`), sound effects (`scripts/sounds.js`), theme colors (`scripts/theme.css`) and the background-distraction atmosphere tuning (`scripts/atmosphere.js`) are similarly canonical; after editing any of them, run `npm run embed:assets` and commit the regenerated `index.html`. The published file already contains all of these modules inline, so hosting and offline launches still require no build or external runtime scripts. The dev-only character lab in `tools/character-lab/` loads these same canonical files directly (no separate copies), so it can never drift from what's shipped. Running `npm run lab` also serves the lab over HTTP with a save button that writes tuning changes straight back to these files (auto re-embedding into `index.html`); per-module and whole-game JSON exports remain available as an offline backup.
+
+Cabinet layout (`scripts/cabinet.css`) and the local leaderboard (`scripts/leaderboard.js`) also use `npm run embed:assets`. Ship only optimized production artwork in `assets/cabinet/`, not the large development render studies or Blender runtime. The source renderer is `scripts/render-production-cabinet.py`; its input models are development artifacts, not runtime dependencies.
 
 The migration regression reads the actual v3 release (`440cfd9`) from Git history; use a full clone rather than a shallow checkout when running it.

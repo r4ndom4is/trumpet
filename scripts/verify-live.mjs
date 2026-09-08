@@ -15,6 +15,15 @@ try {
   const source = (await readFile(new URL("../index.html", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
   assert.equal(published, source, "Published HTML must match the checkout, ignoring Git line-ending normalization");
   await page.waitForFunction(() => navigator.serviceWorker.controller && document.getElementById("app-status").textContent === "Ready for offline play.");
+  await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
+  assert.match(await page.locator(".brand").innerText(), /pocket arcade/);
+  assert.equal(await page.locator(".marquee").innerText(), "trumpet flight.");
+  const cachedArt = await page.evaluate(async () => {
+    const keys = await caches.keys();
+    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v16")));
+    return (await cache.keys()).filter(request => request.url.includes("/assets/cabinet/v1/")).length;
+  });
+  assert.equal(cachedArt, 10);
   assert.equal(await page.locator("#update").count(), 0);
   assert.equal(await page.locator("script[src]").count(), 0);
   const registration = await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).scope);
@@ -57,6 +66,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator("#theme-switch").click();
   assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+  await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
   assert.equal(await page.locator("#theme-switch").getAttribute("aria-label"), "Switch to dark theme");
   assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "true");
   assert.equal(await page.locator("#sound").getAttribute("aria-label"), "Mute sound");
@@ -67,6 +77,12 @@ try {
   await page.waitForFunction(() => document.getElementById("app-status").textContent === "Offline. Ready to fly.");
   assert.equal(await page.evaluate(() => navigator.onLine), false);
   assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+  await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
+  for (const theme of ["dark", "light"]) {
+    await page.locator("#theme-switch").tap();
+    await page.waitForFunction(theme => document.documentElement.dataset.theme === theme &&
+      document.querySelector(".cabinet").dataset.art === "ready", theme);
+  }
   await page.locator("#play").tap();
   assert.equal(await page.locator("#overlay").isHidden(), true);
   await page.locator("#sound").tap();
@@ -82,6 +98,10 @@ try {
   await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?" &&
     !document.getElementById("overlay").hidden);
   assert.equal(await page.locator("#crash-shot").isVisible(), true);
+  await page.locator("#leaderboard-open").tap();
+  assert.equal(await page.locator("#leaderboard-list li").count(), 1);
+  assert.match(await page.locator("#leaderboard").innerText(), /No accounts, no uploads/);
+  await page.locator("#leaderboard-close").tap();
   await page.screenshot({ path: "test-results/live-offline-retry.png", fullPage: true });
   assert.deepEqual(errors, []);
   console.log(`Live HTTPS app, matching source, viewport fit, remembered theme, manual, manifest/icons, installability and offline gameplay verified: ${url}`);

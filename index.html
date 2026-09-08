@@ -260,6 +260,161 @@ a { color: var(--cp-link); }
   .dialog.crashed p, .dialog.crashed .prompt { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .primary:active { transform: none; } }
+/* BEGIN GENERATED CABINET */
+:root {
+  --cabinet-hood: url("./assets/cabinet/v1/hood-light.webp");
+  --cabinet-frame: url("./assets/cabinet/v1/frame-light.webp");
+  --cabinet-deck: url("./assets/cabinet/v1/deck-light.webp");
+  --cabinet-apron: url("./assets/cabinet/v1/apron-light.webp");
+  --cabinet-manual: url("./assets/cabinet/v1/manual-light.webp");
+}
+:root[data-theme="dark"] {
+  --cabinet-hood: url("./assets/cabinet/v1/hood-dark.webp");
+  --cabinet-frame: url("./assets/cabinet/v1/frame-dark.webp");
+  --cabinet-deck: url("./assets/cabinet/v1/deck-dark.webp");
+  --cabinet-apron: url("./assets/cabinet/v1/apron-dark.webp");
+  --cabinet-manual: url("./assets/cabinet/v1/manual-dark.webp");
+}
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--cp-bg); }
+body .shell {
+  width: 100%; max-width: none; height: var(--app-height, 100dvh);
+  display: flex; flex-direction: column; gap: 12px;
+  padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(0px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.shell > header {
+  width: min(100%, 640px); align-self: center; flex: none;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 34px auto;
+  align-items: center; gap: 6px 12px; border: 0; padding: 0;
+}
+.shell .brand { gap: 7px; font-size: clamp(18px, 4.8vw, 24px); white-space: nowrap; letter-spacing: -.7px; }
+.shell .brand-icon { display: block; width: 20px; height: 20px; flex: none; color: var(--cp-accent); }
+.shell header .edition { font-size: 10px; letter-spacing: 1px; white-space: nowrap; }
+.shell .compact-tagline { display: block; grid-column: 1 / -1; padding: 0; }
+.shell .compact-tagline .eyebrow { font-size: clamp(10px, 2.6vw, 11px); line-height: 1.4; letter-spacing: .8px; color: var(--cp-accent); }
+.shell > main { flex: 1; width: 100%; min-height: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0; gap: 0; }
+.shell > main > .intro-panel, .shell > footer, .shell > .unofficial { display: none; }
+.shell .cabinet {
+  position: relative; display: block; flex: none; width: var(--cabinet-width, 360px);
+  min-height: 0; padding: 0; gap: 0; border: 0; border-radius: 0; background: none;
+  box-shadow: none; overflow: visible; user-select: none; -webkit-user-select: none;
+}
+.marquee {
+  position: relative; aspect-ratio: 696 / 145; background: var(--cabinet-hood) center / 100% 100% no-repeat;
+  display: flex; align-items: center; justify-content: center; padding: 0 12% 1.5%; container-type: inline-size;
+}
+.marquee span { color: #4d211b; font-weight: 800; font-size: clamp(17px, 8cqw, 34px); letter-spacing: -.04em; }
+.shell .playfield { position: relative; display: block; width: 100%; aspect-ratio: var(--frame-ratio, .9218); overflow: visible; }
+.frame-rim { position: absolute; inset: 0; z-index: 2; background: var(--cabinet-frame) center / 100% 100% no-repeat; pointer-events: none; }
+.shell .screen {
+  position: absolute; left: 7.72333%; top: 5.10342%; width: 84.55334%; height: 89.07378%;
+  max-width: none; border: 0; border-radius: 0; overflow: hidden; background: #182326;
+  box-shadow: none; container-type: size; touch-action: none;
+}
+.shell #game { display: block; width: 100%; height: 100%; }
+.shell .screen:focus-visible { outline: 3px solid var(--cp-accent); outline-offset: -7px; }
+.shell .scorebar {
+  position: absolute; inset: 4% 7% auto; z-index: 1; min-width: 0; padding: 0;
+  display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 12px;
+  border: 0; background: none; pointer-events: none; color: #fff6db; text-shadow: 0 1px 3px #172126, 1px 0 2px #172126;
+}
+.shell .scorebar > div { display: block; }
+.shell .scorebar .best { text-align: right; }
+.shell .scorebar .stat-label { max-width: none; color: inherit; font-size: 9px; line-height: 1.2; letter-spacing: 1px; }
+.shell .scorebar .stat-number { font-size: clamp(18px, 7cqw, 26px); line-height: 1; margin-top: 3px; color: inherit; }
+.shell .overlay { padding: 48px 12px 10px; }
+.shell .dialog, .shell .dialog.crashed { width: min(100%, 316px); max-height: 100%; padding: 12px; }
+.shell .rider-preview { width: auto; height: clamp(32px, 17cqh, 80px); margin: 0 auto; }
+.shell .dialog .pixel-title, .shell .dialog.crashed .pixel-title { font-size: clamp(16px, 7cqw, 24px); margin: 6px 0; }
+.shell .dialog p, .shell .dialog.crashed p { font-size: 11px; line-height: 1.4; margin: 6px 0 8px; }
+.shell .dialog .primary, .shell .dialog.crashed .primary { min-height: 44px; padding: 8px; }
+.shell .dialog .prompt, .shell .dialog.crashed .prompt { margin-top: 8px; font-size: 8px; letter-spacing: .5px; }
+.shell .dialog .crash-shot { margin-bottom: 8px; }
+.shell .dialog .crash-shot canvas { width: auto; max-height: clamp(42px, 40cqh, 172px); }
+.shell .crash-shot figcaption { font-size: 8px; letter-spacing: .5px; }
+.control-deck { position: relative; height: max(56px, var(--deck-height, 64px)); background: var(--cabinet-deck) center / 100% 100% no-repeat; container-type: inline-size; }
+.shell .tools { position: absolute; inset: 0; display: block; }
+.shell .tool {
+  position: absolute; top: calc(36.444922% - 22px); width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+  padding: 0; border: 0; border-radius: 50%; background: none; color: inherit; box-shadow: none;
+  touch-action: manipulation; opacity: 1;
+}
+.shell #sound { left: calc(34.74% - max(44px, 12.45cqw) - 22px); }
+.shell #theme-switch { left: calc(34.74% - 22px); }
+.shell #leaderboard-open { left: calc(34.74% + max(44px, 12.45cqw) - 22px); }
+.shell #pause { left: calc(78.9% - 22px); }
+.shell .tool svg, .control-name { display: none; }
+.shell .tool:hover { background: rgb(255 240 195 / .09); }
+.shell .tool:active:not(:disabled) { background: rgb(38 14 10 / .18); }
+.shell .tool:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 1px; background: rgb(255 246 220 / .18); }
+.shell #sound[aria-pressed="false"]::after, .shell #pause[aria-label="Resume game"]::after {
+  content: ""; position: absolute; width: 6px; height: 6px; bottom: 1px; left: 19px;
+  border-radius: 50%; background: #ffcc6d; box-shadow: 0 0 3px #a7211e;
+}
+.lower-cabinet { position: relative; height: var(--apron-height, 64px); overflow: hidden; background: var(--cabinet-apron) top center / 100% auto no-repeat; }
+.shell .manual-trigger {
+  position: absolute; left: 9%; top: 0; width: 40%; height: 100%; min-height: 44px; padding: 0; border: 0; border-radius: 0;
+  background: var(--cabinet-manual) 15% 0 / 250% auto no-repeat; color: inherit; touch-action: manipulation;
+}
+.shell .manual-trigger:focus-visible { outline: 3px solid var(--cp-accent); outline-offset: -4px; background-color: rgb(255 240 195 / .08); }
+.manual-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.shell .cabinet-footer { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; overflow: hidden; clip-path: inset(50%); font-size: 10px; }
+.shell .cabinet > .notice { position: fixed; bottom: 8px; left: 12px; right: 12px; z-index: 4; width: min(460px, calc(100% - 24px)); margin: 0 auto; padding: 10px; background: var(--cp-panel-strong); }
+.shell .theme-notice { pointer-events: none; }
+.manual, .manual * { user-select: text; -webkit-user-select: text; }
+.manual .intro-panel { display: block; margin: 0; }
+.manual h1 { font-size: 38px; letter-spacing: -1.8px; }
+.manual .intro { font-size: 14px; }
+.leaderboard-note { margin-top: 0; color: var(--cp-text-soft); font-size: 14px; line-height: 1.6; }
+#leaderboard-list { padding: 0; margin: 20px 0; list-style: none; counter-reset: flight-rank; font-variant-numeric: tabular-nums; }
+#leaderboard-list li { counter-increment: flight-rank; display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid var(--cp-border); }
+#leaderboard-list li::before { content: counter(flight-rank, decimal-leading-zero); color: var(--cp-text-soft); font: 11px monospace; }
+#leaderboard-list strong { font: 700 24px monospace; }
+#leaderboard-list span { color: var(--cp-text-soft); font-size: 12px; }
+.cabinet:not([data-art="ready"]) .marquee,
+.cabinet:not([data-art="ready"]) .control-deck,
+.cabinet:not([data-art="ready"]) .lower-cabinet { background: #682a27; }
+.cabinet:not([data-art="ready"]) .playfield { background: #682a27; }
+.cabinet:not([data-art="ready"]) .marquee span { color: #f4e6c8; }
+.cabinet:not([data-art="ready"]) .frame-rim { background: none; }
+.cabinet:not([data-art="ready"]) .tool { background: var(--cp-bg-elevated); color: var(--cp-text); border: 1px solid var(--cp-border); font-size: 10px; font-weight: 700; }
+.cabinet:not([data-art="ready"]) .control-name { display: inline; }
+.cabinet:not([data-art="ready"]) .manual-trigger { background: var(--cp-bg-elevated); color: var(--cp-text); }
+.cabinet:not([data-art="ready"]) .manual-name { position: static; width: auto; height: auto; clip-path: none; font-size: 12px; }
+@container (max-height: 400px) {
+  .shell .dialog.crashed p, .shell .dialog.crashed .prompt { display: none; }
+}
+@container (max-height: 320px) {
+  .shell .overlay { padding: 36px 8px 6px; }
+  .shell .dialog, .shell .dialog.crashed { padding: 8px; }
+  .shell .dialog p, .shell .dialog .prompt { display: none; }
+  .shell .dialog .pixel-title, .shell .dialog.crashed .pixel-title { font-size: 16px; margin: 4px 0; }
+  .shell .dialog .crash-shot canvas { max-height: 28cqh; }
+  .shell .crash-shot figcaption { font-size: 7px; margin-top: 3px; }
+}
+@media (max-width: 600px) {
+  body .shell { gap: 8px; padding-top: max(8px, env(safe-area-inset-top)); padding-left: max(4px, env(safe-area-inset-left)); padding-right: max(4px, env(safe-area-inset-right)); }
+  .shell > header { width: calc(100% - 24px); }
+}
+@media (max-height: 560px) and (orientation: landscape) {
+  body .shell { padding-top: max(4px, env(safe-area-inset-top)); gap: 6px; }
+  .shell > header { width: min(100%, 600px); grid-template-rows: 28px auto; gap: 2px 12px; }
+  .shell > main { align-items: center; }
+  .shell .cabinet { width: min(100%, 600px); height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 160px; grid-template-rows: 46px minmax(112px, 1fr) 50px; gap: 4px 20px; }
+  .shell .playfield { grid-column: 1; grid-row: 1 / 4; width: var(--field-width); align-self: center; justify-self: end; }
+  .marquee { grid-column: 2; grid-row: 1; align-self: center; width: 160px; }
+  .marquee span { font-size: 17px; }
+  .control-deck { grid-column: 2; grid-row: 2; height: auto; align-self: center; background: none; }
+  .shell .tools { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .shell .tool { position: static; width: 100%; height: 48px; border-radius: 8px; border: 1px solid var(--cp-border-strong); background: var(--cp-bg-elevated); font-weight: 700; font-size: 12px; }
+  .shell .tool:disabled { opacity: .45; }
+  .shell .tool::after { display: none; }
+  .control-name { display: inline; }
+  .lower-cabinet { grid-column: 2; grid-row: 3; height: 48px; background: none; overflow: visible; }
+  .shell .manual-trigger { position: static; width: 100%; height: 44px; min-height: 44px; border-radius: 6px; background: var(--cp-bg-elevated); border: 1px solid var(--cp-border); }
+  .manual-name { position: static; width: auto; height: auto; clip-path: none; font-size: 12px; font-weight: 600; color: var(--cp-text); }
+}
+/* END GENERATED CABINET */
 </style>
 </head>
 <body>
@@ -267,9 +422,9 @@ a { color: var(--cp-link); }
   <header>
     <div class="brand">
       <svg class="brand-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 4h8v6H2zM14 4h8v6h-8zM2 14h8v6H2zM14 14h8v6h-8z"/></svg>
-      trumpet flight<span class="mono" style="color:var(--cp-accent)">.</span>
+      pocket arcade<span class="mono" style="color:var(--cp-accent)">.</span>
     </div>
-    <div class="edition mono">POCKET ARCADE / NO. 001</div>
+    <div class="edition mono">NO. 001</div>
     <div class="compact-tagline" id="compact-tagline"></div>
   </header>
   <main>
@@ -295,25 +450,16 @@ a { color: var(--cp-link); }
         <p>Wait for "Ready for offline play" before going offline. Browser data cleanup can remove the offline copy and personal best.</p>
       </div>
     </section>
-    <section class="cabinet" aria-label="Trumpet Flight arcade game">
-      <div class="scorebar">
-        <div><div class="stat-label mono">SCORE</div><div class="stat-number mono" id="score">00</div></div>
-        <div class="best"><div class="stat-label mono">PERSONAL BEST</div><div class="stat-number mono" id="best">00</div></div>
-        <div class="tools" role="group" aria-label="Game controls">
-          <button class="tool" id="sound" aria-label="Mute sound" aria-pressed="true" title="Sound (M)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 4 5 9H2v6h3l6 5z"/><path id="sound-mark" d="M15 8q5 4 0 8M18 4q9 8 0 16"/></svg>
-          </button>
-          <button class="tool" id="theme-switch" aria-label="Switch to dark theme" title="Switch to dark theme" data-theme="light">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path id="theme-symbol" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
-          </button>
-          <button class="tool" id="pause" disabled aria-label="Pause game" title="Pause (P)">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
-          </button>
-        </div>
-      </div>
+    <section class="cabinet" aria-label="Trumpet Flight arcade game" data-art="loading">
+      <div class="marquee" aria-hidden="true"><span>trumpet flight.</span></div>
       <div class="playfield">
+       <div class="frame-rim" aria-hidden="true"></div>
        <div class="screen" id="screen" tabindex="0" role="group" aria-label="Game area. Space, Arrow Up, click or tap to flap. P to pause.">
         <canvas id="game" width="448" height="512" aria-label="Trumpet Flight: miniature Trump-inspired rider on a flying trumpet, dodging pipes">Use a browser with HTML canvas support to play.</canvas>
+        <div class="scorebar" aria-label="Current and best score">
+          <div><div class="stat-label mono">SCORE</div><div class="stat-number mono" id="score">00</div></div>
+          <div class="best"><div class="stat-label mono">BEST</div><div class="stat-number mono" id="best">00</div></div>
+        </div>
         <div class="overlay" id="overlay">
           <div class="dialog">
             <canvas id="rider-preview" class="rider-preview" width="136" height="120" aria-label="Pocket Trump-inspired rider on a backward-facing golden trumpet, with a full comb-over and fluttering tie"></canvas>
@@ -330,6 +476,29 @@ a { color: var(--cp-link); }
          </div>
         </div>
       </div>
+         <div class="control-deck">
+          <div class="tools" role="group" aria-label="Game controls">
+            <button class="tool" id="sound" aria-label="Mute sound" aria-pressed="true" title="Sound (M)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path id="sound-mark" d="M15 8q5 4 0 8M18 4q9 8 0 16"/></svg>
+              <span class="control-name" aria-hidden="true">Sound</span>
+            </button>
+            <button class="tool" id="theme-switch" aria-label="Switch to dark theme" title="Switch to dark theme" data-theme="light">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path id="theme-symbol" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
+              <span class="control-name" aria-hidden="true">Theme</span>
+            </button>
+            <button class="tool" id="leaderboard-open" aria-label="Top 10 on this device" aria-haspopup="dialog" aria-controls="leaderboard" title="Your Top 10">
+              <span class="control-name" aria-hidden="true">Top 10</span>
+            </button>
+            <button class="tool" id="pause" disabled aria-label="Pause game" title="Pause (P)">
+              <span class="control-name" aria-hidden="true">Pause</span>
+            </button>
+          </div>
+         </div>
+         <div class="lower-cabinet">
+          <button class="manual-trigger" id="manual-open" aria-label="Flight manual" aria-haspopup="dialog" aria-controls="manual" title="Open flight manual">
+            <span class="manual-name">Flight manual</span>
+          </button>
+         </div>
       <dialog class="manual" id="manual" aria-labelledby="manual-title">
         <div class="manual-heading">
           <h2 id="manual-title">Flight manual &amp; about</h2>
@@ -337,10 +506,22 @@ a { color: var(--cp-link); }
         </div>
         <div class="manual-content"></div>
       </dialog>
+      <dialog class="manual leaderboard" id="leaderboard" aria-labelledby="leaderboard-title">
+        <div class="manual-heading">
+          <h2 id="leaderboard-title">Your Top 10</h2>
+          <button class="secondary" id="leaderboard-close" autofocus>Close</button>
+        </div>
+        <div class="manual-content">
+          <p class="leaderboard-note">The best flights on this device. No accounts, no uploads.</p>
+          <p id="leaderboard-empty">Your first flight starts the list. Let's make it a good one.</p>
+          <ol id="leaderboard-list" aria-label="Highest scoring flights"></ol>
+          <p class="app-status" id="leaderboard-status">Saved in this browser. Clearing browser data clears this list.</p>
+        </div>
+      </dialog>
       <p class="theme-notice" id="theme-notice" role="status" hidden></p>
+      <p class="theme-notice" id="art-notice" role="status" hidden></p>
       <div class="cabinet-footer mono">
         <div class="flight-status"><span><i class="status-dot"></i><span id="status">READY WHEN YOU ARE</span></span><span id="environment-name">West Wing It</span></div>
-        <button class="secondary manual-trigger" id="manual-open" aria-haspopup="dialog" aria-controls="manual">Flight manual</button>
       </div>
       <p class="notice" id="notice" role="status" hidden></p>
       <div id="announcement" role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)"></div>
@@ -1707,6 +1888,7 @@ a { color: var(--cp-link); }
   const voices = new Set();
   const fadingVoices = new Set();
   function notifyState() {
+    $("pause").querySelector(".control-name").textContent = state === "paused" ? "Resume" : "Pause";
     document.dispatchEvent(new CustomEvent("flightstate", { detail: state }));
   }
   function storageError(error) {
@@ -1852,6 +2034,8 @@ a { color: var(--cp-link); }
     if (muted) silence();
     $("sound").setAttribute("aria-pressed", String(!muted));
     $("sound").setAttribute("aria-label", muted ? "Enable sound" : "Mute sound");
+    $("sound").querySelector(".control-name").textContent = muted ? "Muted" : "Sound";
+    $("sound").title = muted ? "Enable sound (M)" : "Mute sound (M)";
     $("sound-mark").setAttribute("d", muted ? "m16 9 6 6m0-6-6 6" : "M15 8q5 4 0 8M18 4q9 8 0 16");
     if (!muted && await prepareAudio()) tone(392, .16);
   }
@@ -1949,6 +2133,7 @@ a { color: var(--cp-link); }
       }
     }
     updateScore();
+    document.dispatchEvent(new CustomEvent("flightcomplete", { detail: { score, best } }));
     overlay(record ? "NEW HIGH SCORE!" : "ONE MORE TRY?", "You cleared " + score + (score === 1 ? " pipe. " : " pipes. ") + (record ? "A golden performance." : "A little rhythm goes a long way."), "FLY AGAIN >", "SPACE OR TAP TO TRY AGAIN");
     // Keep the collision bird/capsules and crop immutable; only this visual pose falls.
     death = { elapsed: 0, fromY: bird.y, fromTilt: riderTilt(), y: bird.y, vy: bird.vy, tilt: riderTilt(),
@@ -2401,14 +2586,16 @@ a { color: var(--cp-link); }
     if (event.target.closest("button, .dialog") || (event.pointerType === "mouse" && event.button !== 0)) return;
     event.preventDefault(); action();
   });
-  document.querySelector(".cabinet").addEventListener("selectstart", event => event.preventDefault());
+  document.querySelector(".cabinet").addEventListener("selectstart", event => {
+    if (!document.querySelector("dialog[open]")) event.preventDefault();
+  });
   document.addEventListener("pointerdown", primeAudioFromGesture, { capture: true, passive: true });
   document.addEventListener("touchend", primeAudioFromGesture, { capture: true, passive: true });
   $("play").addEventListener("click", action);
   $("pause").addEventListener("click", pause);
   $("sound").addEventListener("click", toggleSound);
   window.addEventListener("keydown", event => {
-    if ($("manual").open) return;
+    if (document.querySelector("dialog[open]")) return;
     if (event.ctrlKey || event.altKey || event.metaKey || event.target.matches("input, textarea, select, [contenteditable]")) return;
     if (event.code === "Space" || event.code === "ArrowUp") {
       if (event.target.closest("button")) return;
@@ -2432,60 +2619,46 @@ a { color: var(--cp-link); }
 (() => {
   "use strict";
   const $ = id => document.getElementById(id);
-  const compact = matchMedia("(max-width: 900px), (max-width: 1100px) and (max-height: 560px)");
   const manual = $("manual");
   const content = manual.querySelector(".manual-content");
   // Move the originals, not copies: IDs, install state, links and all of the copy remain intact.
-  const sections = [".intro-panel", "footer", ".unofficial"].map(selector => {
-    const node = document.querySelector(selector);
-    const anchor = document.createComment("Flight manual content position");
-    node.before(anchor);
-    return { node, anchor };
-  });
-  const eyebrow = document.querySelector(".eyebrow");
-  const eyebrowAnchor = document.createComment("Desktop tagline position");
-  eyebrow.before(eyebrowAnchor);
-  function placeCopy() {
-    for (const { node, anchor } of sections) {
-      if (compact.matches || manual.open) content.append(node);
-      else anchor.after(node);
-    }
-    if (compact.matches) $("compact-tagline").append(eyebrow);
-    else eyebrowAnchor.after(eyebrow);
+  $("compact-tagline").append(document.querySelector(".eyebrow"));
+  for (const selector of [".intro-panel", "footer", ".unofficial"]) content.append(document.querySelector(selector));
+  for (const id of ["manual", "leaderboard"]) {
+    const dialog = $(id), opener = $(id + "-open"), closer = $(id + "-close");
+    opener.addEventListener("click", () => {
+      document.dispatchEvent(new Event("flightmanualopen"));
+      opener.focus({ preventScroll: true });
+      dialog.showModal();
+      dialog.scrollTop = 0;
+      closer.focus({ preventScroll: true });
+    });
+    closer.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("keydown", event => {
+      if (event.key !== "Tab") return;
+      const controls = [...dialog.querySelectorAll('button:not(:disabled), a[href], [tabindex="0"]')]
+        .filter(node => node.getClientRects().length > 0);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
+    });
+    dialog.addEventListener("close", () => {
+      if (document.activeElement === document.body || dialog.contains(document.activeElement)) opener.focus({ preventScroll: true });
+    });
+    let backdropDown = false;
+    const outside = event => {
+      const box = dialog.getBoundingClientRect();
+      return event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
+    };
+    dialog.addEventListener("pointerdown", event => { backdropDown = event.target === dialog && outside(event); });
+    dialog.addEventListener("click", event => {
+      if (backdropDown && event.target === dialog && outside(event)) dialog.close();
+      backdropDown = false;
+    });
   }
-  $("manual-open").addEventListener("click", () => {
-    document.dispatchEvent(new Event("flightmanualopen"));
-    manual.showModal();
-    placeCopy();
-    manual.scrollTop = 0;
-    $("manual-close").focus({ preventScroll: true });
-  });
-  $("manual-close").addEventListener("click", () => manual.close());
-  manual.addEventListener("keydown", event => {
-    if (event.key !== "Tab") return;
-    const controls = [...manual.querySelectorAll('button:not(:disabled), a[href], [tabindex="0"]')]
-      .filter(node => node.getClientRects().length > 0);
-    const first = controls[0], last = controls[controls.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault(); last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault(); first.focus();
-    }
-  });
-  manual.addEventListener("close", () => {
-    placeCopy();
-    $("manual-open").focus({ preventScroll: true });
-  });
-  let backdropDown = false;
-  const outside = event => {
-    const box = manual.getBoundingClientRect();
-    return event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom;
-  };
-  manual.addEventListener("pointerdown", event => { backdropDown = event.target === manual && outside(event); });
-  manual.addEventListener("click", event => {
-    if (backdropDown && event.target === manual && outside(event)) manual.close();
-    backdropDown = false;
-  });
   function themeButton() {
     const dark = document.documentElement.dataset.theme === "dark";
     const action = dark ? "Switch to light theme" : "Switch to dark theme";
@@ -2512,29 +2685,125 @@ a { color: var(--cp-link); }
   document.addEventListener("themestorageerror", themeNotice);
   if (document.documentElement.dataset.themeStorage === "unavailable") themeNotice();
   themeButton();
-  const field = document.querySelector(".playfield");
+  const main = document.querySelector("main"), cabinet = document.querySelector(".cabinet");
+  const artwork = new Map();
+  function loadArtwork() {
+    const mode = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    cabinet.dataset.art = "loading";
+    if (!artwork.has(mode)) artwork.set(mode, Promise.all(["hood", "frame", "deck", "apron", "manual"].map(part =>
+      new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = resolve;
+        image.onerror = () => reject(new Error(`Unable to load ${part}-${mode}.webp`));
+        image.src = `./assets/cabinet/v1/${part}-${mode}.webp`;
+      })
+    )));
+    artwork.get(mode).then(() => {
+      if (document.documentElement.dataset.theme !== mode) return;
+      cabinet.dataset.art = "ready";
+      $("art-notice").hidden = true;
+    }, error => {
+      if (document.documentElement.dataset.theme !== mode) return;
+      cabinet.dataset.art = "unavailable";
+      $("art-notice").textContent = "Cabinet artwork could not load. You can still play. Reconnect and refresh to restore it.";
+      $("art-notice").hidden = false;
+      console.warn("Cabinet artwork unavailable:", error);
+    });
+  }
+  new MutationObserver(loadArtwork).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  loadArtwork();
+  const landscape = matchMedia("(max-height: 560px) and (orientation: landscape)");
+  const compact = matchMedia("(max-width: 900px)");
+  // Preserve the original 448 x 512 game world. Only the cabinet frame flexes to fit it.
+  const frameHeight = .8455334 * 512 / 448 / .8907378;
+  cabinet.style.setProperty("--frame-ratio", String(1 / frameHeight));
   function fitGame() {
-    const screen = $("screen");
-    if (!compact.matches) {
-      screen.style.removeProperty("width");
-      screen.style.removeProperty("height");
+    const height = main.clientHeight;
+    if (landscape.matches) {
+      cabinet.style.setProperty("--field-width", `${Math.max(1, Math.min(height / frameHeight, Math.min(main.clientWidth, 600) - 180))}px`);
       return;
     }
-    const width = Math.max(0, Math.min(field.clientWidth - 4, (field.clientHeight - 4) * 448 / 512));
-    screen.style.width = `${width + 4}px`;
-    screen.style.height = `${width * 512 / 448 + 4}px`;
+    const hood = 145 / 696, deck = 124 / 696, apron = 254 / 696;
+    const cropped = compact.matches;
+    let width = Math.min(main.clientWidth, 480, (height - (cropped ? 64 : 0)) / (hood + frameHeight + deck + (cropped ? 0 : apron)));
+    if (width * deck < 56) width = Math.min(width, (height - 56 - (cropped ? 64 : 0)) / (hood + frameHeight + (cropped ? 0 : apron)));
+    width = Math.max(1, width);
+    cabinet.style.setProperty("--cabinet-width", `${width}px`);
+    cabinet.style.setProperty("--deck-height", `${width * deck}px`);
+    const apronHeight = cropped ? Math.min(width * apron, Math.max(64, height - width * (hood + frameHeight) - Math.max(56, width * deck))) : width * apron;
+    cabinet.style.setProperty("--apron-height", `${apronHeight}px`);
   }
   function viewportHeight() {
     if (!window.visualViewport || window.visualViewport.scale === 1) {
       document.documentElement.style.setProperty("--app-height", `${window.visualViewport?.height ?? innerHeight}px`);
     }
   }
-  new ResizeObserver(fitGame).observe(field);
-  compact.addEventListener("change", () => { placeCopy(); fitGame(); });
+  new ResizeObserver(fitGame).observe(main);
+  compact.addEventListener("change", fitGame);
+  landscape.addEventListener("change", fitGame);
   window.visualViewport?.addEventListener("resize", viewportHeight);
   window.addEventListener("resize", viewportHeight);
-  viewportHeight(); placeCopy(); fitGame();
+  viewportHeight(); fitGame();
 })();
+</script>
+<script>
+// BEGIN GENERATED LEADERBOARD
+  (() => {
+    "use strict";
+    const key = "trumpet-flight-top10";
+    const $ = id => document.getElementById(id);
+    let records = [], writable = true;
+    function unavailable(error, corrupt = false) {
+      writable = corrupt;
+      const message = corrupt
+        ? "Your saved Top 10 could not be read. A fresh list will start with your next flight; your personal best is kept."
+        : "Browser storage is unavailable. Your Top 10 will last for this visit only.";
+      $("leaderboard-status").textContent = message;
+      $("notice").textContent = message;
+      $("notice").hidden = false;
+      console.warn("Top 10 storage:", error);
+    }
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw !== null) {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed) || parsed.length > 10 || parsed.some(row =>
+          !row || !Number.isSafeInteger(row.score) || row.score < 0 ||
+          (row.at !== null && (!Number.isSafeInteger(row.at) || row.at < 0 || row.at > 8640000000000000)))) {
+          unavailable("Invalid saved flight records", true);
+        } else records = parsed.map(({ score, at }) => ({ score, at }));
+      }
+    } catch (error) { unavailable(error, error instanceof SyntaxError); }
+    const historicalBest = Number($("best").textContent);
+    if (historicalBest > 0 && !records.some(row => row.score >= historicalBest)) {
+      records.push({ score: historicalBest, at: null });
+    }
+    function render() {
+      records.sort((a, b) => b.score - a.score || (b.at ?? 0) - (a.at ?? 0));
+      records = records.slice(0, 10);
+      $("leaderboard-empty").hidden = records.length > 0;
+      $("leaderboard-list").replaceChildren(...records.map(row => {
+        const item = document.createElement("li");
+        const score = document.createElement("strong"), date = document.createElement("span");
+        score.textContent = String(row.score);
+        date.textContent = row.at === null ? "Personal best" : new Date(row.at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+        item.append(score, date);
+        return item;
+      }));
+    }
+    render();
+    document.addEventListener("flightcomplete", event => {
+      records.push({ score: event.detail.score, at: Date.now() });
+      render();
+      if (writable) {
+        try {
+          localStorage.setItem(key, JSON.stringify(records));
+          $("leaderboard-status").textContent = "Saved in this browser. Clearing browser data clears this list.";
+        } catch (error) { unavailable(error); }
+      }
+    });
+  })();
+  // END GENERATED LEADERBOARD
 </script>
 <script>
 (() => {
