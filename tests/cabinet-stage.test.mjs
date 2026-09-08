@@ -32,6 +32,9 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
     await t.test("hover only invites; clicking approaches without starting a flight", async () => {
       const { context, page } = await open();
       await ready(page);
+      await page.reload();
+      await ready(page);
+      assert.equal(await page.locator(".cabinet").getAttribute("data-power"), "off");
       assert.equal(await page.locator(".cabinet").evaluate(node => node.inert), true);
       await page.locator("#enter-cabinet").hover();
       await page.waitForTimeout(300);
@@ -63,10 +66,12 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
       assert.equal(await page.locator("#overlay").isHidden(), true);
       await page.locator("#pause").click();
       await page.reload();
-      await ready(page);
-      assert.equal(await page.locator(".cabinet").getAttribute("data-power"), "off");
-      await page.locator("#enter-cabinet").click();
       await page.waitForFunction(() => document.documentElement.dataset.cabinetView === "powering");
+      assert.equal(await page.locator("#arrival-scene").isHidden(), true);
+      assert.equal(await page.locator("#arrival-motion").getAttribute("src"), null);
+      await page.reload();
+      await page.waitForFunction(() => document.documentElement.dataset.cabinetView === "powering");
+      assert.equal(await page.locator("#arrival-scene").isHidden(), true);
       await entered(page);
       await page.goto(url + "?entry=direct");
       await entered(page);
@@ -78,6 +83,9 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
     await t.test("keyboard activation, skip, reduced motion and explicit replay", async () => {
       const { context, page } = await open({ reducedMotion: "reduce" });
       await ready(page);
+      await page.reload();
+      await ready(page);
+      assert.equal(await page.locator(".cabinet").getAttribute("data-power"), "off");
       assert.match(await page.locator("#arrival-cue").textContent(), /Reduced motion is on/);
       assert.equal(await page.locator("#preview-arrival-motion").isVisible(), true);
       await page.locator("#enter-cabinet").focus();
@@ -85,9 +93,6 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
       await entered(page);
       assert.equal(await page.evaluate(() => document.getElementById("arrival").getAnimations().length), 0);
       await page.reload();
-      await ready(page);
-      assert.match(await page.locator("#arrival-cue").textContent(), /Reduced motion is on/);
-      await page.locator("#enter-cabinet").click();
       await entered(page);
       await page.goto(url + "?entry=room");
       await ready(page);
@@ -246,7 +251,7 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
       await context.close();
     });
 
-    await t.test("the unentered cabinet can reload and wake entirely offline", async () => {
+    await t.test("offline refresh preserves the room or reboots the existing close-up", async () => {
       const { context, page } = await open({ serviceWorkers: "allow" });
       await ready(page);
       await page.waitForFunction(() => navigator.serviceWorker.controller &&
@@ -254,6 +259,7 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
       await context.setOffline(true);
       await page.reload();
       await ready(page);
+      assert.equal(await page.locator(".cabinet").getAttribute("data-power"), "off");
       await page.locator("#enter-cabinet").click();
       await entered(page);
       await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
@@ -262,10 +268,122 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
       await page.locator("#play").click();
       assert.equal(await page.locator("#overlay").isHidden(), true);
       await page.reload();
-      await ready(page);
-      await page.locator("#enter-cabinet").click();
+      await page.waitForFunction(() => document.documentElement.dataset.cabinetView === "powering");
+      assert.equal(await page.locator("#arrival-scene").isHidden(), true);
+      assert.equal(await page.locator("#arrival-motion").getAttribute("src"), null);
       await entered(page);
+      await page.mouse.click(24, 500);
+      await ready(page);
+      await page.reload();
+      await ready(page);
+      assert.equal(await page.locator(".cabinet").getAttribute("data-power"), "off");
       await context.close();
+    });
+
+    await t.test("outside clicks return to the room only between flights, not during play, pause, dialogs or drags", async () => {
+      const { context, page } = await open({ reducedMotion: "reduce" });
+      try {
+        await ready(page);
+        await page.locator("#enter-cabinet").click();
+        await entered(page);
+        await page.locator(".marquee").click();
+        await entered(page);
+        const cap = await page.locator(".marquee").boundingBox();
+        await page.mouse.move(cap.x + cap.width / 2, cap.y + cap.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(24, 500);
+        await page.mouse.up();
+        await entered(page);
+        await page.mouse.click(24, 500);
+        await ready(page);
+        assert.equal(await page.evaluate(() => document.activeElement.id), "enter-cabinet");
+        await page.reload();
+        await ready(page);
+        assert.equal(await page.locator(".cabinet").getAttribute("data-power"), "off");
+        await page.locator("#enter-cabinet").click();
+        await entered(page);
+        await page.locator("#manual-open").click();
+        await page.mouse.click(24, 500);
+        assert.equal(await page.locator("#manual").isHidden(), true);
+        await entered(page);
+        await page.locator("#play").click();
+        await page.mouse.click(24, 500);
+        assert.equal(await page.locator(".cabinet").getAttribute("data-flight-state"), "playing");
+        await entered(page);
+        await page.locator("#pause").click();
+        await page.mouse.click(24, 500);
+        assert.equal(await page.locator(".cabinet").getAttribute("data-flight-state"), "paused");
+        await entered(page);
+        await page.locator("#play").click();
+        await page.waitForFunction(() => document.querySelector(".cabinet").dataset.flightState === "over" &&
+          !document.getElementById("overlay").hidden);
+        await page.mouse.click(24, 500);
+        await ready(page);
+        await page.locator("#enter-cabinet").click();
+        await entered(page);
+        assert.equal(await page.locator(".cabinet").getAttribute("data-flight-state"), "over");
+        assert.equal(await page.locator("#title").textContent(), "ONE MORE TRY?");
+      } finally {
+        await context.close();
+      }
+    });
+
+    await t.test("the impact animation is still in progress and cannot be dismissed by an outside click", async () => {
+      const { context, page } = await open({ reducedMotion: "no-preference" });
+      try {
+        await ready(page);
+        await page.locator("#skip-arrival").click();
+        await entered(page);
+        await page.evaluate(() => {
+          const raf = window.requestAnimationFrame.bind(window);
+          window.requestAnimationFrame = callback => raf(now => {
+            if (document.querySelector(".cabinet").dataset.flightState !== "over") callback(now);
+          });
+        });
+        await page.locator("#play").click();
+        await page.waitForFunction(() => document.querySelector(".cabinet").dataset.flightState === "over", null, { polling: 20 });
+        assert.equal(await page.locator("#overlay").isHidden(), true);
+        await page.mouse.click(24, 500);
+        assert.equal(await page.locator("html").getAttribute("data-cabinet-view"), "play");
+        assert.equal(await page.locator("#arrival").isHidden(), true);
+      } finally {
+        await context.close();
+      }
+    });
+
+    await t.test("non-local hosts hide preview controls and reduced-motion diagnostics", async () => {
+      const context = await browser.newContext({
+        viewport: { width: 1440, height: 1000 }, reducedMotion: "reduce", serviceWorkers: "block"
+      });
+      const page = await context.newPage();
+      page.on("pageerror", error => errors.push(error.message));
+      await page.route("https://arcade.test/**", async route => {
+        const request = new URL(route.request().url());
+        const response = await context.request.get(new URL(request.pathname + request.search, url).href);
+        await route.fulfill({ response });
+      });
+      try {
+        await page.goto("https://arcade.test/trumpet/");
+        await ready(page);
+        await page.reload();
+        await ready(page);
+        assert.equal(await page.locator("#preview-arrival-motion").isHidden(), true);
+        assert.equal(await page.locator("#skip-arrival").isHidden(), true);
+        assert.equal(await page.locator("#arrival-cue").textContent(), "Click the cabinet to wake it");
+        await page.locator("#enter-cabinet").click();
+        await entered(page);
+        await page.reload();
+        await entered(page);
+        await page.mouse.click(24, 500);
+        await ready(page);
+        await page.reload();
+        await ready(page);
+        assert.equal(await page.locator(".cabinet").getAttribute("data-power"), "off");
+        assert.equal(await page.locator("#preview-arrival-motion").isHidden(), true);
+        assert.equal(await page.locator("#skip-arrival").isHidden(), true);
+      } finally {
+        await context.close();
+      }
     });
     assert.deepEqual(errors, []);
   } finally {

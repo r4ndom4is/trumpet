@@ -1,27 +1,31 @@
-/* Desktop arrival is presentation, not gameplay. Activation always requires a click/key. */
+/* Refresh preserves the room or close-up view; only the close-up display reboots. */
 (() => {
   "use strict";
   const $ = id => document.getElementById(id);
   const root = document.documentElement, cabinet = document.querySelector(".cabinet");
   const arrival = $("arrival"), enter = $("enter-cabinet"), scene = $("arrival-scene");
   const previewMotion = $("preview-arrival-motion");
+  const localPreview = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+  $("skip-arrival").hidden = !localPreview;
   const desktop = matchMedia("(min-width: 1100px) and (min-height: 600px)");
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const pointer = matchMedia("(hover: hover) and (pointer: fine)");
   const requested = new URLSearchParams(location.search).get("entry");
   const reloading = performance.getEntriesByType("navigation").some(entry => entry.type === "reload");
+  const roomEnabled = requested !== "direct" && document.body.dataset.cabinetEntry !== "direct";
   const preferenceKey = "trumpet-flight-cabinet-entered";
   const assetRoot = "./assets/cabinet/v2/";
   let state = "play", generation = 0, entered = false, currentMode;
   let frames = [], frameRequest = 0, dissolve;
   let framesReady = Promise.resolve();
   let motionOptIn = false, powerAnimations = [];
+  let outsidePress = false;
   try { entered = sessionStorage.getItem(preferenceKey) === "true"; }
   catch (error) { console.warn("Cabinet arrival preference is unavailable:", error); }
 
-  function rememberEntry() {
-    entered = true;
-    try { sessionStorage.setItem(preferenceKey, "true"); }
+  function rememberEntry(inCabinet) {
+    entered = inCabinet;
+    try { sessionStorage.setItem(preferenceKey, String(inCabinet)); }
     catch (error) { console.warn("Cabinet arrival preference could not be saved:", error); }
   }
   function finish(focus = true) {
@@ -35,7 +39,7 @@
     arrival.hidden = true;
     $("arrival-motion").hidden = true;
     cabinet.inert = false;
-    rememberEntry();
+    rememberEntry(true);
     if (focus) $("screen").focus({ preventScroll: true });
     document.dispatchEvent(new Event("cabinetready"));
   }
@@ -48,8 +52,8 @@
     });
   }
   function cue() {
-    previewMotion.hidden = !reduced.matches;
-    $("arrival-cue").textContent = reduced.matches
+    previewMotion.hidden = !localPreview || !reduced.matches;
+    $("arrival-cue").textContent = localPreview && reduced.matches
       ? "Reduced motion is on. Enter without animation, or preview the full power-on sequence."
       : pointer.matches ? "Click the cabinet to wake it" : "Tap the cabinet to wake it";
   }
@@ -70,9 +74,13 @@
     }
   }
   function powerOn() {
-    if (state !== "handoff") return;
+    if (state !== "handoff" && state !== "play") return;
+    if (reduced.matches && !motionOptIn) { finish(false); return; }
     state = root.dataset.cabinetView = "powering";
+    rememberEntry(true);
     cabinet.dataset.power = "warming";
+    cabinet.inert = true;
+    arrival.hidden = false;
     scene.hidden = true;
     previewMotion.hidden = true;
     $("arrival-cue").textContent = "Powering on...";
@@ -149,11 +157,12 @@
     }
     frameRequest = requestAnimationFrame(tick);
   }
-  async function show() {
+  async function show(focusEnter = false) {
     const token = ++generation;
     currentMode = root.dataset.theme === "dark" ? "dark" : "light";
     const mode = currentMode;
     state = root.dataset.cabinetView = "intro";
+    rememberEntry(false);
     cabinet.dataset.power = "off";
     cabinet.inert = true;
     scene.hidden = false;
@@ -177,6 +186,7 @@
       scene.classList.add("is-loaded");
       enter.disabled = false;
       cue();
+      if (focusEnter) enter.focus({ preventScroll: true });
     } catch (error) {
       if (token !== generation) return;
       console.warn("Cabinet introduction unavailable:", error);
@@ -186,8 +196,28 @@
     }
     if (!reduced.matches) framesReady = prepareMotion(mode, token);
   }
+  function canReturnToRoom() {
+    return roomEnabled && desktop.matches && state === "play" &&
+      ["ready", "over"].includes(cabinet.dataset.flightState) && !$("overlay").hidden &&
+      !document.querySelector("dialog[open]");
+  }
+  function outsideCabinet(target) {
+    return target instanceof Element && !cabinet.contains(target) && !arrival.contains(target) &&
+      !target.closest("button, a, input, select, textarea, [role=button], [contenteditable]");
+  }
+  document.addEventListener("pointerdown", event => {
+    outsidePress = event.isPrimary && event.button === 0 && canReturnToRoom() && outsideCabinet(event.target);
+  }, { capture: true, passive: true });
+  document.addEventListener("click", event => {
+    const returning = outsidePress && event.detail > 0 && canReturnToRoom() && outsideCabinet(event.target);
+    outsidePress = false;
+    if (returning) {
+      document.dispatchEvent(new Event("cabinetleave"));
+      show(true);
+    }
+  });
   enter.addEventListener("click", () => wake());
-  previewMotion.addEventListener("click", () => wake(true));
+  previewMotion.addEventListener("click", () => { if (localPreview) wake(true); });
   $("skip-arrival").addEventListener("click", () => finish());
   pointer.addEventListener("change", () => { if (state === "intro" && !enter.disabled) cue(); });
   desktop.addEventListener("change", () => { if (!desktop.matches && state !== "play") finish(false); });
@@ -206,10 +236,11 @@
   new MutationObserver(() => {
     if (state === "intro" && root.dataset.theme !== currentMode) show();
   }).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
-  if (desktop.matches && requested !== "direct" && document.body.dataset.cabinetEntry !== "direct" &&
-      (!entered || reloading || requested === "room")) show();
+  if (desktop.matches && roomEnabled && reloading && entered) powerOn();
+  else if (desktop.matches && roomEnabled && (!entered || requested === "room")) show();
   else {
     root.dataset.cabinetView = "play";
     cabinet.dataset.power = "on";
+    rememberEntry(true);
   }
 })();
