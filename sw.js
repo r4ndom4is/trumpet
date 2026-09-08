@@ -1,21 +1,53 @@
 "use strict";
 
 // The runtime is entirely inline in index.html, so each navigation gets one coherent release.
-const VERSION = "v17";
+const VERSION = "v18";
 const PREFIX = `trumpet-flight:${self.registration.scope}:`;
 const CACHE = PREFIX + VERSION;
 const local = path => new URL(path, self.registration.scope).href;
 const SHELL = local("./");
+const CABINET_ASSETS = [
+// BEGIN GENERATED CABINET ASSETS
+  "./assets/cabinet/v2/approach-dark-00.webp",
+  "./assets/cabinet/v2/approach-dark-01.webp",
+  "./assets/cabinet/v2/approach-dark-02.webp",
+  "./assets/cabinet/v2/approach-dark-03.webp",
+  "./assets/cabinet/v2/approach-dark-04.webp",
+  "./assets/cabinet/v2/approach-dark-05.webp",
+  "./assets/cabinet/v2/approach-dark-06.webp",
+  "./assets/cabinet/v2/approach-dark-07.webp",
+  "./assets/cabinet/v2/approach-light-00.webp",
+  "./assets/cabinet/v2/approach-light-01.webp",
+  "./assets/cabinet/v2/approach-light-02.webp",
+  "./assets/cabinet/v2/approach-light-03.webp",
+  "./assets/cabinet/v2/approach-light-04.webp",
+  "./assets/cabinet/v2/approach-light-05.webp",
+  "./assets/cabinet/v2/approach-light-06.webp",
+  "./assets/cabinet/v2/approach-light-07.webp",
+  "./assets/cabinet/v2/apron-dark.webp",
+  "./assets/cabinet/v2/apron-light.webp",
+  "./assets/cabinet/v2/bezel-dark.webp",
+  "./assets/cabinet/v2/bezel-light.webp",
+  "./assets/cabinet/v2/deck-dark.webp",
+  "./assets/cabinet/v2/deck-light.webp",
+  "./assets/cabinet/v2/frame-dark.webp",
+  "./assets/cabinet/v2/frame-light.webp",
+  "./assets/cabinet/v2/hood-dark.webp",
+  "./assets/cabinet/v2/hood-light.webp",
+  "./assets/cabinet/v2/intro-dark.webp",
+  "./assets/cabinet/v2/intro-light.webp",
+  "./assets/cabinet/v2/intro-shadow-dark.webp",
+  "./assets/cabinet/v2/intro-shadow-light.webp",
+  "./assets/cabinet/v2/manual-dark.webp",
+  "./assets/cabinet/v2/manual-light.webp",
+// END GENERATED CABINET ASSETS
+];
 const ASSETS = [
   "./", "./index.html", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png",
   "./icons/maskable-192.png", "./icons/maskable-512.png",
   "./icons/favicon-32.png", "./icons/apple-touch-180.png",
-  "./assets/cabinet/v1/hood-light.webp", "./assets/cabinet/v1/hood-dark.webp",
-  "./assets/cabinet/v1/frame-light.webp", "./assets/cabinet/v1/frame-dark.webp",
-  "./assets/cabinet/v1/deck-light.webp", "./assets/cabinet/v1/deck-dark.webp",
-  "./assets/cabinet/v1/apron-light.webp", "./assets/cabinet/v1/apron-dark.webp",
-  "./assets/cabinet/v1/manual-light.webp", "./assets/cabinet/v1/manual-dark.webp"
+  ...CABINET_ASSETS
 ].map(local);
 const isShell = url => url === SHELL || url === local("./index.html");
 

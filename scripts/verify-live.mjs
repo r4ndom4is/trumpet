@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, readdir } from "node:fs/promises";
 import { chromium } from "playwright";
 
 const url = "https://r4ndom4is.github.io/trumpet/";
@@ -20,10 +20,10 @@ try {
   assert.equal(await page.locator(".marquee").innerText(), "trumpet flight.");
   const cachedArt = await page.evaluate(async () => {
     const keys = await caches.keys();
-    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v17")));
-    return (await cache.keys()).filter(request => request.url.includes("/assets/cabinet/v1/")).length;
+    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v18")));
+    return (await cache.keys()).filter(request => request.url.includes("/assets/cabinet/v2/")).map(request => new URL(request.url).pathname.split("/").at(-1)).sort();
   });
-  assert.equal(cachedArt, 10);
+  assert.deepEqual(cachedArt, (await readdir(new URL("../assets/cabinet/v2/", import.meta.url))).filter(file => file.endsWith(".webp")).sort());
   assert.equal(await page.locator("#update").count(), 0);
   assert.equal(await page.locator("script[src]").count(), 0);
   const registration = await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).scope);
@@ -51,8 +51,8 @@ try {
     await page.setViewportSize(viewport);
     await page.waitForTimeout(80);
     if (viewport.height >= 1200) {
-      assert.ok(await page.locator(".cabinet").evaluate(node => node.getBoundingClientRect().width > 600),
-        "Large screens must no longer stop at the former 480px cabinet cap");
+      assert.ok(await page.locator("#game").evaluate(node => node.getBoundingClientRect().width > 480),
+        "Large screens must provide more play width than the former cabinet cap allowed");
     }
     assert.equal(await page.locator(".edition").isVisible(), true);
     assert.equal(await page.locator(".compact-tagline").innerText(), "SMALL GAME. BIG ONE-MORE-TRY ENERGY.");
@@ -75,6 +75,7 @@ try {
   assert.equal(await page.locator("#theme-switch").getAttribute("aria-label"), "Switch to dark theme");
   assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "true");
   assert.equal(await page.locator("#sound").getAttribute("aria-label"), "Mute sound");
+  assert.equal(await page.locator("#mute-indicator").isHidden(), true);
   await mkdir(new URL("../test-results/", import.meta.url), { recursive: true });
   await page.screenshot({ path: "test-results/live-mobile.png", fullPage: true });
   await context.setOffline(true);
@@ -93,6 +94,8 @@ try {
   await page.locator("#sound").tap();
   assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "false");
   assert.equal(await page.locator("#sound").getAttribute("aria-label"), "Enable sound");
+  assert.equal(await page.locator("#mute-indicator").isVisible(), true);
+  assert.equal(await page.locator("#sound").evaluate(node => getComputedStyle(node, "::after").content), "none");
   await page.locator("#manual-open").tap();
   assert.equal(await page.locator("#title").innerText(), "TAKE A BREATHER");
   assert.match(await page.locator("#manual").innerText(), /Less panic. More rhythm./);

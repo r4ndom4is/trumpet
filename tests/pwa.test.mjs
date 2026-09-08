@@ -1,12 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile, mkdir } from "node:fs/promises";
+import { readFile, readdir, mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { serve } from "../scripts/serve.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+const cabinetFiles = (await readdir(new URL("../assets/cabinet/v2/", import.meta.url))).filter(file => file.endsWith(".webp"));
 const hooks = `
   window.__flight = {
     start, pause, step, draw, flap, die, tone, scoreSound, crashSound, silence, action, frame,
@@ -138,6 +139,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
   let revision = "v1";
   let failInstall = false;
   const server = serve({ transform(file, content) {
+    if (file === "index.html") return content.toString().replace('data-cabinet-entry="auto"', 'data-cabinet-entry="direct"');
     if (file === "sw.js") {
       let source = content.toString().replace(/const VERSION = "[^"]+"/, `const VERSION = "${revision}"`);
       if (failInstall) source = source.replace('"./", "./index.html"', '"./missing.png", "./index.html"');
@@ -146,7 +148,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
     return content;
   } });
   const instrumented = serve({ transform(file, content) {
-    return file === "index.html" ? content.toString().replace(/  requestAnimationFrame\(frame\);\r?\n\}\)\(\);/, hooks + "  requestAnimationFrame(frame);\n})();") : content;
+    return file === "index.html" ? content.toString().replace('data-cabinet-entry="auto"', 'data-cabinet-entry="direct"')
+      .replace(/  requestAnimationFrame\(frame\);\r?\n\}\)\(\);/, hooks + "  requestAnimationFrame(frame);\n})();") : content;
   } });
   const url = await listen(server), fixture = await listen(instrumented);
   const browser = await chromium.launch();
@@ -1323,7 +1326,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await page.goto(fixture);
       await page.evaluate(() => { window.__flight.start(); window.__flight.pause(); });
       const before = await page.evaluate(() => window.__flight.snapshot);
-      const projection = JSON.parse(await readFile(new URL("../assets/cabinet/v1/geometry.json", import.meta.url), "utf8"));
+      const projection = JSON.parse(await readFile(new URL("../assets/cabinet/v2/geometry.json", import.meta.url), "utf8"));
       for (const viewport of [
         { width: 2560, height: 1440 }, { width: 1920, height: 1200 },
         { width: 820, height: 1280 }, { width: 768, height: 1024 },
@@ -1341,7 +1344,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
               document.elementFromPoint(deck.left + deck.width * (x + offset * button.capSizePercent[0]) / 100,
                 deck.top + deck.height * y / 100)?.closest("button")?.id === ids[name]);
           });
-          return { width: cabinet.width, height: cabinet.height, available: main.height,
+          return { width: cabinet.width, height: cabinet.height, available: main.height, availableWidth: main.width,
+            gameWidth: canvas.width, gameHeight: canvas.height,
             apronRatio: box(".lower-cabinet").height / cabinet.width,
             gameRatio: canvas.width / canvas.height, capsClickable,
             fits: cabinet.left >= 0 && cabinet.right <= innerWidth && cabinet.top >= main.top - .5 &&
@@ -1353,7 +1357,12 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         if (viewport.width > 600) {
           assert.ok(layout.height / layout.available > .995, JSON.stringify({ viewport, layout }));
           assert.ok(Math.abs(layout.apronRatio - 254 / 696) < .002, JSON.stringify({ viewport, layout }));
-          if (viewport.height >= 1200) assert.ok(layout.width > 600, JSON.stringify({ viewport, layout }));
+          if (viewport.height >= 1200) assert.ok(layout.width > 480, JSON.stringify({ viewport, layout }));
+          const oldFrameHeight = .8455334 * 512 / 448 / .8907378;
+          const oldCabinetWidth = Math.min(layout.availableWidth, layout.available / (145 / 696 + oldFrameHeight + 124 / 696 + 254 / 696));
+          const oldGameWidth = oldCabinetWidth * .8455334;
+          const gain = layout.gameWidth * layout.gameHeight / (oldGameWidth * oldGameWidth * 512 / 448);
+          assert.ok(gain >= 1.1, JSON.stringify({ viewport, gain, layout }));
         } else {
           assert.ok(Math.abs(layout.width - 382) < 1, "The existing 390px phone cabinet must keep its width");
         }
@@ -1368,7 +1377,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       const errors = [];
       page.on("pageerror", error => errors.push(error.message));
       await page.goto(url + "?scoutTheme=light");
-      const projection = JSON.parse(await readFile(new URL("../assets/cabinet/v1/geometry.json", import.meta.url), "utf8"));
+      const projection = JSON.parse(await readFile(new URL("../assets/cabinet/v2/geometry.json", import.meta.url), "utf8"));
       assert.equal(await page.evaluate(projection => {
         const deck = document.querySelector(".control-deck").getBoundingClientRect();
         const ids = { sound: "sound", theme: "theme-switch", leaderboard: "leaderboard-open", pause: "pause" };
@@ -1380,8 +1389,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       }, projection), true, "Every physical button cap must hit its corresponding live control");
       const artwork = await page.evaluate(async () => {
         const results = [];
-        for (const mode of ["light", "dark"]) for (const part of ["hood", "frame", "deck", "apron", "manual"]) {
-          const response = await fetch(`./assets/cabinet/v1/${part}-${mode}.webp`);
+        for (const mode of ["light", "dark"]) for (const part of ["hood", "frame", "bezel", "deck", "apron", "manual"]) {
+          const response = await fetch(`./assets/cabinet/v2/${part}-${mode}.webp`);
           const bitmap = await createImageBitmap(await response.blob());
           const canvas = document.createElement("canvas");
           canvas.width = bitmap.width; canvas.height = bitmap.height;
@@ -1393,11 +1402,11 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         }
         return results;
       });
-      assert.equal(artwork.length, 10);
+      assert.equal(artwork.length, 12);
       for (const asset of artwork) {
         assert.equal(asset.status, 200);
         assert.ok(asset.width >= 696, JSON.stringify(asset));
-        if (asset.part === "frame") assert.equal(asset.alpha, 0, "Live game must show through a truly transparent CRT");
+        if (asset.part === "frame" || asset.part === "bezel") assert.equal(asset.alpha, 0, "Live game must show through both the shell and separate bezel");
       }
       assert.match(await page.locator(".frame-rim").evaluate(node => getComputedStyle(node).backgroundImage), /frame-light\.webp/);
       await page.locator("#theme-switch").click();
@@ -1475,11 +1484,12 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         const cache = await caches.open(keys[0]);
         return { keys, urls: (await cache.keys()).map(request => request.url) };
       });
-      assert.equal(cacheInfo.urls.length, 19);
+      assert.equal(cacheInfo.urls.length, 9 + cabinetFiles.length);
       assert.ok(cacheInfo.urls.every(asset => asset.startsWith(url)));
       await context.setOffline(true);
       const offlineResponse = await page.goto(url + "?scoutTheme=dark");
-      assert.equal((await offlineResponse.text()).replace(/\r\n/g, "\n"), html.replace(/\r\n/g, "\n"));
+      assert.equal((await offlineResponse.text()).replace(/\r\n/g, "\n"),
+        html.replace(/\r\n/g, "\n").replace('data-cabinet-entry="auto"', 'data-cabinet-entry="direct"'));
       await page.waitForFunction(() => document.getElementById("app-status").textContent === "Offline. Ready to fly.");
       assert.equal(await page.evaluate(() => {
         const api = window.TRUMPET_ENVIRONMENTS;
@@ -1564,7 +1574,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           if (legacy) return content;
           if (file === "sw.js") return content.toString().replace(/const VERSION = "[^"]+"/, `const VERSION = "${release}"`);
           if (file === "index.html") {
-            return content.toString().replace("<body>", `<body data-release="${release}">`);
+            return content.toString().replace(/<body\b([^>]*)>/, `<body$1 data-release="${release}">`);
           }
           return content;
         }
@@ -1676,6 +1686,40 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         }
         assert.deepEqual(result.reset, []);
         await context.close();
+      }
+    });
+
+    await t.test("muted HUD replaces the button light across phone, landscape and desktop layouts", async () => {
+      for (const viewport of [{ width: 390, height: 844 }, { width: 667, height: 375 }, { width: 1440, height: 1000 }]) {
+        const context = await browser.newContext({ viewport, hasTouch: true, serviceWorkers: "block" });
+        const page = await context.newPage();
+        try {
+          await page.goto(fixture);
+          assert.equal(await page.locator("#mute-indicator").isHidden(), true);
+          await page.locator("#sound").tap();
+          assert.equal(await page.locator("#mute-indicator").isVisible(), true);
+          assert.equal(await page.locator("#mute-indicator").getAttribute("aria-label"), "Sound muted");
+          assert.equal(await page.locator("#sound").evaluate(node => getComputedStyle(node, "::after").content), "none");
+          assert.equal(await page.locator("#mute-indicator").evaluate(node => {
+            const icon = node.getBoundingClientRect();
+            const screen = document.getElementById("screen").getBoundingClientRect();
+            const scores = document.querySelector(".scorebar");
+            return getComputedStyle(node).pointerEvents === "none" &&
+              icon.left > scores.firstElementChild.getBoundingClientRect().right &&
+              icon.right < scores.lastElementChild.getBoundingClientRect().left &&
+              icon.top >= screen.top && icon.bottom <= screen.bottom;
+          }), true, `Mute indicator fits between the scores at ${viewport.width}x${viewport.height}`);
+          await page.locator("#theme-switch").tap();
+          assert.equal(await page.locator("#mute-indicator").isVisible(), true);
+          await page.locator("#play").tap();
+          await page.locator("#pause").tap();
+          assert.equal(await page.locator("#mute-indicator").isVisible(), true);
+          await page.keyboard.press("KeyM");
+          assert.equal(await page.locator("#mute-indicator").isHidden(), true);
+          assert.equal(await page.evaluate(() => window.__flight.sound().muted), false);
+        } finally {
+          await context.close();
+        }
       }
     });
 

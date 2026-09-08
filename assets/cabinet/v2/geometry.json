@@ -1,0 +1,1074 @@
+{
+  "version": 2,
+  "finish": "crimson-light",
+  "environments": [
+    "light",
+    "dark"
+  ],
+  "referenceRender": {
+    "width": 900,
+    "height": 1280
+  },
+  "render": {
+    "width": 1800,
+    "height": 2560,
+    "scale": 2,
+    "samples": 32,
+    "denoise": true
+  },
+  "camera": {
+    "location": [
+      0,
+      -6,
+      0.837
+    ],
+    "target": [
+      0,
+      0,
+      0.837
+    ],
+    "orthoScale": 1.94
+  },
+  "parts": {
+    "hood": {
+      "referenceCrop": [
+        102,
+        19,
+        798,
+        164
+      ],
+      "width": 696,
+      "height": 145,
+      "pixelWidth": 1392,
+      "pixelHeight": 290,
+      "files": {
+        "light": "hood-light.webp",
+        "dark": "hood-dark.webp"
+      }
+    },
+    "frame": {
+      "referenceCrop": [
+        102,
+        164,
+        798,
+        864
+      ],
+      "width": 696,
+      "height": 700,
+      "pixelWidth": 1392,
+      "pixelHeight": 1400,
+      "files": {
+        "light": "frame-light.webp",
+        "dark": "frame-dark.webp"
+      }
+    },
+    "deck": {
+      "referenceCrop": [
+        102,
+        864,
+        798,
+        988
+      ],
+      "width": 696,
+      "height": 124,
+      "pixelWidth": 1392,
+      "pixelHeight": 248,
+      "files": {
+        "light": "deck-light.webp",
+        "dark": "deck-dark.webp"
+      }
+    },
+    "apron": {
+      "referenceCrop": [
+        102,
+        988,
+        798,
+        1242
+      ],
+      "width": 696,
+      "height": 254,
+      "pixelWidth": 1392,
+      "pixelHeight": 508,
+      "files": {
+        "light": "apron-light.webp",
+        "dark": "apron-dark.webp"
+      }
+    },
+    "manual": {
+      "referenceCrop": [
+        102,
+        988,
+        798,
+        1242
+      ],
+      "width": 696,
+      "height": 254,
+      "pixelWidth": 1392,
+      "pixelHeight": 508,
+      "files": {
+        "light": "manual-light.webp",
+        "dark": "manual-dark.webp"
+      }
+    },
+    "bezel": {
+      "referenceCrop": [
+        102,
+        164,
+        798,
+        864
+      ],
+      "width": 696,
+      "height": 700,
+      "pixelWidth": 1392,
+      "pixelHeight": 1400,
+      "files": {
+        "light": "bezel-light.webp",
+        "dark": "bezel-dark.webp"
+      }
+    }
+  },
+  "screen": {
+    "relativeTo": "frame",
+    "leftPercent": 2.790616,
+    "topPercent": 1.9294,
+    "widthPercent": 94.418767,
+    "heightPercent": 96.141379,
+    "referenceBounds": [
+      121.42269,
+      177.505798,
+      778.57731,
+      850.495453
+    ],
+    "contourPercent": [
+      [
+        100.0,
+        1.078425
+      ],
+      [
+        99.990547,
+        0.937659
+      ],
+      [
+        99.962368,
+        0.799308
+      ],
+      [
+        99.915928,
+        0.665729
+      ],
+      [
+        99.852036,
+        0.539201
+      ],
+      [
+        99.771776,
+        0.421913
+      ],
+      [
+        99.676521,
+        0.31586
+      ],
+      [
+        99.567911,
+        0.222843
+      ],
+      [
+        99.447791,
+        0.144485
+      ],
+      [
+        99.318226,
+        0.082088
+      ],
+      [
+        99.181429,
+        0.036742
+      ],
+      [
+        99.039734,
+        0.009217
+      ],
+      [
+        98.895582,
+        0.0
+      ],
+      [
+        1.104418,
+        0.0
+      ],
+      [
+        0.960264,
+        0.009217
+      ],
+      [
+        0.818575,
+        0.036742
+      ],
+      [
+        0.681776,
+        0.082088
+      ],
+      [
+        0.552209,
+        0.144485
+      ],
+      [
+        0.432093,
+        0.222843
+      ],
+      [
+        0.323475,
+        0.31586
+      ],
+      [
+        0.228224,
+        0.421913
+      ],
+      [
+        0.147964,
+        0.539201
+      ],
+      [
+        0.08407,
+        0.665729
+      ],
+      [
+        0.037634,
+        0.799308
+      ],
+      [
+        0.009451,
+        0.937659
+      ],
+      [
+        0.0,
+        1.078425
+      ],
+      [
+        0.0,
+        98.921569
+      ],
+      [
+        0.009451,
+        99.062335
+      ],
+      [
+        0.037634,
+        99.200687
+      ],
+      [
+        0.08407,
+        99.334266
+      ],
+      [
+        0.147964,
+        99.460787
+      ],
+      [
+        0.228224,
+        99.578081
+      ],
+      [
+        0.323475,
+        99.684135
+      ],
+      [
+        0.432093,
+        99.777146
+      ],
+      [
+        0.552209,
+        99.855515
+      ],
+      [
+        0.681776,
+        99.917906
+      ],
+      [
+        0.818575,
+        99.963253
+      ],
+      [
+        0.960264,
+        99.990778
+      ],
+      [
+        1.104418,
+        100.0
+      ],
+      [
+        98.895582,
+        100.0
+      ],
+      [
+        99.039734,
+        99.990778
+      ],
+      [
+        99.181429,
+        99.963253
+      ],
+      [
+        99.318226,
+        99.917906
+      ],
+      [
+        99.447791,
+        99.855515
+      ],
+      [
+        99.567911,
+        99.777146
+      ],
+      [
+        99.676521,
+        99.684135
+      ],
+      [
+        99.771776,
+        99.578081
+      ],
+      [
+        99.852036,
+        99.460787
+      ],
+      [
+        99.915928,
+        99.334266
+      ],
+      [
+        99.962368,
+        99.200687
+      ],
+      [
+        99.990547,
+        99.062335
+      ],
+      [
+        100.0,
+        98.921569
+      ]
+    ],
+    "clipPath": "polygon(100.000000% 1.078425%, 99.990547% 0.937659%, 99.962368% 0.799308%, 99.915928% 0.665729%, 99.852036% 0.539201%, 99.771776% 0.421913%, 99.676521% 0.315860%, 99.567911% 0.222843%, 99.447791% 0.144485%, 99.318226% 0.082088%, 99.181429% 0.036742%, 99.039734% 0.009217%, 98.895582% 0.000000%, 1.104418% 0.000000%, 0.960264% 0.009217%, 0.818575% 0.036742%, 0.681776% 0.082088%, 0.552209% 0.144485%, 0.432093% 0.222843%, 0.323475% 0.315860%, 0.228224% 0.421913%, 0.147964% 0.539201%, 0.084070% 0.665729%, 0.037634% 0.799308%, 0.009451% 0.937659%, 0.000000% 1.078425%, 0.000000% 98.921569%, 0.009451% 99.062335%, 0.037634% 99.200687%, 0.084070% 99.334266%, 0.147964% 99.460787%, 0.228224% 99.578081%, 0.323475% 99.684135%, 0.432093% 99.777146%, 0.552209% 99.855515%, 0.681776% 99.917906%, 0.818575% 99.963253%, 0.960264% 99.990778%, 1.104418% 100.000000%, 98.895582% 100.000000%, 99.039734% 99.990778%, 99.181429% 99.963253%, 99.318226% 99.917906%, 99.447791% 99.855515%, 99.567911% 99.777146%, 99.676521% 99.684135%, 99.771776% 99.578081%, 99.852036% 99.460787%, 99.915928% 99.334266%, 99.962368% 99.200687%, 99.990547% 99.062335%, 100.000000% 98.921569%)",
+    "logicalCanvas": {
+      "width": 448,
+      "height": 512
+    },
+    "recommendedFrameAspect": 0.8909638337577528
+  },
+  "controls": {
+    "relativeTo": "deck",
+    "buttons": {
+      "sound": {
+        "centerPercent": [
+          22.318998,
+          36.444922
+        ],
+        "capSizePercent": [
+          7.204641,
+          40.950837
+        ]
+      },
+      "theme": {
+        "centerPercent": [
+          34.737529,
+          36.444922
+        ],
+        "capSizePercent": [
+          7.204645,
+          40.950837
+        ]
+      },
+      "leaderboard": {
+        "centerPercent": [
+          47.156061,
+          36.444922
+        ],
+        "capSizePercent": [
+          7.204648,
+          40.950837
+        ]
+      },
+      "pause": {
+        "centerPercent": [
+          78.913381,
+          36.444922
+        ],
+        "capSizePercent": [
+          9.669387,
+          53.509928
+        ]
+      }
+    }
+  },
+  "manual": {
+    "relativeTo": "apron",
+    "leftPercent": 0,
+    "topPercent": 0,
+    "widthPercent": 100,
+    "heightPercent": 100,
+    "occlusion": "Hardware holdout; full apron-sized transparent layer."
+  },
+  "bezel": {
+    "relativeTo": "frame",
+    "independentLayer": true,
+    "objectName": "Rounded CRT bezel",
+    "order": [
+      "live-canvas",
+      "frame",
+      "bezel"
+    ],
+    "innerRadiusMetres": 0.011,
+    "outerRadiusMetres": 0.017,
+    "lipWidthMetres": 0.0052,
+    "lipHeightMetres": 0.008,
+    "glassUnderlapMetres": 0.004
+  },
+  "localPreviewOnly": false,
+  "intro": {
+    "width": 900,
+    "height": 1280,
+    "files": {
+      "light": "intro-light.webp",
+      "dark": "intro-dark.webp"
+    },
+    "shadowFiles": {
+      "light": "intro-shadow-light.webp",
+      "dark": "intro-shadow-dark.webp"
+    },
+    "camera": {
+      "location": [
+        3.4,
+        -6.0,
+        1.45
+      ],
+      "target": [
+        0,
+        0,
+        0.837
+      ],
+      "orthoScale": 2.9,
+      "groundAnchor": [
+        461.6419,
+        1039.3844
+      ],
+      "groundAnchorPercent": [
+        51.293546,
+        81.201908
+      ]
+    },
+    "groundWorld": [
+      0,
+      0.0535,
+      -0.07556000351905823
+    ],
+    "screenPowered": false,
+    "titleBaked": true,
+    "shadowSeparate": true,
+    "shadowMatte": {
+      "source": "Physically rendered Cycles shadow catcher",
+      "densityThreshold": 0.4,
+      "processing": "Ambient veil removed with a linear alpha grade; cabinet image unmodified."
+    },
+    "cabinetBounds": {
+      "light": [
+        185,
+        203,
+        739,
+        1062
+      ],
+      "dark": [
+        185,
+        203,
+        739,
+        1062
+      ]
+    },
+    "shadowBounds": {
+      "light": [
+        51,
+        1002,
+        762,
+        1064
+      ],
+      "dark": [
+        25,
+        1003,
+        742,
+        1068
+      ]
+    }
+  },
+  "approach": {
+    "available": true,
+    "width": 900,
+    "height": 1280,
+    "samples": 12,
+    "durationMs": 840,
+    "motion": "Actual 3D camera orbit, elevation and orthographic approach",
+    "timing": "Frames already contain cubic ease-out; advance them at uniform intervals.",
+    "shadowIncluded": true,
+    "screenPowered": false,
+    "titleBaked": true,
+    "shadowMatte": "Same alpha grade as intro; neutral shadow-only pixels feather at canvas margins.",
+    "finalReferenceCrop": [
+      102,
+      19,
+      798,
+      1242
+    ],
+    "frames": {
+      "light": [
+        {
+          "index": 0,
+          "progress": 0.0,
+          "file": "approach-light-00.webp",
+          "camera": {
+            "location": [
+              3.4,
+              -6.0,
+              1.45
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 2.9,
+            "groundAnchor": [
+              461.6419,
+              1039.3844
+            ],
+            "groundAnchorPercent": [
+              51.293546,
+              81.201908
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "progress": 0.370262,
+          "file": "approach-light-01.webp",
+          "camera": {
+            "location": [
+              2.093985,
+              -6.221547,
+              1.223029
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 2.544548,
+            "groundAnchor": [
+              458.5849,
+              1096.7626
+            ],
+            "groundAnchorPercent": [
+              50.953883,
+              85.684575
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "progress": 0.635569,
+          "file": "approach-light-02.webp",
+          "camera": {
+            "location": [
+              1.181688,
+              -6.215331,
+              1.060397
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 2.289854,
+            "groundAnchor": [
+              455.5858,
+              1148.7559
+            ],
+            "groundAnchorPercent": [
+              50.620639,
+              89.746555
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "progress": 0.813411,
+          "file": "approach-light-03.webp",
+          "camera": {
+            "location": [
+              0.592349,
+              -6.138741,
+              0.951379
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 2.119125,
+            "groundAnchor": [
+              453.1037,
+              1190.5154
+            ],
+            "groundAnchorPercent": [
+              50.344861,
+              93.009014
+            ]
+          }
+        },
+        {
+          "index": 4,
+          "progress": 0.921283,
+          "file": "approach-light-04.webp",
+          "camera": {
+            "location": [
+              0.246291,
+              -6.065562,
+              0.885254
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 2.015568,
+            "groundAnchor": [
+              451.3784,
+              1219.2392
+            ],
+            "groundAnchorPercent": [
+              50.15316,
+              95.253064
+            ]
+          }
+        },
+        {
+          "index": 5,
+          "progress": 0.976676,
+          "file": "approach-light-05.webp",
+          "camera": {
+            "location": [
+              0.072396,
+              -6.020472,
+              0.851297
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 1.962391,
+            "groundAnchor": [
+              450.4196,
+              1235.1475
+            ],
+            "groundAnchorPercent": [
+              50.046623,
+              96.495899
+            ]
+          }
+        },
+        {
+          "index": 6,
+          "progress": 0.997085,
+          "file": "approach-light-06.webp",
+          "camera": {
+            "location": [
+              0.009022,
+              -6.002606,
+              0.838787
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 1.942799,
+            "groundAnchor": [
+              450.053,
+              1241.2239
+            ],
+            "groundAnchorPercent": [
+              50.005889,
+              96.97062
+            ]
+          }
+        },
+        {
+          "index": 7,
+          "progress": 1.0,
+          "file": "approach-light-07.webp",
+          "camera": {
+            "location": [
+              0.0,
+              -6.0,
+              0.837
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 1.94,
+            "groundAnchor": [
+              450.0,
+              1242.1021
+            ],
+            "groundAnchorPercent": [
+              50.0,
+              97.039225
+            ]
+          }
+        }
+      ],
+      "dark": [
+        {
+          "index": 0,
+          "progress": 0.0,
+          "file": "approach-dark-00.webp",
+          "camera": {
+            "location": [
+              3.4,
+              -6.0,
+              1.45
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 2.9,
+            "groundAnchor": [
+              461.6419,
+              1039.3844
+            ],
+            "groundAnchorPercent": [
+              51.293546,
+              81.201908
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "progress": 0.370262,
+          "file": "approach-dark-01.webp",
+          "camera": {
+            "location": [
+              2.093985,
+              -6.221547,
+              1.223029
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 2.544548,
+            "groundAnchor": [
+              458.5849,
+              1096.7626
+            ],
+            "groundAnchorPercent": [
+              50.953883,
+              85.684575
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "progress": 0.635569,
+          "file": "approach-dark-02.webp",
+          "camera": {
+            "location": [
+              1.181688,
+              -6.215331,
+              1.060397
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 2.289854,
+            "groundAnchor": [
+              455.5858,
+              1148.7559
+            ],
+            "groundAnchorPercent": [
+              50.620639,
+              89.746555
+            ]
+          }
+        },
+        {
+          "index": 3,
+          "progress": 0.813411,
+          "file": "approach-dark-03.webp",
+          "camera": {
+            "location": [
+              0.592349,
+              -6.138741,
+              0.951379
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 2.119125,
+            "groundAnchor": [
+              453.1037,
+              1190.5154
+            ],
+            "groundAnchorPercent": [
+              50.344861,
+              93.009014
+            ]
+          }
+        },
+        {
+          "index": 4,
+          "progress": 0.921283,
+          "file": "approach-dark-04.webp",
+          "camera": {
+            "location": [
+              0.246291,
+              -6.065562,
+              0.885254
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 2.015568,
+            "groundAnchor": [
+              451.3784,
+              1219.2392
+            ],
+            "groundAnchorPercent": [
+              50.15316,
+              95.253064
+            ]
+          }
+        },
+        {
+          "index": 5,
+          "progress": 0.976676,
+          "file": "approach-dark-05.webp",
+          "camera": {
+            "location": [
+              0.072396,
+              -6.020472,
+              0.851297
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 1.962391,
+            "groundAnchor": [
+              450.4196,
+              1235.1475
+            ],
+            "groundAnchorPercent": [
+              50.046623,
+              96.495899
+            ]
+          }
+        },
+        {
+          "index": 6,
+          "progress": 0.997085,
+          "file": "approach-dark-06.webp",
+          "camera": {
+            "location": [
+              0.009022,
+              -6.002606,
+              0.838787
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 1.942799,
+            "groundAnchor": [
+              450.053,
+              1241.2239
+            ],
+            "groundAnchorPercent": [
+              50.005889,
+              96.97062
+            ]
+          }
+        },
+        {
+          "index": 7,
+          "progress": 1.0,
+          "file": "approach-dark-07.webp",
+          "camera": {
+            "location": [
+              0.0,
+              -6.0,
+              0.837
+            ],
+            "target": [
+              0,
+              0,
+              0.837
+            ],
+            "orthoScale": 1.94,
+            "groundAnchor": [
+              450.0,
+              1242.1021
+            ],
+            "groundAnchorPercent": [
+              50.0,
+              97.039225
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "manifest": [
+    {
+      "file": "approach-dark-00.webp",
+      "bytes": 41606
+    },
+    {
+      "file": "approach-dark-01.webp",
+      "bytes": 44850
+    },
+    {
+      "file": "approach-dark-02.webp",
+      "bytes": 44566
+    },
+    {
+      "file": "approach-dark-03.webp",
+      "bytes": 42188
+    },
+    {
+      "file": "approach-dark-04.webp",
+      "bytes": 37816
+    },
+    {
+      "file": "approach-dark-05.webp",
+      "bytes": 35454
+    },
+    {
+      "file": "approach-dark-06.webp",
+      "bytes": 35590
+    },
+    {
+      "file": "approach-dark-07.webp",
+      "bytes": 34112
+    },
+    {
+      "file": "approach-light-00.webp",
+      "bytes": 42838
+    },
+    {
+      "file": "approach-light-01.webp",
+      "bytes": 44942
+    },
+    {
+      "file": "approach-light-02.webp",
+      "bytes": 44364
+    },
+    {
+      "file": "approach-light-03.webp",
+      "bytes": 43980
+    },
+    {
+      "file": "approach-light-04.webp",
+      "bytes": 40068
+    },
+    {
+      "file": "approach-light-05.webp",
+      "bytes": 38704
+    },
+    {
+      "file": "approach-light-06.webp",
+      "bytes": 39268
+    },
+    {
+      "file": "approach-light-07.webp",
+      "bytes": 37394
+    },
+    {
+      "file": "apron-dark.webp",
+      "bytes": 9250
+    },
+    {
+      "file": "apron-light.webp",
+      "bytes": 10808
+    },
+    {
+      "file": "bezel-dark.webp",
+      "bytes": 14982
+    },
+    {
+      "file": "bezel-light.webp",
+      "bytes": 18218
+    },
+    {
+      "file": "deck-dark.webp",
+      "bytes": 11562
+    },
+    {
+      "file": "deck-light.webp",
+      "bytes": 12692
+    },
+    {
+      "file": "frame-dark.webp",
+      "bytes": 16220
+    },
+    {
+      "file": "frame-light.webp",
+      "bytes": 19244
+    },
+    {
+      "file": "hood-dark.webp",
+      "bytes": 12060
+    },
+    {
+      "file": "hood-light.webp",
+      "bytes": 13800
+    },
+    {
+      "file": "intro-dark.webp",
+      "bytes": 22882
+    },
+    {
+      "file": "intro-light.webp",
+      "bytes": 25282
+    },
+    {
+      "file": "intro-shadow-dark.webp",
+      "bytes": 7862
+    },
+    {
+      "file": "intro-shadow-light.webp",
+      "bytes": 7854
+    },
+    {
+      "file": "manual-dark.webp",
+      "bytes": 12992
+    },
+    {
+      "file": "manual-light.webp",
+      "bytes": 13636
+    }
+  ],
+  "totalWebpBytes": 877084
+}
