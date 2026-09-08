@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Browser-reported scores are not cheat-proof. These rules enforce ranking
+    // and identity integrity, not that gameplay really produced a score.
+    function ownEntry(data) {
+      let entry = data.entries[request.auth.uid];
+      return entry is map
+        && entry.keys().hasAll(['name', 'score', 'at'])
+        && entry.keys().hasOnly(['name', 'score', 'at'])
+        && entry.name is string
+        && entry.name.matches('^[A-Z0-9]{3}$')
+        && entry.score is int && entry.score > 0 && entry.score <= 9007199254740991
+        && entry.at == request.time;
+    }
+    function pair(data, index) {
+      let aUid = data.order[index - 1];
+      let bUid = data.order[index];
+      let a = data.entries[aUid];
+      let b = data.entries[bUid];
+      return a.score > b.score
+        || (a.score == b.score && (a.at < b.at || (a.at == b.at && aUid < bUid)));
+    }
+    function sorted(data) {
+      let size = data.order.size();
+      return (size < 2 || pair(data, 1))
+        && (size < 3 || pair(data, 2))
+        && (size < 4 || pair(data, 3))
+        && (size < 5 || pair(data, 4))
+        && (size < 6 || pair(data, 5))
+        && (size < 7 || pair(data, 6))
+        && (size < 8 || pair(data, 7))
+        && (size < 9 || pair(data, 8))
+        && (size < 10 || pair(data, 9));
+    }
+    function valid(data, kind) {
+      return data.keys().hasAll(['day', 'entries', 'order'])
+        && data.keys().hasOnly(['day', 'entries', 'order'])
+        && (kind == 'daily' ? data.day == request.time.date() : data.day == null)
+        && data.entries is map && data.order is list
+        && data.order.size() > 0 && data.order.size() <= 10
+        && data.entries.size() == data.order.size()
+        && data.entries.keys().toSet() == data.order.toSet()
+        && ownEntry(data) && sorted(data);
+    }
+    function singleton(data) {
+      return data.order == [request.auth.uid];
+    }
+    function improve(data, old) {
+      let uid = request.auth.uid;
+      let changes = data.entries.diff(old.entries);
+      return uid in old.entries
+        ? changes.affectedKeys().hasOnly([uid])
+          && data.entries.size() == old.entries.size()
+          && data.entries[uid].score > old.entries[uid].score
+        : changes.addedKeys().hasOnly([uid])
+          && changes.changedKeys().size() == 0
+          && (old.order.size() < 10
+            ? changes.removedKeys().size() == 0
+            : changes.removedKeys().hasOnly([old.order[9]])
+              && data.entries.size() == 10
+              && data.entries[uid].score > old.entries[old.order[9]].score);
+    }
+    match /leaderboards/{kind} {
+      allow get: if kind in ['daily', 'allTime'];
+      allow create: if kind in ['daily', 'allTime'] && request.auth != null
+        && valid(request.resource.data, kind) && singleton(request.resource.data);
+      allow update: if kind in ['daily', 'allTime'] && request.auth != null
+        && valid(request.resource.data, kind)
+        && (kind == 'daily' && resource.data.day < request.time.date()
+          ? singleton(request.resource.data)
+          : request.resource.data.day == resource.data.day
+            && improve(request.resource.data, resource.data));
+      allow list, delete: if false;
+    }
+  }
+}

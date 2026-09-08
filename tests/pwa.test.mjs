@@ -1209,7 +1209,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           assert.equal(await page.locator("#manual").evaluate(dialog => dialog.open), true);
           const copy = await page.locator("#manual").innerText();
           for (const text of ["Big brass.", "Big dreams.", "A very different kind of air solo.", "take a breather",
-            "Less panic. More rhythm.", "BUILT FOR THE JOY", "NO ACCOUNTS. NO QUARTERS."]) {
+            "Less panic. More rhythm.", "BUILT FOR THE JOY", "NO SIGN-IN. NO QUARTERS."]) {
             assert.ok(copy.includes(text), `Manual lost ${text}`);
           }
           for (let i = 0; i < 12; i++) {
@@ -1253,7 +1253,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       }
     });
 
-    await t.test("local Top 10 records each completed flight once, preserves best and protects modal focus", async () => {
+    await t.test("local Top 10 records each completed flight once, preserves best and protects score-screen focus", async () => {
       const context = await browser.newContext({ serviceWorkers: "block", reducedMotion: "reduce" });
       await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
       const page = await context.newPage();

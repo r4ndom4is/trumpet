@@ -1,3 +1,7 @@
 node_modules/
 test-results/
 tools/character-lab/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

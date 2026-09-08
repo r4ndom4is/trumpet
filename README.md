@@ -62,9 +62,40 @@ Button hover highlights follow each rendered cap rather than its larger touch ta
 
 While a flight is paused, the pause button itself glows steadily instead of showing a separate indicator light. The glow follows the rendered cap, or the native button in compact landscape and missing-artwork layouts, and turns off when play resumes.
 
-The separate **Flight manual** magazine opens every line of the original introduction, tips, controls, installation details, and footer in an accessible, scrollable dialog on all devices. The **10** button opens local scores. Opening either pauses an active flight. Close it with **Close**, Escape, or the backdrop; keyboard focus returns to the opener, and the game stays paused until you resume.
+The separate **Flight manual** magazine opens the introduction, tips, controls, installation details, and footer in an accessible, scrollable dialog on all devices. The **10** button opens an arcade high-score screen inside the cabinet, with **Daily**, **All-time**, and **Device** views. Gameplay keeps only **SCORE** and **YOUR BEST** in its HUD; global records stay on the score screen. Opening either pauses an active flight. The manual closes with **Close**, Escape, or its backdrop; scores close with **Back**, Escape, or the **10** button. Keyboard focus returns to the opener, and the game stays paused until you resume.
 
 The game preserves the exact initial collision frame as an untouched 2x, nearest-neighbor crop in `crash-image`. The retry panel displays a separate, tighter close-up of that same frame with a labelled decorative surprised expression; it never replaces the raw capture with a later landing frame. The original sprite is unchanged: only the post-impact face gets small eyes and raised brows, masked to its existing face pixels. The visual fall retains incoming vertical velocity and uses flight's gravity (940px/s squared) and terminal speed (470px/s), rather than a fixed-duration trajectory. Ceiling contact cancels upward motion. Rotation follows downward speed with a 1.8rad/s limit and a 0.65rad maximum; the first floor contact permanently stops translation and rotation, with no squash or rebound. Support comes from the opaque sprite pixels, not empty bounding-box corners. Direct floor crashes land immediately. Four fading dust motes occupy a 100ms grounded hold; the world, horizontal anchor, score, and raw capture stay frozen throughout. Short screens retain the close-up and retry button while omitting redundant prose and the keyboard hint. Tap or press Space to skip the fall; the existing 450ms guard requires a separate deliberate input to retry. Reduced-motion mode shows the static reaction without the fall or dust, and pausing or leaving the page settles it immediately.
+
+## Global scores: free Firebase setup
+
+Global scores are prepared for Firebase's **Spark/no-billing** plan and disabled in the checked-in configuration until a real project is connected. No Cloud Functions, billing account, analytics, or background score polling are required. Local play and the existing on-device Top 10 remain available without Firebase or a network.
+
+There are only two score documents, `leaderboards/daily` and `leaderboards/allTime`, with at most ten entries each. Each guest identity has at most one personal best on each board; one flight can qualify for both. Higher scores rank first and earlier tied scores keep their place. The daily window resets at **00:00 UTC**: yesterday's entries disappear from the display immediately, and the first qualifying submission replaces the previous daily document. No daily archive accumulates.
+
+After a completed flight, the player can check its global ranking and, if it qualifies, optionally publish a **three-character tag** (A-Z or 0-9). Tags are remembered locally but are not unique accounts. Firebase Anonymous Authentication persists a guest identity in the browser; another browser or clearing site data creates another identity. Public score entries contain only that random identifier, the tag, score and submission timestamp. Firebase also maintains anonymous authentication identities independently of the twenty ranking entries.
+
+Score submissions use Firestore transactions, with security rules enforcing ownership, ranking, schema, the ten-entry limit and server-time daily boundaries. **This is not cheat-proof score verification:** a browser-only free-plan implementation cannot prove that a client-reported score was earned. Rules stop clients editing another guest's record or arbitrarily evicting entries, not determined score forgery or guest-identity resets.
+
+Reads are requested when the score screen needs them, with a sixty-second memory cache and bounded manual refreshes. Publishing is explicit; offline flights are saved locally, not queued silently for upload. Quota, connectivity and permission failures are shown without interrupting play.
+
+### Develop without a Firebase account
+
+After `npm install` and `npm run embed:assets`, run these in separate terminals:
+
+```powershell
+npm run firebase:emulators
+npm run serve:firebase
+```
+
+Open **http://localhost:4184/trumpet/?entry=direct**. This server injects emulator-only configuration without editing the production configuration. It talks only to the `demo-trumpet-flight` Auth and Firestore emulators on this machine. Emulator operation needs Java 21 and no Google login or billing. Run `npm run test:firebase` with those emulator ports free to execute the rules and client integration suites.
+
+### Connect the real project later
+
+1. Create a Firebase project on **Spark**, without linking billing. Analytics is not needed.
+2. Register a Web app, enable **Anonymous** sign-in under Authentication, and create a Cloud Firestore database in your chosen region. Keep database access locked until deploying the repository rules.
+3. Run `npx firebase login`, then `npx firebase deploy --only firestore:rules --project YOUR_PROJECT_ID`.
+4. Copy the Web app's public `apiKey`, `authDomain`, `projectId`, and `appId` into `scripts/firebase-config.js`; set `enabled: true` and keep `emulators: false`. These are public app identifiers, not Admin SDK credentials. Never put service-account private keys in the game.
+5. Run `npm run embed:assets`, the local suites, and a real-project smoke test. Bump the service-worker version before publishing the regenerated game. Until then the live deployment stays unchanged.
 
 ## Install and play offline
 

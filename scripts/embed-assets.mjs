@@ -1,4 +1,5 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
+import { bundleFirebase } from "./build-firebase.mjs";
 
 const target = new URL("../index.html", import.meta.url);
 
@@ -31,6 +32,14 @@ html = await embedCss(html, { name: "theme", file: "./theme.css", begin: "/* BEG
 html = await embedCss(html, { name: "cabinet", file: "./cabinet.css", begin: "/* BEGIN GENERATED CABINET */", end: "/* END GENERATED CABINET */" });
 html = await embedJs(html, { name: "atmosphere", file: "./atmosphere.js", begin: "// BEGIN GENERATED ATMOSPHERE", end: "// END GENERATED ATMOSPHERE" });
 html = await embedJs(html, { name: "hitbox", file: "./hitbox.js", begin: "// BEGIN GENERATED HITBOX", end: "// END GENERATED HITBOX" });
+html = await embedJs(html, { name: "Firebase config", file: "./firebase-config.js", begin: "// BEGIN GENERATED FIREBASE CONFIG", end: "// END GENERATED FIREBASE CONFIG" });
+const firebaseBegin = "// BEGIN GENERATED FIREBASE SDK", firebaseEnd = "// END GENERATED FIREBASE SDK";
+if (html.split(firebaseBegin).length !== 2 || html.split(firebaseEnd).length !== 2 ||
+    html.indexOf(firebaseEnd) < html.indexOf(firebaseBegin)) throw new Error("Expected one ordered Firebase SDK marker pair.");
+const firebase = await bundleFirebase();
+if (/<\/script/i.test(firebase)) throw new Error("Firebase bundle cannot contain an HTML script closing tag.");
+html = html.slice(0, html.indexOf(firebaseBegin) + firebaseBegin.length) + "\n" + firebase +
+  "\n" + html.slice(html.indexOf(firebaseEnd));
 html = await embedJs(html, { name: "leaderboard", file: "./leaderboard.js", begin: "// BEGIN GENERATED LEADERBOARD", end: "// END GENERATED LEADERBOARD" });
 html = await embedJs(html, { name: "cabinet stage", file: "./cabinet-stage.js", begin: "// BEGIN GENERATED CABINET STAGE", end: "// END GENERATED CABINET STAGE" });
 const geometry = JSON.parse(await readFile(new URL("../assets/cabinet/v2/geometry.json", import.meta.url), "utf8"));
