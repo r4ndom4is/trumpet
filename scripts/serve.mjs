@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { resolve, extname } from "node:path";
 
 export const root = fileURLToPath(new URL("../", import.meta.url));
-const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".webmanifest": "application/manifest+json", ".png": "image/png" };
-const allowed = /^(index\.html|pwa\.js|ui\.js|sw\.js|manifest\.webmanifest|icons\/[a-z0-9-]+\.png)$/;
+const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".webmanifest": "application/manifest+json", ".png": "image/png", ".webp": "image/webp", ".json": "application/json" };
+const allowed = /^(index\.html|pwa\.js|ui\.js|sw\.js|manifest\.webmanifest|icons\/[a-z0-9-]+\.png|assets\/cabinet\/v1\/[a-z0-9-]+\.(webp|json))$/;
 
 export function serve({
   transform = (_, content) => content,

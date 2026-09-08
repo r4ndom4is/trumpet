@@ -1,7 +1,7 @@
 "use strict";
 
 // The runtime is entirely inline in index.html, so each navigation gets one coherent release.
-const VERSION = "v15";
+const VERSION = "v16";
 const PREFIX = `trumpet-flight:${self.registration.scope}:`;
 const CACHE = PREFIX + VERSION;
 const local = path => new URL(path, self.registration.scope).href;
@@ -10,7 +10,12 @@ const ASSETS = [
   "./", "./index.html", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png",
   "./icons/maskable-192.png", "./icons/maskable-512.png",
-  "./icons/favicon-32.png", "./icons/apple-touch-180.png"
+  "./icons/favicon-32.png", "./icons/apple-touch-180.png",
+  "./assets/cabinet/v1/hood-light.webp", "./assets/cabinet/v1/hood-dark.webp",
+  "./assets/cabinet/v1/frame-light.webp", "./assets/cabinet/v1/frame-dark.webp",
+  "./assets/cabinet/v1/deck-light.webp", "./assets/cabinet/v1/deck-dark.webp",
+  "./assets/cabinet/v1/apron-light.webp", "./assets/cabinet/v1/apron-dark.webp",
+  "./assets/cabinet/v1/manual-light.webp", "./assets/cabinet/v1/manual-dark.webp"
 ].map(local);
 const isShell = url => url === SHELL || url === local("./index.html");
 

@@ -182,9 +182,11 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       page.on("pageerror", error => errors.push(error.message));
       await page.goto(url + "?scoutTheme=light");
       assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+      await page.locator("#manual-open").click();
       await page.locator("#install").click();
       assert.equal(await page.locator("#install-help").isVisible(), true);
       assert.match(await page.locator("#install-help").innerText(), /Safari/);
+      await page.locator("#manual-close").click();
       await page.locator("#screen").focus();
       await page.keyboard.press("Space");
       assert.equal(await page.locator("#overlay").isHidden(), true);
@@ -1136,14 +1138,14 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
                 return box.width > 0 && box.height > 0 && box.left >= 0 && box.top >= 0 &&
                   box.right <= innerWidth + .5 && box.bottom <= innerHeight + .5;
               };
-              const selectors = ["#game", "#score", "#best", "#pause", "#sound", "#manual-open", "#theme-switch",
+              const selectors = ["#game", "#score", "#best", "#pause", "#sound", "#manual-open", "#theme-switch", "#leaderboard-open",
                 ".brand", ".edition", ".compact-tagline .eyebrow"];
               if (state !== "playing") selectors.push("#play", "#title");
               if (state === "over") selectors.push("#crash-closeup");
               const canvas = document.getElementById("game").getBoundingClientRect();
               const brand = document.querySelector(".brand").getBoundingClientRect();
               const edition = document.querySelector(".edition").getBoundingClientRect();
-              const buttons = ["sound", "theme-switch", "pause"].map(id => document.getElementById(id).getBoundingClientRect());
+              const buttons = ["sound", "theme-switch", "leaderboard-open", "pause"].map(id => document.getElementById(id).getBoundingClientRect());
               const dialog = document.querySelector(".dialog");
               const button = document.getElementById("play").getBoundingClientRect();
               const dialogBox = dialog.getBoundingClientRect();
@@ -1153,7 +1155,9 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
                 outside: selectors.filter(selector => !inside(selector)),
                 ratio: canvas.width / canvas.height,
                 headerSides: brand.right <= edition.left && Math.abs((brand.top + brand.height / 2) - (edition.top + edition.height / 2)) < 2,
-                toolbarFits: buttons.every((box, index) => box.width >= 44 && box.height >= 44 && (index === 0 || buttons[index - 1].right <= box.left)),
+                toolbarFits: buttons.every((box, index) => box.width >= 44 && box.height >= 44 &&
+                  buttons.slice(0, index).every(other => other.right <= box.left + .5 || box.right <= other.left + .5 ||
+                    other.bottom <= box.top + .5 || box.bottom <= other.top + .5)),
                 clipped: state !== "playing" && (button.bottom > dialogBox.bottom + .5 || dialog.scrollHeight > dialog.clientHeight + 1),
                 intrinsic: [document.getElementById("game").width, document.getElementById("game").height],
                 typography: {
@@ -1173,7 +1177,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
             assert.ok(geometry.typography.brand >= 18, JSON.stringify({ viewport, geometry }));
             assert.ok(geometry.typography.edition >= 9, JSON.stringify({ viewport, geometry }));
             assert.ok(geometry.typography.tagline >= 10, JSON.stringify({ viewport, geometry }));
-            assert.ok(geometry.typography.score >= 26, JSON.stringify({ viewport, geometry }));
+            assert.ok(geometry.typography.score >= 18, JSON.stringify({ viewport, geometry }));
             assert.ok(geometry.typography.footer >= 9, JSON.stringify({ viewport, geometry }));
             assert.ok(Math.abs(geometry.ratio - 448 / 512) < .002);
             assert.deepEqual(geometry.intrinsic, [448, 512]);
@@ -1181,7 +1185,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           }
           assert.equal(await page.locator("header #theme-switch").count(), 0);
           assert.equal(await page.locator(".tools #theme-switch").count(), 1);
-          assert.equal(await page.locator("#theme-switch").innerText(), "");
+          assert.equal(await page.locator("#theme-switch svg").isVisible(), false);
           await page.evaluate(() => { window.__flight.start(); window.__flight.scenario(230); });
           const beforeControls = await page.evaluate(() => window.__flight.snapshot);
           const oldIcon = await page.locator("#theme-symbol").getAttribute("d");
@@ -1194,7 +1198,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           assert.deepEqual(await page.evaluate(() => window.__flight.snapshot), beforeControls);
           await page.locator("#sound").click();
           await page.evaluate(() => window.__flight.start());
-          assert.equal(await page.locator(".edition").innerText(), "POCKET ARCADE / NO. 001");
+          assert.equal(await page.locator(".edition").innerText(), "NO. 001");
+          assert.match(await page.locator(".brand").innerText(), /pocket arcade/);
           assert.equal(await page.locator(".compact-tagline").innerText(), "SMALL GAME. BIG ONE-MORE-TRY ENERGY.");
           await page.locator("#manual-open").click();
           assert.equal(await page.evaluate(() => window.__flight.snapshot.state), "paused");
@@ -1231,18 +1236,144 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         }
         await page.setViewportSize({ width: 1280, height: 900 });
         await page.waitForTimeout(60);
-        assert.equal(await page.locator(".intro-panel").isVisible(), true);
+        assert.equal(await page.locator(".intro-panel").isVisible(), false);
         await page.locator("#manual-open").click();
+        assert.equal(await page.locator("#manual .intro-panel").isVisible(), true);
         await page.locator("#manual-close").click();
-        await page.waitForFunction(() => document.querySelector("main > .intro-panel"), null, { polling: 50 });
-        assert.equal(await page.locator("main > .intro-panel").isVisible(), true);
-        assert.equal(await page.locator("main > .intro-panel > .eyebrow").isVisible(), true);
+        assert.equal(await page.locator("main > .intro-panel").count(), 0);
+        assert.equal(await page.locator(".compact-tagline .eyebrow").isVisible(), true);
         assert.equal(await page.evaluate(() => {
           const ids = [...document.querySelectorAll("[id]")].map(node => node.id);
           return ids.length === new Set(ids).size;
         }), true);
         await context.close();
       }
+    });
+
+    await t.test("local Top 10 records each completed flight once, preserves best and protects modal focus", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block", reducedMotion: "reduce" });
+      await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
+      const page = await context.newPage();
+      await page.goto(fixture);
+      await page.locator("#leaderboard-open").click();
+      assert.equal(await page.locator("#leaderboard-empty").isVisible(), true);
+      await page.keyboard.press("Escape");
+      assert.equal(await page.evaluate(() => document.activeElement.id), "leaderboard-open");
+      await page.evaluate(() => {
+        for (const points of [1, 6, 3, 12, 8, 10, 2, 15, 9, 4, 11, 7]) {
+          window.__flight.start();
+          window.__flight.scenario(230, [], points);
+          window.__flight.die();
+          window.__flight.die();
+        }
+      });
+      const expected = [15, 12, 11, 10, 9, 8, 7, 6, 4, 3];
+      assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem("trumpet-flight-top10")).map(row => row.score)), expected);
+      await page.reload();
+      await page.locator("#leaderboard-open").click();
+      assert.deepEqual(await page.locator("#leaderboard-list strong").allTextContents(), expected.map(String));
+      assert.match(await page.locator("#leaderboard").innerText(), /No accounts, no uploads/);
+      await page.locator("#leaderboard-close").click();
+      await page.evaluate(() => window.__flight.start());
+      await page.locator("#leaderboard-open").click();
+      const paused = await page.evaluate(() => window.__flight.snapshot);
+      assert.equal(paused.state, "paused");
+      await page.locator("#leaderboard").evaluate(dialog => { dialog.tabIndex = -1; dialog.focus(); });
+      for (const key of ["Space", "KeyP", "KeyM", "ArrowUp", "Tab", "Shift+Tab"]) await page.keyboard.press(key);
+      assert.deepEqual(await page.evaluate(() => window.__flight.snapshot), paused);
+      assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "true");
+      assert.equal(await page.evaluate(() => document.getElementById("leaderboard").contains(document.activeElement)), true);
+      await page.keyboard.press("Escape");
+      assert.equal(await page.evaluate(() => document.activeElement.id), "leaderboard-open");
+      assert.equal(await page.evaluate(() => window.__flight.snapshot.state), "paused");
+      await page.evaluate(() => {
+        localStorage.setItem("trumpet-flight-best", "31");
+        localStorage.setItem("trumpet-flight-top10", '[{"score":"<img src=x>","at":null}]');
+      });
+      await page.reload();
+      await page.locator("#leaderboard-open").click();
+      assert.deepEqual(await page.locator("#leaderboard-list strong").allTextContents(), ["31"]);
+      assert.match(await page.locator("#leaderboard-status").innerText(), /could not be read/);
+      assert.equal(await page.locator("#leaderboard img").count(), 0);
+      await context.close();
+
+      const blocked = await browser.newContext({ serviceWorkers: "block", reducedMotion: "reduce" });
+      await blocked.addInitScript(() => {
+        window.requestAnimationFrame = () => 1;
+        const original = Storage.prototype.setItem;
+        Storage.prototype.setItem = function(key, value) {
+          if (key === "trumpet-flight-top10") throw new DOMException("Quota exceeded", "QuotaExceededError");
+          return original.call(this, key, value);
+        };
+      });
+      const denied = await blocked.newPage();
+      await denied.goto(fixture);
+      await denied.evaluate(() => { window.__flight.start(); window.__flight.scenario(230, [], 5); window.__flight.die(); });
+      await denied.locator("#leaderboard-open").click();
+      assert.deepEqual(await denied.locator("#leaderboard-list strong").allTextContents(), ["5"]);
+      assert.match(await denied.locator("#leaderboard-status").innerText(), /this visit only/);
+      assert.equal(await denied.evaluate(() => localStorage.getItem("trumpet-flight-best")), "5");
+      await blocked.close();
+    });
+
+    await t.test("cabinet artwork is local, transparent, theme-aware and complete at desktop sizes", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block", viewport: { width: 1440, height: 1000 } });
+      const page = await context.newPage();
+      const errors = [];
+      page.on("pageerror", error => errors.push(error.message));
+      await page.goto(url + "?scoutTheme=light");
+      const projection = JSON.parse(await readFile(new URL("../assets/cabinet/v1/geometry.json", import.meta.url), "utf8"));
+      assert.equal(await page.evaluate(projection => {
+        const deck = document.querySelector(".control-deck").getBoundingClientRect();
+        const ids = { sound: "sound", theme: "theme-switch", leaderboard: "leaderboard-open", pause: "pause" };
+        return Object.entries(projection.controls.buttons).every(([name, button]) => {
+          const [x, y] = button.centerPercent;
+          return document.elementFromPoint(deck.left + deck.width * x / 100, deck.top + deck.height * y / 100)
+            ?.closest("button")?.id === ids[name];
+        });
+      }, projection), true, "Every physical button cap must hit its corresponding live control");
+      const artwork = await page.evaluate(async () => {
+        const results = [];
+        for (const mode of ["light", "dark"]) for (const part of ["hood", "frame", "deck", "apron", "manual"]) {
+          const response = await fetch(`./assets/cabinet/v1/${part}-${mode}.webp`);
+          const bitmap = await createImageBitmap(await response.blob());
+          const canvas = document.createElement("canvas");
+          canvas.width = bitmap.width; canvas.height = bitmap.height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(bitmap, 0, 0);
+          results.push({ part, mode, status: response.status, width: bitmap.width,
+            alpha: ctx.getImageData(bitmap.width / 2, bitmap.height / 2, 1, 1).data[3] });
+          bitmap.close();
+        }
+        return results;
+      });
+      assert.equal(artwork.length, 10);
+      for (const asset of artwork) {
+        assert.equal(asset.status, 200);
+        assert.ok(asset.width >= 696, JSON.stringify(asset));
+        if (asset.part === "frame") assert.equal(asset.alpha, 0, "Live game must show through a truly transparent CRT");
+      }
+      assert.match(await page.locator(".frame-rim").evaluate(node => getComputedStyle(node).backgroundImage), /frame-light\.webp/);
+      await page.locator("#theme-switch").click();
+      assert.match(await page.locator(".frame-rim").evaluate(node => getComputedStyle(node).backgroundImage), /frame-dark\.webp/);
+      const fit = await page.locator(".cabinet").evaluate(node => {
+        const box = node.getBoundingClientRect();
+        return box.bottom <= innerHeight + .5 && box.top >= 0 &&
+          Math.abs(document.querySelector(".lower-cabinet").clientHeight / box.width - 254 / 696) < .005;
+      });
+      assert.equal(fit, true);
+      assert.deepEqual(errors, []);
+      const fallback = await context.newPage();
+      await fallback.route("**/assets/cabinet/**", route => route.abort());
+      await fallback.goto(url);
+      await fallback.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "unavailable");
+      assert.equal(await fallback.locator("#sound .control-name").isVisible(), true);
+      assert.match(await fallback.locator("#art-notice").innerText(), /You can still play/);
+      await fallback.locator("#play").click();
+      await fallback.locator("#manual-open").click();
+      assert.equal(await fallback.locator("#manual").evaluate(dialog => dialog.open), true);
+      assert.equal(await fallback.locator("#title").innerText(), "TAKE A BREATHER");
+      await context.close();
     });
 
     await t.test("explicit theme wins on reload and offline, updates canvas, and handles storage denial", async () => {
@@ -1298,7 +1429,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         const cache = await caches.open(keys[0]);
         return { keys, urls: (await cache.keys()).map(request => request.url) };
       });
-      assert.equal(cacheInfo.urls.length, 9);
+      assert.equal(cacheInfo.urls.length, 19);
       assert.ok(cacheInfo.urls.every(asset => asset.startsWith(url)));
       await context.setOffline(true);
       const offlineResponse = await page.goto(url + "?scoutTheme=dark");
