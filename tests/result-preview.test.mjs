@@ -52,6 +52,12 @@ test("local result alternatives preserve scores and keep retry in place", { time
         const scenePixels = new Map();
         for (const variant of ["zoom", "zoom-dark"]) {
           await page.locator("#result-variant").selectOption(variant);
+          if (variant === "zoom-dark") {
+            assert.deepEqual(await page.locator("#overlay").evaluate(node => {
+              const style = getComputedStyle(node);
+              return { color: style.backgroundColor, image: style.backgroundImage };
+            }), { color: "rgba(0, 0, 0, 0.64)", image: "none" }, "the entire crash is dimmed evenly");
+          }
           for (const position of ["middle", "sky", "ground"]) {
             await page.locator("#result-sample").selectOption(position);
             const scoreBox = await page.locator("#run-score").boundingBox();

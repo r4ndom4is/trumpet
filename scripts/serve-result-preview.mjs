@@ -24,7 +24,7 @@ export function resultPreview(file, content) {
       background: linear-gradient(90deg, rgb(0 0 0 / .12) 0%, rgb(0 0 0 / .18) 36%, rgb(0 0 0 / .70) 62%, rgb(0 0 0 / .76) 100%);
     }
     :root[data-result-option="zoom-dark"] .overlay[data-state="result"] {
-      background: linear-gradient(90deg, rgb(0 0 0 / .52) 0%, rgb(0 0 0 / .56) 36%, rgb(0 0 0 / .70) 62%, rgb(0 0 0 / .76) 100%);
+      background: rgb(0 0 0 / .64);
     }
     :root:is([data-result-option="zoom"], [data-result-option="zoom-dark"]) .crashed .run-summary {
       padding-left: 52%; text-align: center; gap: 10px;
