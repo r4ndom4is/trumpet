@@ -20,7 +20,7 @@ try {
   assert.equal(await page.locator(".marquee").innerText(), "trumpet flight.");
   const cachedArt = await page.evaluate(async () => {
     const keys = await caches.keys();
-    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v22")));
+    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v23")));
     return (await cache.keys()).filter(request => request.url.includes("/assets/cabinet/v2/")).map(request => new URL(request.url).pathname.split("/").at(-1)).sort();
   });
   assert.deepEqual(cachedArt, (await readdir(new URL("../assets/cabinet/v2/", import.meta.url))).filter(file => file.endsWith(".webp")).sort());
@@ -97,18 +97,24 @@ try {
   assert.equal(await page.locator("#mute-indicator").isVisible(), true);
   assert.equal(await page.locator("#sound").evaluate(node => getComputedStyle(node, "::after").content), "none");
   await page.locator("#manual-open").tap();
-  assert.equal(await page.locator("#title").innerText(), "TAKE A BREATHER");
+  assert.equal(await page.locator("#title").innerText(), "PAUSED");
   assert.match(await page.locator("#manual").innerText(), /Less panic. More rhythm./);
   await page.waitForTimeout(600);
   await page.locator("#manual-close").tap();
-  assert.equal(await page.locator("#title").innerText(), "TAKE A BREATHER");
+  assert.equal(await page.locator("#title").innerText(), "PAUSED");
   await page.locator("#play").tap();
-  await page.waitForFunction(() => document.getElementById("title").textContent === "ONE MORE TRY?" &&
+  await page.waitForFunction(() => document.getElementById("title").textContent === "YOUR SCORE" &&
     !document.getElementById("overlay").hidden);
-  assert.equal(await page.locator("#crash-shot").isVisible(), true);
+  assert.equal(await page.locator("#crash-shot").isVisible(), false);
+  assert.equal(await page.locator("#result-zoom-scene").isVisible(), true);
+  assert.deepEqual(await page.locator("#overlay").evaluate(node => ({
+    color: getComputedStyle(node).backgroundColor, image: getComputedStyle(node).backgroundImage
+  })), { color: "rgba(0, 0, 0, 0.64)", image: "none" });
+  assert.equal(await page.evaluate(() => window.TRUMPET_FIREBASE.enabled), false);
+  assert.equal(await page.locator(".result-options").count(), 0);
   await page.locator("#leaderboard-open").tap();
   assert.equal(await page.locator("#leaderboard-list li").count(), 1);
-  assert.match(await page.locator("#leaderboard").innerText(), /No accounts, no uploads/);
+  assert.match(await page.locator("#leaderboard").innerText(), /SAVED ON THIS DEVICE/);
   await page.locator("#leaderboard-close").tap();
   await page.screenshot({ path: "test-results/live-offline-retry.png", fullPage: true });
   const desktop = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: "no-preference" });

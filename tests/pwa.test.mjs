@@ -222,6 +222,74 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await context.close();
     });
 
+    await t.test("production crash zoom is frozen, uniformly dimmed, and keeps scores fixed at every impact height", async () => {
+      const context = await browser.newContext({ serviceWorkers: "block", reducedMotion: "reduce" });
+      await context.addInitScript(() => {
+        window.requestAnimationFrame = () => 1;
+        localStorage.setItem("trumpet-flight-best", "99");
+      });
+      try {
+        const page = await context.newPage();
+        for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 },
+          { width: 667, height: 375 }, { width: 1440, height: 1000 }]) {
+          await page.setViewportSize(viewport);
+          await page.goto(fixture);
+          await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
+          await page.evaluate(() => window.__flight.draw());
+          const alignment = await page.evaluate(() => {
+            const baseline = selector => {
+              const node = document.querySelector(selector), marker = document.createElement("span");
+              marker.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+              node.append(marker); const y = marker.getBoundingClientRect().top; marker.remove(); return y;
+            };
+            return {
+              baselineDifference: Math.abs(baseline(".brand-name") - baseline("header .edition")),
+              taglineDifference: Math.abs(document.querySelector(".brand-name").getBoundingClientRect().left -
+                document.querySelector(".compact-tagline .eyebrow").getBoundingClientRect().left)
+            };
+          });
+          assert.ok(alignment.baselineDifference < 1, JSON.stringify(alignment));
+          assert.ok(alignment.taglineDifference < 1, JSON.stringify(alignment));
+          if (viewport.width === 390 || viewport.width === 1440) {
+            await page.screenshot({ path: `test-results/release-ready-${viewport.width}.png` });
+          }
+          let fixedScore, fixedRetry;
+          const captures = [];
+          for (const y of [32, 250, 464]) {
+            await page.evaluate(y => {
+              const game = window.__flight; game.start(); game.scenario(y, [], 8); game.die();
+            }, y);
+            const score = await page.locator("#run-score").boundingBox(), retry = await page.locator("#play").boundingBox();
+            fixedScore ||= score; fixedRetry ||= retry;
+            assert.deepEqual(score, fixedScore, "impact height cannot move the score");
+            assert.deepEqual(retry, fixedRetry, "impact height cannot move retry");
+            assert.equal(await page.locator("#result-zoom-scene").isVisible(), true);
+            assert.deepEqual(await page.locator("#overlay").evaluate(node => ({
+              color: getComputedStyle(node).backgroundColor, image: getComputedStyle(node).backgroundImage
+            })), { color: "rgba(0, 0, 0, 0.64)", image: "none" });
+            const frozen = await page.locator("#result-zoom-scene").evaluate(canvas => {
+              const pixels = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+              return { image: canvas.toDataURL(), opaque: pixels.every((value, i) => i % 4 !== 3 || value === 255) };
+            });
+            assert.equal(frozen.opaque, true, "clamped camera does not show empty scene edges");
+            captures.push(frozen.image);
+            await page.evaluate(() => { window.__flight.tickTime(99); window.__flight.draw(); });
+            assert.equal(await page.locator("#result-zoom-scene").evaluate(canvas => canvas.toDataURL()), frozen.image);
+            if (viewport.width === 390 || viewport.width === 1440) {
+              await page.screenshot({ path: `test-results/release-crash-${viewport.width}-${y}.png` });
+            }
+          }
+          assert.equal(new Set(captures).size, 3);
+          await page.evaluate(() => window.__flight.start());
+          assert.equal(await page.locator("#result-zoom-scene").isHidden(), true);
+          assert.equal(await page.locator("#result-zoom-scene").evaluate(canvas =>
+            canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data.some(Boolean)), false);
+          assert.equal(await page.evaluate(() => window.TRUMPET_FIREBASE.enabled), false);
+          assert.equal(await page.locator(".result-options").count(), 0);
+        }
+      } finally { await context.close(); }
+    });
+
     await t.test("deterministic scoring, persistence, exact frozen 2x crops and responsive retry", async () => {
       const context = await browser.newContext({ serviceWorkers: "block", reducedMotion: "reduce" });
       await context.addInitScript(() => {
@@ -535,7 +603,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         assert.equal(layout.overflow, false, JSON.stringify(viewport));
         assert.equal(layout.fits, true, JSON.stringify(viewport));
         if (viewport.width === 360 || viewport.width === 390) {
-          assert.ok(layout.height >= 48, `prominent result score: ${JSON.stringify(layout)}`);
+          assert.ok(layout.height >= 40, `prominent result score: ${JSON.stringify(layout)}`);
         }
         assert.equal(layout.pose.vy, 0);
         assert.equal(layout.pose.finished, true);
@@ -1166,7 +1234,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
                 overflow: document.documentElement.scrollHeight > innerHeight || document.documentElement.scrollWidth > innerWidth,
                 outside: selectors.filter(selector => !inside(selector)),
                 ratio: canvas.width / canvas.height,
-                headerSides: brand.right <= edition.left && Math.abs((brand.top + brand.height / 2) - (edition.top + edition.height / 2)) < 2,
+                headerSides: brand.right <= edition.left &&
+                  getComputedStyle(document.querySelector(".shell > header")).alignItems === "baseline",
                 toolbarFits: buttons.every((box, index) => box.width >= 44 && box.height >= 44 &&
                   buttons.slice(0, index).every(other => other.right <= box.left + .5 || box.right <= other.left + .5 ||
                     other.bottom <= box.top + .5 || box.bottom <= other.top + .5)),

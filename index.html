@@ -288,12 +288,14 @@ body .shell {
   position: relative; z-index: 2;
   width: min(100%, 640px); align-self: center; flex: none;
   display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 34px auto;
-  align-items: center; gap: 6px 12px; border: 0; padding: 0;
+  align-items: baseline; gap: 6px 12px; border: 0; padding: 0;
 }
-.shell .brand { gap: 7px; font-size: clamp(18px, 4.8vw, 24px); white-space: nowrap; letter-spacing: -.7px; }
-.shell .brand-icon { display: block; width: 20px; height: 20px; flex: none; color: var(--cp-accent); }
-.shell header .edition { font-size: 10px; letter-spacing: 1px; white-space: nowrap; }
-.shell .compact-tagline { display: block; grid-column: 1 / -1; padding: 0; }
+.shell .brand { display: block; font-size: clamp(18px, 4.8vw, 24px); line-height: 1.2; white-space: nowrap; letter-spacing: -.7px; }
+.shell .brand-icon { display: inline-block; width: .8em; height: .8em; margin-right: 7px; vertical-align: -.08em; color: var(--cp-accent); }
+.shell .brand-name { display: inline; }
+.shell header .edition { font-size: 10px; line-height: 1.2; letter-spacing: 1px; white-space: nowrap; }
+.shell .compact-tagline { display: block; grid-column: 1 / -1; padding: 0 0 0 calc(.8 * clamp(18px, 4.8vw, 24px) + 7px); }
+.shell .compact-tagline .eyebrow::before { display: none; }
 .shell .compact-tagline .eyebrow { font-size: clamp(10px, 2.6vw, 11px); line-height: 1.4; letter-spacing: .8px; color: var(--cp-accent); }
 .shell > main { position: relative; flex: 1; width: 100%; min-height: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0; gap: 0; }
 .shell > main > .intro-panel, .shell > footer, .shell > .unofficial { display: none; }
@@ -356,6 +358,9 @@ body .shell {
   align-items: stretch; justify-content: stretch; backdrop-filter: none;
 }
 .shell .overlay[data-state="paused"] { background: rgb(20 37 44 / .78); }
+.shell .overlay[data-state="result"] { background: rgb(0 0 0 / .64); }
+#result-zoom-scene { display: none; position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.screen-content:has(.overlay[data-state="result"]:not([hidden])) #result-zoom-scene { display: block; }
 .shell .dialog, .shell .dialog.crashed {
   display: flex; flex-direction: column; width: 100%; height: 100%; max-height: none;
   margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none;
@@ -370,6 +375,10 @@ body .shell {
 .shell .dialog .run-score { font: 800 clamp(48px, 22cqw, 96px)/1 monospace; font-variant-numeric: tabular-nums; }
 .shell .dialog p { margin: 0; color: var(--screen-soft); font: 12px/1.4 monospace; }
 .shell .dialog .run-best { font-size: 12px; }
+.shell .dialog.crashed .run-summary { padding-left: 52%; text-align: center; gap: 10px; }
+.shell .dialog.crashed #title { font-size: clamp(12px, 4cqw, 19px); min-height: 2.4em; display: flex; align-items: end; }
+.shell .dialog.crashed #run-score { font-size: clamp(40px, 19cqw, 80px); }
+.shell .dialog.crashed #run-best { font-size: clamp(9px, 2.7cqw, 12px); min-height: 2.8em; }
 .run-footer { flex: none; display: flex; flex-direction: column; gap: 12px; }
 .shell .dialog .primary, .shell .dialog.crashed .primary, #leaderboard-publish {
   min-height: 48px; padding: 10px; border: 0; border-radius: 2px;
@@ -637,8 +646,7 @@ body .shell {
 <div class="shell">
   <header>
     <div class="brand">
-      <svg class="brand-icon" viewBox="0 0 210 210" fill="currentColor" aria-hidden="true"><path d="M0 0h93v93H0zM117 0h93v93h-93zM0 117h93v93H0z"/><rect x="117" y="117" width="93" height="93" fill="#c6b99d"/></svg>
-      pocket arcade<span class="mono" style="color:var(--cp-accent)">.</span>
+      <svg class="brand-icon" viewBox="0 0 210 210" fill="currentColor" aria-hidden="true"><path d="M0 0h93v93H0zM117 0h93v93h-93zM0 117h93v93H0z"/><rect x="117" y="117" width="93" height="93" fill="#c6b99d"/></svg><span class="brand-name">pocket arcade<span style="color:var(--cp-accent)">.</span></span>
     </div>
     <div class="edition mono">NO. 001</div>
     <div class="compact-tagline" id="compact-tagline"></div>
@@ -704,6 +712,7 @@ body .shell {
         </span>
         <!-- One electronic screen language: score first, one stable primary action,
              and optional ranking feedback that never blocks the next flight. -->
+        <canvas id="result-zoom-scene" width="448" height="512" aria-hidden="true"></canvas>
         <div class="overlay" id="overlay" data-state="ready">
           <div class="dialog run-screen">
             <div class="run-summary">
@@ -2151,6 +2160,10 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
   const crashCtx = $("crash-image").getContext("2d");
   const closeupCtx = $("crash-closeup").getContext("2d");
   const W = canvas.width, H = canvas.height, FLOOR = 468, X = 108;
+  const impactScene = document.createElement("canvas");
+  impactScene.width = W; impactScene.height = H;
+  const impactSceneCtx = impactScene.getContext("2d");
+  const zoomScene = $("result-zoom-scene"), zoomSceneCtx = zoomScene.getContext("2d");
   const environments = window.TRUMPET_ENVIRONMENTS;
   const environmentLayer = document.createElement("canvas");
   environmentLayer.width = W; environmentLayer.height = H;
@@ -2375,6 +2388,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     death = null; deadAt = 0;
     crashCtx.clearRect(0, 0, $("crash-image").width, $("crash-image").height);
     closeupCtx.clearRect(0, 0, $("crash-closeup").width, $("crash-closeup").height);
+    zoomSceneCtx.clearRect(0, 0, W, H);
     $("crash-shot").hidden = true;
     notifyState();
     score = 0; distance = 0; spawn = .95; accumulator = 0;
@@ -2413,6 +2427,23 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     }
     notifyState();
   }
+  function captureResultScene() {
+    impactSceneCtx.clearRect(0, 0, W, H);
+    impactSceneCtx.drawImage(canvas, 0, 0);
+    impactSceneCtx.save();
+    impactSceneCtx.translate(Math.round(X), Math.round(bird.y));
+    impactSceneCtx.rotate(riderTilt());
+    impactSceneCtx.scale(RIDER_SCALE, RIDER_SCALE);
+    drawImpactFace(impactSceneCtx);
+    impactSceneCtx.restore();
+    const zoom = 3.25, width = W / zoom, height = H / zoom;
+    // Keep the rider left of the fixed score, without looking beyond the scene at sky/floor impacts.
+    const left = Math.max(0, Math.min(W - width, X - width * .27));
+    const top = Math.max(0, Math.min(H - height, bird.y - height * .43));
+    zoomSceneCtx.imageSmoothingEnabled = false;
+    zoomSceneCtx.clearRect(0, 0, W, H);
+    zoomSceneCtx.drawImage(impactScene, left, top, width, height, 0, 0, W, H);
+  }
   function die() {
     if (state !== "playing") return;
     // Render the collision step, not the previous animation frame, before copying it.
@@ -2440,6 +2471,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     closeupCtx.scale(RIDER_SCALE, RIDER_SCALE);
     drawImpactFace(closeupCtx);
     closeupCtx.restore();
+    captureResultScene();
     state = "over"; deadAt = performance.now(); $("pause").disabled = true;
     crashSound();
     const previousBest = best, record = score > best;

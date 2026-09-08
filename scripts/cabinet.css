@@ -26,12 +26,14 @@ body .shell {
   position: relative; z-index: 2;
   width: min(100%, 640px); align-self: center; flex: none;
   display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 34px auto;
-  align-items: center; gap: 6px 12px; border: 0; padding: 0;
+  align-items: baseline; gap: 6px 12px; border: 0; padding: 0;
 }
-.shell .brand { gap: 7px; font-size: clamp(18px, 4.8vw, 24px); white-space: nowrap; letter-spacing: -.7px; }
-.shell .brand-icon { display: block; width: 20px; height: 20px; flex: none; color: var(--cp-accent); }
-.shell header .edition { font-size: 10px; letter-spacing: 1px; white-space: nowrap; }
-.shell .compact-tagline { display: block; grid-column: 1 / -1; padding: 0; }
+.shell .brand { display: block; font-size: clamp(18px, 4.8vw, 24px); line-height: 1.2; white-space: nowrap; letter-spacing: -.7px; }
+.shell .brand-icon { display: inline-block; width: .8em; height: .8em; margin-right: 7px; vertical-align: -.08em; color: var(--cp-accent); }
+.shell .brand-name { display: inline; }
+.shell header .edition { font-size: 10px; line-height: 1.2; letter-spacing: 1px; white-space: nowrap; }
+.shell .compact-tagline { display: block; grid-column: 1 / -1; padding: 0 0 0 calc(.8 * clamp(18px, 4.8vw, 24px) + 7px); }
+.shell .compact-tagline .eyebrow::before { display: none; }
 .shell .compact-tagline .eyebrow { font-size: clamp(10px, 2.6vw, 11px); line-height: 1.4; letter-spacing: .8px; color: var(--cp-accent); }
 .shell > main { position: relative; flex: 1; width: 100%; min-height: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0; gap: 0; }
 .shell > main > .intro-panel, .shell > footer, .shell > .unofficial { display: none; }
@@ -94,6 +96,9 @@ body .shell {
   align-items: stretch; justify-content: stretch; backdrop-filter: none;
 }
 .shell .overlay[data-state="paused"] { background: rgb(20 37 44 / .78); }
+.shell .overlay[data-state="result"] { background: rgb(0 0 0 / .64); }
+#result-zoom-scene { display: none; position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.screen-content:has(.overlay[data-state="result"]:not([hidden])) #result-zoom-scene { display: block; }
 .shell .dialog, .shell .dialog.crashed {
   display: flex; flex-direction: column; width: 100%; height: 100%; max-height: none;
   margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none;
@@ -108,6 +113,10 @@ body .shell {
 .shell .dialog .run-score { font: 800 clamp(48px, 22cqw, 96px)/1 monospace; font-variant-numeric: tabular-nums; }
 .shell .dialog p { margin: 0; color: var(--screen-soft); font: 12px/1.4 monospace; }
 .shell .dialog .run-best { font-size: 12px; }
+.shell .dialog.crashed .run-summary { padding-left: 52%; text-align: center; gap: 10px; }
+.shell .dialog.crashed #title { font-size: clamp(12px, 4cqw, 19px); min-height: 2.4em; display: flex; align-items: end; }
+.shell .dialog.crashed #run-score { font-size: clamp(40px, 19cqw, 80px); }
+.shell .dialog.crashed #run-best { font-size: clamp(9px, 2.7cqw, 12px); min-height: 2.8em; }
 .run-footer { flex: none; display: flex; flex-direction: column; gap: 12px; }
 .shell .dialog .primary, .shell .dialog.crashed .primary, #leaderboard-publish {
   min-height: 48px; padding: 10px; border: 0; border-radius: 2px;

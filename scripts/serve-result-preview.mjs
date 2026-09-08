@@ -10,13 +10,18 @@ export function resultPreview(file, content) {
   if (!capture || !/  requestAnimationFrame\(frame\);\r?\n\}\)\(\);/.test(html)) {
     throw new Error("Game hooks for the result comparison are missing.");
   }
-  html = html.replace(capture, `${capture}    captureResultScene();\n`);
   html = html.replace("</head>", `<style>
     .result-options { display: flex; flex: none; justify-content: center; gap: 6px; flex-wrap: wrap; }
     .result-options label { display: flex; align-items: center; gap: 6px; font: 12px sans-serif; color: var(--cp-text); }
     .result-options select { min-height: 44px; min-width: 0; padding: 6px; background: var(--cp-bg-elevated);
       color: var(--cp-text); border: 1px solid var(--cp-border-strong); border-radius: 3px; font: 12px sans-serif; }
     .result-options select:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 2px; }
+    :root:is([data-result-option="portrait"], [data-result-option="world"], [data-result-option="both"]) #result-zoom-scene { display: none; }
+    :root[data-result-option="portrait"] .overlay[data-state="result"] { background: var(--screen-bg); }
+    :root:is([data-result-option="portrait"], [data-result-option="world"], [data-result-option="both"]) .shell .dialog.crashed .run-summary { padding-left: 0; gap: 12px; }
+    :root:is([data-result-option="portrait"], [data-result-option="world"], [data-result-option="both"]) .shell .dialog.crashed #title { display: block; min-height: 0; font-size: clamp(16px, 5cqw, 22px); }
+    :root:is([data-result-option="portrait"], [data-result-option="world"], [data-result-option="both"]) .shell .dialog.crashed #run-score { font-size: clamp(48px, 22cqw, 96px); }
+    :root:is([data-result-option="portrait"], [data-result-option="world"], [data-result-option="both"]) .shell .dialog.crashed #run-best { min-height: 0; font-size: 12px; }
     #result-zoom-scene { display: none; position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
     :root:is([data-result-option="zoom"], [data-result-option="zoom-dark"])
       .screen-content:has(.overlay[data-state="result"]:not([hidden])) #result-zoom-scene { display: block; }
@@ -63,28 +68,7 @@ export function resultPreview(file, content) {
   </style></head>`);
   html = html.replace('<div class="run-summary">', `<div class="run-summary">
     <canvas id="result-reaction" width="280" height="208" role="img" aria-label="The collision close-up with a surprised expression"></canvas>`);
-  html = html.replace('<div class="overlay" id="overlay"', '<canvas id="result-zoom-scene" width="420" height="512" aria-hidden="true"></canvas><div class="overlay" id="overlay"');
   html = html.replace(/  requestAnimationFrame\(frame\);\r?\n\}\)\(\);/, `
-  const impactScene = document.createElement("canvas");
-  impactScene.width = W; impactScene.height = H;
-  const impactSceneCtx = impactScene.getContext("2d");
-  const zoomScene = $("result-zoom-scene");
-  zoomScene.width = W; zoomScene.height = H;
-  function captureResultScene() {
-    impactSceneCtx.clearRect(0, 0, W, H);
-    impactSceneCtx.drawImage(canvas, 0, 0);
-    impactSceneCtx.save();
-    impactSceneCtx.translate(Math.round(X), Math.round(bird.y));
-    impactSceneCtx.rotate(riderTilt()); impactSceneCtx.scale(RIDER_SCALE, RIDER_SCALE);
-    drawImpactFace(impactSceneCtx); impactSceneCtx.restore();
-    const zoom = 3.25, width = W / zoom, height = H / zoom;
-    const left = Math.max(0, Math.min(W - width, X - width * .27));
-    const top = Math.max(0, Math.min(H - height, bird.y - height * .43));
-    const target = zoomScene.getContext("2d");
-    target.imageSmoothingEnabled = false;
-    target.clearRect(0, 0, W, H);
-    target.drawImage(impactScene, left, top, width, height, 0, 0, W, H);
-  }
   const comparison = document.createElement("nav");
   comparison.className = "result-options";
   comparison.setAttribute("aria-label", "Local result-screen comparison");
@@ -121,7 +105,6 @@ export function resultPreview(file, content) {
     state = "playing"; score = 8; best = 12; death = null;
     bird.y = position === "sky" ? 32 : position === "middle" ? 250 : 440; bird.vy = 0;
     ${capture}
-    captureResultScene();
     state = "over"; deadAt = performance.now() - 500;
     $("pause").disabled = true; overlay(); copyReaction(); notifyState(); draw();
     best = rememberedBest;
