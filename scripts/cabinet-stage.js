@@ -9,6 +9,7 @@
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const pointer = matchMedia("(hover: hover) and (pointer: fine)");
   const requested = new URLSearchParams(location.search).get("entry");
+  const reloading = performance.getEntriesByType("navigation").some(entry => entry.type === "reload");
   const preferenceKey = "trumpet-flight-cabinet-entered";
   const assetRoot = "./assets/cabinet/v2/";
   let state = "play", generation = 0, entered = false, currentMode;
@@ -206,7 +207,7 @@
     if (state === "intro" && root.dataset.theme !== currentMode) show();
   }).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
   if (desktop.matches && requested !== "direct" && document.body.dataset.cabinetEntry !== "direct" &&
-      (!entered || requested === "room")) show();
+      (!entered || reloading || requested === "room")) show();
   else {
     root.dataset.cabinetView = "play";
     cabinet.dataset.power = "on";

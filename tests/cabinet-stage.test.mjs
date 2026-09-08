@@ -63,6 +63,14 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
       assert.equal(await page.locator("#overlay").isHidden(), true);
       await page.locator("#pause").click();
       await page.reload();
+      await ready(page);
+      assert.equal(await page.locator(".cabinet").getAttribute("data-power"), "off");
+      await page.locator("#enter-cabinet").click();
+      await page.waitForFunction(() => document.documentElement.dataset.cabinetView === "powering");
+      await entered(page);
+      await page.goto(url + "?entry=direct");
+      await entered(page);
+      await page.reload();
       await entered(page);
       await context.close();
     });
@@ -76,6 +84,11 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
       await page.keyboard.press("Enter");
       await entered(page);
       assert.equal(await page.evaluate(() => document.getElementById("arrival").getAnimations().length), 0);
+      await page.reload();
+      await ready(page);
+      assert.match(await page.locator("#arrival-cue").textContent(), /Reduced motion is on/);
+      await page.locator("#enter-cabinet").click();
+      await entered(page);
       await page.goto(url + "?entry=room");
       await ready(page);
       await page.locator("#skip-arrival").focus();
@@ -191,6 +204,8 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
     await t.test("phones and portrait tablets enter directly, resizing never reopens the introduction", async () => {
       const { context, page } = await open({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
       await entered(page);
+      await page.reload();
+      await entered(page);
       await page.setViewportSize({ width: 1440, height: 1000 });
       await page.waitForTimeout(80);
       await entered(page);
@@ -226,6 +241,8 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
       assert.match(await page.locator("#announcement").textContent(), /could not load/);
       await page.locator("#play").click();
       assert.equal(await page.locator("#overlay").isHidden(), true);
+      await page.reload();
+      await entered(page);
       await context.close();
     });
 
@@ -244,6 +261,10 @@ test("Cabinet arrival: intentional activation, accessible fallback and offline c
       await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
       await page.locator("#play").click();
       assert.equal(await page.locator("#overlay").isHidden(), true);
+      await page.reload();
+      await ready(page);
+      await page.locator("#enter-cabinet").click();
+      await entered(page);
       await context.close();
     });
     assert.deepEqual(errors, []);
