@@ -7,6 +7,14 @@ import { createHash } from "node:crypto";
 import { serve } from "../scripts/serve.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+test("Pocket Arcade header matches the manual's square-tile mark", () => {
+  const mark = html.match(/<svg class="brand-icon"[\s\S]*?<\/svg>/)?.[0];
+  assert.ok(mark);
+  assert.match(mark, /viewBox="0 0 210 210"/);
+  assert.match(mark, /d="M0 0h93v93H0zM117 0h93v93h-93zM0 117h93v93H0z"/);
+  assert.match(mark, /<rect x="117" y="117" width="93" height="93" fill="#c6b99d"\/>/);
+  assert.match(mark, /aria-hidden="true"/);
+});
 const cabinetFiles = (await readdir(new URL("../assets/cabinet/v2/", import.meta.url))).filter(file => file.endsWith(".webp"));
 const hooks = `
   window.__flight = {
