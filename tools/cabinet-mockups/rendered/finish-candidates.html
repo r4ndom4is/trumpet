@@ -13,7 +13,7 @@
 <style>
 :root {
   color-scheme: light;
-  --cp-bg: #f7f4ef;
+  --cp-bg: var(--cp-stage-light);
   --cp-bg-elevated: #fcfbf8;
   --cp-text: #242424;
   --cp-text-muted: #5c5c5c;
@@ -24,15 +24,16 @@
   --cp-accent-soft: rgba(177,31,75,.08);
   --cp-link: #0078d4;
   --cp-danger: #b42318;
-  --cp-stage-light: #f5f5f5;
+  --cp-stage-light: #f7f4ef;
   --cp-stage-dark: #292929;
   --space-tight: 8px;
   --space-group: 24px;
   --space-section: 48px;
+  --bar-height: 62px;
 }
 html[data-theme="dark"] {
   color-scheme: dark;
-  --cp-bg: #3d3b3a;
+  --cp-bg: var(--cp-stage-dark);
   --cp-bg-elevated: #343231;
   --cp-text: #dedede;
   --cp-text-muted: #b0b0b0;
@@ -55,11 +56,17 @@ a:hover { color: var(--cp-accent-hover); }
 button { font: inherit; min-height: 44px; padding: 8px 12px; border: 1px solid var(--cp-border-strong); border-radius: 8px; background: var(--cp-bg-elevated); color: var(--cp-text); cursor: pointer; }
 button:hover, button[aria-pressed="true"] { border-color: var(--cp-accent); background: var(--cp-accent-soft); color: var(--cp-accent); }
 :is(a,button,summary):focus-visible { outline: 3px solid var(--cp-link); outline-offset: 4px; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; margin-top: 16px; }
-.view-buttons { display: flex; gap: var(--space-tight); }
-.jump { display: flex; flex-wrap: wrap; gap: 0 20px; padding: 8px 0; margin-top: 8px; border-bottom: 1px solid var(--cp-border); }
-.jump a { display: inline-flex; align-items: center; min-height: 44px; }
-.cabinet-row { margin-top: var(--space-section); scroll-margin-top: 16px; }
+.toolbar { position: sticky; top: 0; z-index: 10; display: flex; gap: 8px 16px; align-items: center; margin-top: 20px; padding: 8px 0; background: var(--cp-bg); border-bottom: 1px solid var(--cp-border); }
+.toolbar button { font-size: 13px; padding: 8px 10px; white-space: nowrap; }
+.view-buttons { display: flex; gap: 4px; flex: none; padding-right: 16px; border-right: 1px solid var(--cp-border); }
+.filters { display: flex; gap: 4px; min-width: 0; overflow-x: auto; padding: 4px; }
+.filters button { flex: none; border-color: transparent; background: transparent; }
+.filters button:hover, .filters button[aria-pressed="true"] { border-color: var(--cp-accent); background: var(--cp-accent-soft); }
+.toolbar :is(button,a):focus-visible { outline-offset: 1px; }
+.gallery-meta { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0 16px; margin: 8px 0 0; font-size: 13px; }
+.gallery-meta p { margin: 0; }
+.gallery-meta a { display: inline-flex; align-items: center; min-height: 44px; }
+.cabinet-row { margin-top: var(--space-section); scroll-margin-top: calc(var(--bar-height) + 16px); }
 .cabinet-row:first-child { margin-top: var(--space-group); }
 h2 { font-size: 22px; line-height: 1.25; margin: 0 0 16px; }
 h2 span { color: var(--cp-text-muted); font-weight: 400; }
@@ -88,7 +95,9 @@ footer a { display: inline-flex; align-items: center; min-height: 44px; }
   h2 { font-size: 19px; }
   h2 span { display: block; margin-top: 4px; font-size: 15px; }
   figcaption { font-size: 13px; }
-  .jump { gap: 0 16px; }
+  .toolbar { flex-wrap: wrap; gap: 0; padding-block: 4px; }
+  .view-buttons { border: 0; padding: 4px; }
+  .filters { flex-basis: 100%; }
 }
 </style>
 </head>
@@ -96,23 +105,27 @@ footer a { display: inline-flex; align-items: center; min-height: 44px; }
 <main>
   <header>
     <h1>Every cabinet, in both settings.</h1>
-    <p>Six styles, each with a light and dark finish. All 12 cabinets are below, each shown in light and dark surroundings: <strong>24 renders, nothing hidden.</strong></p>
-    <div class="toolbar">
+    <p>Six styles, two finishes each. Compare the same cabinet in light and dark surroundings.</p>
+  </header>
+    <div class="toolbar" aria-label="Gallery controls">
       <div class="view-buttons" role="group" aria-label="Camera view for all cabinets">
         <button type="button" data-view="front" aria-pressed="true">Front</button>
         <button type="button" data-view="angle" aria-pressed="false">Three-quarter</button>
       </div>
+      <div class="filters" role="group" aria-label="Filter cabinet style">
+        <button type="button" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-filter="crimson" aria-pressed="false">Crimson</button>
+        <button type="button" data-filter="seafoam" aria-pressed="false">Seafoam</button>
+        <button type="button" data-filter="timber" aria-pressed="false">Timber</button>
+        <button type="button" data-filter="black-amber" aria-pressed="false">Black &amp; amber</button>
+        <button type="button" data-filter="airmail" aria-pressed="false">Air Mail</button>
+        <button type="button" data-filter="gilt" aria-pressed="false">Gilded Mile</button>
+      </div>
+    </div>
+    <div class="gallery-meta">
+      <p id="filter-status" role="status">All 12 cabinets · 24 renders</p>
       <a href="thin-bezel/contact-sheet.jpg" target="_blank" rel="noopener">Full overview image</a>
     </div>
-    <nav class="jump" aria-label="Jump to cabinet style">
-      <a href="#crimson-light">Crimson</a>
-      <a href="#seafoam-light">Seafoam</a>
-      <a href="#timber-light">Timber</a>
-      <a href="#black-amber-light">Black &amp; amber</a>
-      <a href="#airmail-light">Air Mail</a>
-      <a href="#gilt-light">Gilded Mile</a>
-    </nav>
-  </header>
   <div id="cabinets"></div>
   <noscript><p>JavaScript is needed to assemble the gallery. <a href="thin-bezel/contact-sheet.jpg">View all 24 renders in the overview image.</a></p></noscript>
   <footer>
@@ -133,6 +146,21 @@ footer a { display: inline-flex; align-items: center; min-height: 44px; }
   ];
   const title = value => value[0].toUpperCase() + value.slice(1);
   let generation = 0;
+  let selected = "all";
+  const toolbar = document.querySelector(".toolbar");
+  new ResizeObserver(() => {
+    document.documentElement.style.setProperty("--bar-height", toolbar.getBoundingClientRect().height + "px");
+  }).observe(toolbar);
+  function filter() {
+    document.querySelectorAll(".cabinet-row").forEach(row => {
+      row.hidden = selected !== "all" && row.dataset.finish !== selected;
+    });
+    document.querySelectorAll("[data-filter]").forEach(button =>
+      button.setAttribute("aria-pressed", String(button.dataset.filter === selected)));
+    const name = finishes.find(([id]) => id === selected)?.[1];
+    document.getElementById("filter-status").textContent = selected === "all"
+      ? "All 12 cabinets · 24 renders" : name + " · 2 finishes · 4 renders";
+  }
   function draw(view) {
     const current = ++generation;
     const fragment = document.createDocumentFragment();
@@ -217,7 +245,15 @@ footer a { display: inline-flex; align-items: center; min-height: 44px; }
       }
     }
     document.getElementById("cabinets").replaceChildren(fragment);
+    filter();
   }
+  document.querySelectorAll("[data-filter]").forEach(button => {
+    button.addEventListener("click", () => {
+      selected = button.dataset.filter;
+      filter();
+      document.querySelector(".cabinet-row:not([hidden])").scrollIntoView({ block: "start" });
+    });
+  });
   document.querySelectorAll("[data-view]").forEach(button => {
     button.addEventListener("click", () => {
       document.querySelectorAll("[data-view]").forEach(choice =>

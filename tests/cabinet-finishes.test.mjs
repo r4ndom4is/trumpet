@@ -48,8 +48,8 @@ test("overview shows all 24 renders with identical finishes side by side in both
         }
         await page.screenshot({ path: fileURLToPath(new URL(`../test-results/cabinet-finishes/overview-${view}-${width}.png`, import.meta.url)) });
       }
-      await page.locator(".jump a[href='#gilt-light']").click();
-      assert.match(page.url(), /#gilt-light$/);
+      await page.locator("[data-filter='gilt']").click();
+      assert.equal(await page.locator(".cabinet-row:visible").count(), 2);
       await page.locator("#gilt-light details").first().locator("summary").click();
       assert.equal(await page.locator("#gilt-light .downloads").first().isVisible(), true);
       await page.close();
@@ -61,6 +61,57 @@ test("overview shows all 24 renders with identical finishes side by side in both
     assert.match(await page.locator("#crimson-light .status[data-error='true']").textContent(), /Missing cabinet/);
     await page.close();
     assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test("gallery matches background colors and keeps compact filters accessible while scrolling", { timeout: 60000 }, async () => {
+  const browser = await chromium.launch();
+  try {
+    for (const width of [1440, 768, 390, 320]) {
+      for (const theme of ["light", "dark"]) {
+        const page = await browser.newPage({ viewport: { width, height: 900 } });
+        const overview = new URL("finish-candidates.html", gallery);
+        overview.searchParams.set("scoutTheme", theme);
+        await page.goto(overview.href);
+        await page.waitForFunction(() => [...document.images].every(image => image.complete && image.naturalWidth));
+        const colors = await page.evaluate(theme => ({
+          page: getComputedStyle(document.body).backgroundColor,
+          stage: getComputedStyle(document.querySelector(`[data-environment="${theme}"] .stage`)).backgroundColor,
+          toolbar: getComputedStyle(document.querySelector(".toolbar")).backgroundColor
+        }), theme);
+        assert.equal(colors.page, colors.stage, "page and matching setting share the exact same background");
+        assert.equal(colors.page, colors.toolbar, "sticky bar is opaque and matches the page");
+        await page.locator("#timber-dark").evaluate(node => node.scrollIntoView());
+        let bar = await page.locator(".toolbar").boundingBox();
+        assert.ok(Math.abs(bar.y) < 1, "controls stick to the viewport, not just the header");
+        assert.ok(bar.height <= (width <= 600 ? 124 : 80), "toolbar stays compact");
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        for (const finish of finishes) {
+          await page.locator(`[data-filter='${finish}']`).click();
+          assert.equal(await page.locator(".cabinet-row:visible").count(), 2);
+          assert.equal(await page.locator(".hardware:visible").count(), 4);
+          assert.equal(await page.locator(`[data-filter='${finish}']`).getAttribute("aria-pressed"), "true");
+          assert.match(await page.locator("#filter-status").textContent(), /2 finishes · 4 renders/);
+          bar = await page.locator(".toolbar").boundingBox();
+          const heading = await page.locator(`#${finish}-light h2`).boundingBox();
+          assert.ok(heading.y >= bar.y + bar.height, "sticky controls never cover the selected heading");
+        }
+        await page.locator("[data-view='angle']").click();
+        assert.equal(await page.locator(".cabinet-row:visible").count(), 2, "changing camera preserves the filter");
+        await page.waitForFunction(() => [...document.images].every(image => image.complete && image.naturalWidth));
+        await page.locator("#gilt-dark").evaluate(node => node.scrollIntoView());
+        if (width === 1440 || width === 390) {
+          await page.screenshot({ path: fileURLToPath(new URL(`../test-results/cabinet-finishes/sticky-${theme}-${width}.png`, import.meta.url)) });
+        }
+        await page.locator("[data-filter='all']").click();
+        assert.equal(await page.locator(".cabinet-row:visible").count(), 12);
+        assert.equal(await page.locator(".hardware:visible").count(), 24);
+        assert.equal(await page.locator("[data-view='angle']").getAttribute("aria-pressed"), "true");
+        await page.close();
+      }
+    }
   } finally {
     await browser.close();
   }
