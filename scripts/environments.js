@@ -1037,11 +1037,20 @@
     }
   ];
 
+  // The maritime stage shares gantry collision geometry, not its production art.
+  // Legacy painters remain available for older studies and loading-failure fallback.
+  ENVS.push({
+    ...ENVS.find(env => env.id === "env-f-gantry-nine-16"),
+    id: "env-g-hormuz-strait-16", name: "Strait to the Point",
+    levelName: "Strait to the Point", level: 7,
+    obstacleName: "Maritime beacon",
+    premise: "Headlands, tankers and navigation beacons along a narrow maritime strait."
+  });
   ENVS.sort((a, b) => a.level - b.level);
   const byId = {};
   for (const env of ENVS) byId[env.id] = env;
 
-  /* Ten cleared obstacles per environment; the sixth lasts for the rest of the run. */
+  /* Ten cleared obstacles per environment; the seventh lasts for the rest of the run. */
   const PIPES_PER_LEVEL = 10;
   const CAMPAIGN_STATUS = "Live";
 
@@ -1062,7 +1071,7 @@
     };
   });
 
-  /* Clamp at the sixth stage rather than looping after sixty obstacles. `rotation`
+  /* Clamp at the seventh stage rather than looping after seventy obstacles. `rotation`
    * cyclically re-maps which environment occupies each slot (a per-run "which
    * stage do we start on" shuffle) without touching the unlockAt/clearAt pacing:
    * omit it, or pass 0, for the exact unrotated order every existing caller relies on. */
@@ -1120,7 +1129,7 @@
       g.px(0, 0, W, FLOOR, "HAZE", clampUnit(atmosphere.haze) * .35);
     }
     const landmarkX = LANDMARK.x - (reduced ? 0 : Math.max(0, (opts.stageTime || 0) - LANDMARK.hold) * LANDMARK.speed);
-    const sign = landmarkX + LANDMARK.width > 0 ? env.landmark(g, landmarkX) : null;
+    const sign = !opts.hideLandmark && landmarkX + LANDMARK.width > 0 ? env.landmark(g, landmarkX) : null;
     env.ground(g, scroll * RATES.world);
 
     const gapSize = opts.gap || 158;

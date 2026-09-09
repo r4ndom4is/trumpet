@@ -19,6 +19,8 @@ const cabinetFiles = (await readdir(new URL("../assets/cabinet/v2/", import.meta
 const hooks = `
   window.__flight = {
     start, pause, step, draw, flap, die, tone, scoreSound, crashSound, silence, action, frame,
+    artReady: flightArtReady,
+    stageTitleOpacity,
     death() { return structuredClone(death); },
     deathPixels() {
       const saved = ctx.getImageData(0, 0, W, H);
@@ -27,7 +29,7 @@ const hooks = `
       const pixels = ctx.getImageData(0, 0, W, H).data;
       let bottom = -1;
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-        if (pixels[(y * W + x) * 4 + 3]) bottom = y;
+        if (pixels[(y * W + x) * 4 + 3] > 200) bottom = y;
       }
       const image = canvas.toDataURL();
       ctx.putImageData(saved, 0, 0);
@@ -55,25 +57,19 @@ const hooks = `
     setStageRotation(n) { stageRotation = n; },
     spawnIn(seconds) { spawn = seconds; },
     stageSigns() {
-      const signs = [], original = environments.drawScene;
-      environments.drawScene = (painter, options) => {
-        const result = original(painter, options);
-        signs.push({ stageTime: options.stageTime, sign: result.sign });
-        return result;
-      };
-      try { draw(); } finally { environments.drawScene = original; }
-      return signs;
+      return { stageTime, opacity: stageTitleOpacity(), name: currentEnvironment().name };
     },
     position(y, vy = 0) { bird = { y, vy }; },
     renderTrace() {
       const calls = [];
-      const scene = environments.drawScene, pair = environments.drawPair, image = ctx.drawImage;
-      environments.drawScene = (painter, options) => {
+      const scene = drawScenery, owner = flightArt ? flightArt.scenery : environments;
+      const method = flightArt ? "drawObstacle" : "drawPair", pair = owner[method], image = ctx.drawImage;
+      drawScenery = (painter, options) => {
         calls.push({ kind: "scene", env: typeof options.env === "string" ? options.env : options.env.id,
           gaps: options.gaps, theme: options.theme, main: painter === ctx });
         return scene(painter, options);
       };
-      environments.drawPair = (painter, options) => {
+      owner[method] = (painter, options) => {
         calls.push({ kind: "pair", ...options, alpha: painter.globalAlpha });
         return pair(painter, options);
       };
@@ -82,7 +78,7 @@ const hooks = `
         return image.apply(this, args);
       };
       try { draw(); } finally {
-        environments.drawScene = scene; environments.drawPair = pair; ctx.drawImage = image;
+        drawScenery = scene; owner[method] = pair; ctx.drawImage = image;
       }
       return calls;
     },
@@ -120,6 +116,7 @@ const hooks = `
       pipes = obstacles.map(pipe => ({ environmentId: currentEnvironment().id, ...pipe }));
     },
     tickTime(t) { time = t; },
+    tickScenery(dt) { stageTime += dt; distance += (142 + Math.min(score * 2, 54)) * dt; },
     crop() {
       draw();
       const copy = document.createElement("canvas");
@@ -452,7 +449,9 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         g.start(); g.scenario(26, [], 7, -310);
         const dt = 1 / 120, vy = -310 + 940 * dt, y = 26 + vy * dt;
         g.position(y, vy);
+        g.tickScenery(dt);
         const expected = g.crop();
+        g.tickScenery(-dt);
         g.position(26, -310);
         let oscillators = 0, writes = 0;
         const create = AudioContext.prototype.createOscillator, set = Storage.prototype.setItem;
@@ -491,7 +490,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await context.close();
     });
 
-    await t.test("comic reaction only touches face pixels; one landing puff accompanies a fully inelastic contact", async () => {
+    await t.test("approved rider likeness is preserved on impact; one puff accompanies inelastic contact", async () => {
       const context = await browser.newContext({ serviceWorkers: "block" });
       await context.addInitScript(() => { window.requestAnimationFrame = () => 1; });
       const page = await context.newPage();
@@ -534,8 +533,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         }
         if (after.join() === "235,239,232,255" && i % 42 >= 21 && i % 42 <= 26 && Math.floor(i / 42) >= 12 && Math.floor(i / 42) <= 14) whites++;
       }
-      assert.ok(changed >= 20 && changed <= 30, "small but legible pixel reaction, not a face replacement");
-      assert.equal(whites, 13, "3x3 and 2x3 whites retain one pupil each");
+      assert.equal(changed, 0, "the approved rider is not overpainted by the legacy expression");
       assert.equal(result.raw, result.expected);
       assert.equal(result.rawLater, result.raw);
       assert.equal(result.styledLater, result.styled);
@@ -746,7 +744,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       const config = await page.evaluate(() => window.__flight.collisionConfig());
       const scale = await page.evaluate(() => window.__flight.riderScale());
       assert.equal(scale * 42, 48, "nominal gameplay rider width increases to 48px");
-      assert.deepEqual(await page.evaluate(() => window.__flight.renderedRiderScales()), [[48 / 42, 48 / 42]],
+      assert.deepEqual(await page.evaluate(() => window.__flight.renderedRiderScales()), [[1, 1], [.5, .5]],
         "actual gameplay painter uses the enlarged scale, not just the collision model");
       assert.deepEqual(config, {
         localCentre: { x: 0, y: -1 },
@@ -839,7 +837,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await context.close();
     });
 
-    await t.test("six production environments are embedded exactly and clamp every score threshold", async () => {
+    await t.test("seven production environments are embedded exactly and clamp every score threshold", async () => {
       const source = (await readFile(new URL("../scripts/environments.js", import.meta.url), "utf8")).replace(/\r\n/g, "\n").trimEnd();
       const begin = "// BEGIN GENERATED ENVIRONMENTS", end = "// END GENERATED ENVIRONMENTS";
       const normalized = html.replace(/\r\n/g, "\n");
@@ -853,12 +851,12 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await page.goto(fixture);
       const stages = await page.evaluate(() => window.TRUMPET_ENVIRONMENTS.list.map(env => ({ id: env.id, name: env.name })));
       assert.deepEqual(stages.map(env => env.name), [
-        "West Wing It", "File Another Day", "Fore More Years", "Gilt Trip", "Roofless Ambition", "Space Force One"
+        "West Wing It", "File Another Day", "Fore More Years", "Gilt Trip", "Roofless Ambition", "Space Force One", "Strait to the Point"
       ]);
-      assert.equal(new Set(stages.map(env => env.id)).size, 6);
+      assert.equal(new Set(stages.map(env => env.id)).size, 7);
       for (const [score, index] of [
         [0, 0], [9, 0], [10, 1], [19, 1], [20, 2], [29, 2], [30, 3],
-        [39, 3], [40, 4], [49, 4], [50, 5], [59, 5], [60, 5], [999, 5]
+        [39, 3], [40, 4], [49, 4], [50, 5], [59, 5], [60, 6], [69, 6], [70, 6], [999, 6]
       ]) {
         const result = await page.evaluate(score => {
           const api = window.TRUMPET_ENVIRONMENTS, g = window.__flight;
@@ -894,8 +892,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       }, stages);
       assert.deepEqual(rotated.omitted, stages);
       assert.deepEqual(rotated.explicitZero, stages);
-      assert.deepEqual(rotated.plusTwo, [stages[2], stages[3], stages[4], stages[5], stages[0], stages[1]]);
-      assert.deepEqual(rotated.negativeOne, [stages[5], stages[0], stages[1], stages[2], stages[3], stages[4]]);
+      assert.deepEqual(rotated.plusTwo, [...stages.slice(2), ...stages.slice(0, 2)]);
+      assert.deepEqual(rotated.negativeOne, [...stages.slice(-1), ...stages.slice(0, -1)]);
       assert.equal(rotated.wrapped, stages[2]);
 
       // g.start() (the debug/test primitive) never rerolls the rotation, so it stays 0 and every
@@ -909,7 +907,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
 
       // A real run start (clicking Play) rerolls the rotation using Math.random(), and the
       // visible starting stage follows it.
-      await context.addInitScript(() => { Math.random = () => 2 / 6; });
+      await context.addInitScript(() => { Math.random = () => 2 / 7; });
       const page2 = await context.newPage();
       await page2.goto(fixture);
       const played = await page2.evaluate(stages => {
@@ -964,7 +962,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         "env-c-executive-atrium-16": [54, 18],
         "env-d-links-and-lightning-16": [56, 20],
         "env-e-penthouse-row-16": [56, 22],
-        "env-f-gantry-nine-16": [54, 16]
+        "env-f-gantry-nine-16": [54, 16],
+        "env-g-hormuz-strait-16": [54, 16]
       };
       for (const entry of result.entries) {
         const [shaft, cap] = geometry[entry.id];
@@ -988,7 +987,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         }
       }
       for (const key of ["pairImage", "backgroundImage", "gameImage"]) {
-        assert.equal(new Set(result.entries.flatMap(entry => entry.renders.map(render => render[key]))).size, 12, key);
+        assert.equal(new Set(result.entries.flatMap(entry => entry.renders.map(render => render[key]))).size, key === "pairImage" ? 12 : 14, key);
       }
       const contacts = await page.evaluate(() => {
         const g = window.__flight;
@@ -1049,8 +1048,8 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
               finished, crashed, afterCrash, reset: { ...g.snapshot, ...g.environment(), label: document.getElementById("environment-name").textContent },
               stages: api.list.map(env => ({ id: env.id, name: env.name })) };
           }, points);
-          const old = result.stages[Math.min(5, Math.floor(points / 10))];
-          const next = result.stages[Math.min(5, Math.floor((points + 1) / 10))];
+          const old = result.stages[Math.min(6, Math.floor(points / 10))];
+          const next = result.stages[Math.min(6, Math.floor((points + 1) / 10))];
           const transition = reducedMotion === "reduce" || old.id === next.id ? null : { from: old.id, to: next.id, elapsed: 0, fromStageTime: 0 };
           const label = `${points} -> ${points + 1} (${reducedMotion})`;
           assert.equal(result.scored.score, points + 1, label);
@@ -1084,7 +1083,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       }
     });
 
-    await t.test("stage sign clocks reset at entry, retain outgoing age, and freeze on pause and impact", async () => {
+    await t.test("stage title clocks reset at entry and freeze on pause and impact", async () => {
       const context = await browser.newContext({ serviceWorkers: "block" });
       await context.addInitScript(() => { window.requestAnimationFrame = () => 1; Math.random = () => .5; });
       const page = await context.newPage();
@@ -1108,12 +1107,13 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         g.start();
         return { aged, entered, layers, paused, dead, reset: g.environment() };
       });
-      assert.equal(result.aged[0].stageTime, 10);
+      assert.equal(result.aged.stageTime, 10);
+      assert.equal(result.aged.opacity, 0);
       assert.equal(result.entered.stageTime, 0);
       assert.ok(result.entered.transition.fromStageTime > 10);
-      assert.equal(result.layers[0].stageTime, result.entered.transition.fromStageTime);
-      assert.equal(result.layers[1].stageTime, 0);
-      assert.equal(result.layers[1].sign.text, "File Another Day");
+      assert.equal(result.layers.stageTime, 0);
+      assert.equal(result.layers.opacity, 1);
+      assert.equal(result.layers.name, "File Another Day");
       assert.deepEqual(result.paused, result.entered);
       assert.deepEqual(result.dead, result.entered);
       assert.equal(result.reset.stageTime, 0);
@@ -1562,13 +1562,15 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
         const cache = await caches.open(keys[0]);
         return { keys, urls: (await cache.keys()).map(request => request.url) };
       });
-      assert.equal(cacheInfo.urls.length, 9 + cabinetFiles.length);
+      assert.equal(cacheInfo.urls.length, 9 + cabinetFiles.length + 7);
+      assert.equal(cacheInfo.urls.filter(asset => asset.includes("/assets/flight/")).length, 7);
       assert.ok(cacheInfo.urls.every(asset => asset.startsWith(url)));
       await context.setOffline(true);
       const offlineResponse = await page.goto(url + "?scoutTheme=dark");
       assert.equal((await offlineResponse.text()).replace(/\r\n/g, "\n"),
         localOnlyConfig(html).replace(/\r\n/g, "\n").replace('data-cabinet-entry="auto"', 'data-cabinet-entry="direct"'));
       await page.waitForFunction(() => document.getElementById("app-status").textContent === "Offline. Ready to fly.");
+      await page.waitForFunction(() => document.documentElement.dataset.flightArt === "ready");
       assert.equal(await page.evaluate(() => {
         const api = window.TRUMPET_ENVIRONMENTS;
         const surface = document.createElement("canvas");
@@ -1580,7 +1582,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
           return surface.toDataURL();
         }));
         return new Set(images).size;
-      }), 12, "all six environment backgrounds and obstacles remain usable offline");
+      }), 14, "all seven environment backgrounds and obstacles remain usable offline");
       await page.locator("#play").click();
       assert.equal(await page.locator("#overlay").isHidden(), true);
       await page.waitForFunction(() => document.getElementById("title").textContent === "YOUR SCORE");
@@ -1937,7 +1939,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       });
       const page = await context.newPage();
       await page.goto(fixture);
-      assert.equal(await page.evaluate(() => window.__flight.spriteFrame(0) === window.__flight.spriteFrame(.2)), false);
+      assert.equal(await page.evaluate(() => window.__flight.spriteFrame(0) === window.__flight.spriteFrame(.2)), true);
       assert.equal(await page.evaluate(() => window.audioCreated), 0);
       assert.equal(await page.locator("#sound").getAttribute("aria-pressed"), "true");
       assert.equal(await page.locator("#sound").getAttribute("aria-label"), "Mute sound");

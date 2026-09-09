@@ -9,8 +9,9 @@
     "lab": "node scripts/lab-server.mjs",
     "icons": "node scripts/icons.mjs",
     "embed:environments": "node scripts/embed-environments.mjs",
+    "embed:flight-art": "node scripts/embed-flight-art.mjs",
     "embed:assets": "node scripts/embed-assets.mjs",
-    "test": "node --test tests/pwa.test.mjs tests/scenery.test.mjs tests/cabinet-stage.test.mjs tests/leaderboard-ui.test.mjs tests/global-scores-model.test.mjs",
+    "test": "node --test --test-concurrency=1 tests/pwa.test.mjs tests/scenery.test.mjs tests/flight-art.test.mjs tests/cabinet-stage.test.mjs tests/leaderboard-ui.test.mjs tests/global-scores-model.test.mjs",
     "firebase:emulators": "firebase emulators:start --only auth,firestore --project demo-trumpet-flight",
     "test:firebase": "firebase emulators:exec --only auth,firestore --project demo-trumpet-flight \"node --test --test-concurrency=1 tests/firebase-rules.test.mjs tests/firebase-client.test.mjs tests/firebase-ui.test.mjs\"",
     "test:live": "node scripts/verify-live.mjs"

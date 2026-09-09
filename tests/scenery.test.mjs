@@ -13,7 +13,7 @@ runInNewContext(source, { window });
 const art = window.TRUMPET_ENVIRONMENTS;
 const names = [
   "West Wing It", "File Another Day", "Fore More Years",
-  "Gilt Trip", "Roofless Ambition", "Space Force One"
+  "Gilt Trip", "Roofless Ambition", "Space Force One", "Strait to the Point"
 ];
 
 function recorder() {
@@ -34,7 +34,7 @@ const render = (env, options = {}) => {
   return { calls: ctx.calls, result: plain(result.sign) };
 };
 
-test("all six approved names match mounted signs and environment display names", () => {
+test("all seven approved names match legacy fallback signs and environment display names", () => {
   for (const [i, env] of art.list.entries()) {
     for (const theme of ["day", "night"]) {
       const { calls, result } = render(env, { theme });
@@ -98,31 +98,32 @@ test("signs precede obstacles and rider; crossfade renders have no shared entry 
   }
 });
 
-test("campaign still advances by ten cleared obstacles and never wraps stage six", () => {
+test("campaign advances by ten cleared obstacles and never wraps stage seven", () => {
   const ids = [
     "env-b-marble-forum-16", "env-c-executive-atrium-16", "env-d-links-and-lightning-16",
-    "env-a-gilded-mile-16", "env-e-penthouse-row-16", "env-f-gantry-nine-16"
+    "env-a-gilded-mile-16", "env-e-penthouse-row-16", "env-f-gantry-nine-16", "env-g-hormuz-strait-16"
   ];
   const obstacles = [
     "obst-broken-drum-66", "obst-elevator-pylon-66", "obst-topiary-pillar-66",
-    "obst-colonnade-66", "obst-rooftop-stack-66", "obst-gantry-tower-66"
+    "obst-colonnade-66", "obst-rooftop-stack-66", "obst-gantry-tower-66", "obst-gantry-tower-66"
   ];
   assert.deepEqual(plain(art.list.map(env => env.id)), ids);
   for (const [i, env] of art.list.entries()) {
     assert.equal(env.level, i + 1);
     assert.equal(env.unlockAt, i * 10);
-    assert.equal(env.clearAt, i === 5 ? null : (i + 1) * 10);
+    assert.equal(env.clearAt, i === 6 ? null : (i + 1) * 10);
     assert.equal(env.obstacleId, obstacles[i]);
   }
   for (let score = 0; score <= 1000; score++) {
     const level = art.levelAt(score);
-    assert.equal(level.level, Math.min(6, Math.floor(score / 10) + 1));
+    assert.equal(level.level, Math.min(7, Math.floor(score / 10) + 1));
     assert.equal(level.name, names[level.level - 1]);
     assert.equal(level.environmentId, ids[level.level - 1]);
     assert.equal(level.obstacleId, obstacles[level.level - 1]);
   }
   assert.equal(art.campaign[5].unlockAt, 50);
-  assert.equal(art.campaign[5].clearAt, null);
+  assert.equal(art.campaign[5].clearAt, 60);
+  assert.equal(art.campaign[6].clearAt, null);
 });
 
 test("levelAt's optional rotation cyclically re-maps stages without touching pacing", () => {
@@ -134,9 +135,9 @@ test("levelAt's optional rotation cyclically re-maps stages without touching pac
     assert.deepEqual(plain(art.levelAt(score, -ids.length)), base);
   }
   const rotated = plain(ids.map((_, i) => art.levelAt(i * 10, 3).environmentId));
-  assert.deepEqual(rotated, [ids[3], ids[4], ids[5], ids[0], ids[1], ids[2]]);
+  assert.deepEqual(rotated, [...ids.slice(3), ...ids.slice(0, 3)]);
   const negative = plain(ids.map((_, i) => art.levelAt(i * 10, -2).environmentId));
-  assert.deepEqual(negative, [ids[4], ids[5], ids[0], ids[1], ids[2], ids[3]]);
+  assert.deepEqual(negative, [...ids.slice(-2), ...ids.slice(0, -2)]);
   // Rotation only changes which environment is shown - the score thresholds where the
   // visible stage changes stay exactly the same as the unrotated schedule.
   for (const rotation of [0, 2, -1, 5]) {
@@ -144,7 +145,7 @@ test("levelAt's optional rotation cyclically re-maps stages without touching pac
     for (let score = 1; score <= 60; score++) {
       if (art.levelAt(score, rotation).environmentId !== art.levelAt(score - 1, rotation).environmentId) changesAt.push(score);
     }
-    assert.deepEqual(changesAt, [10, 20, 30, 40, 50], `rotation ${rotation}`);
+    assert.deepEqual(changesAt, [10, 20, 30, 40, 50, 60], `rotation ${rotation}`);
   }
 });
 
@@ -406,7 +407,7 @@ test("phone-size day/night scenes have readable signs and stable moving obstacle
           return { text: sign.text, textWidth, available: sign.width - 16 };
         });
       }, theme);
-      assert.equal(measurements.length, 6);
+      assert.equal(measurements.length, 7);
       for (const result of measurements) assert.ok(result.textWidth <= result.available, result.text);
       if (process.env.SCENERY_ARTIFACT_DIR) {
         await mkdir(process.env.SCENERY_ARTIFACT_DIR, { recursive: true });

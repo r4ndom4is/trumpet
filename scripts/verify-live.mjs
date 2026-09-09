@@ -3,6 +3,10 @@ import { mkdir, readFile, readdir } from "node:fs/promises";
 import { chromium } from "playwright";
 
 const url = "https://r4ndom4is.github.io/trumpet/";
+const workerSource = (await readFile(new URL("../sw.js", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
+const versionMatch = workerSource.match(/const VERSION = "(v\d+)";/);
+assert.ok(versionMatch, "The release service-worker version must be declared");
+const version = versionMatch[1];
 const browser = await chromium.launch();
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, colorScheme: "dark" });
@@ -14,16 +18,35 @@ try {
   const published = (await response.text()).replace(/\r\n/g, "\n");
   const source = (await readFile(new URL("../index.html", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
   assert.equal(published, source, "Published HTML must match the checkout, ignoring Git line-ending normalization");
+  const workerResponse = await context.request.get(url + "sw.js");
+  assert.equal(workerResponse.status(), 200);
+  assert.equal((await workerResponse.text()).replace(/\r\n/g, "\n"), workerSource,
+    "Published service worker must match the release");
   await page.waitForFunction(() => navigator.serviceWorker.controller && document.getElementById("app-status").textContent === "Ready for offline play.");
   await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
+  await page.waitForFunction(() => document.documentElement.dataset.flightArt === "ready");
+  assert.equal(await page.locator("#flight-art-notice").isHidden(), true);
+  const catalog = await page.evaluate(() => ({
+    count: window.TRUMPET_ENVIRONMENTS.list.length,
+    seventh: window.TRUMPET_ENVIRONMENTS.levelAt(60).environmentId,
+    rider: typeof window.TRUMPET_PIXEL_RIDER.createRenderer,
+    scenery: typeof window.TRUMPET_PIXEL_SCENERY.createRenderer
+  }));
+  assert.deepEqual(catalog, { count: 7, seventh: "env-g-hormuz-strait-16", rider: "function", scenery: "function" });
   assert.match(await page.locator(".brand").innerText(), /pocket arcade/);
   assert.equal(await page.locator(".marquee").innerText(), "trumpet flight.");
-  const cachedArt = await page.evaluate(async () => {
+  const cachedArt = await page.evaluate(async version => {
     const keys = await caches.keys();
-    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v24")));
-    return (await cache.keys()).filter(request => request.url.includes("/assets/cabinet/v2/")).map(request => new URL(request.url).pathname.split("/").at(-1)).sort();
-  });
-  assert.deepEqual(cachedArt, (await readdir(new URL("../assets/cabinet/v2/", import.meta.url))).filter(file => file.endsWith(".webp")).sort());
+    const name = keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":" + version));
+    if (!name) throw new Error("The release cache is missing: " + version);
+    const cache = await caches.open(name);
+    const requests = await cache.keys();
+    const files = path => requests.filter(request => request.url.includes(path))
+      .map(request => new URL(request.url).pathname.split("/").at(-1)).sort();
+    return { cabinet: files("/assets/cabinet/v2/"), flight: files("/assets/flight/") };
+  }, version);
+  assert.deepEqual(cachedArt.cabinet, (await readdir(new URL("../assets/cabinet/v2/", import.meta.url))).filter(file => file.endsWith(".webp")).sort());
+  assert.deepEqual(cachedArt.flight, (await readdir(new URL("../assets/flight/", import.meta.url))).filter(file => file.endsWith(".png")).sort());
   assert.equal(await page.locator("#update").count(), 0);
   assert.equal(await page.locator("script[src]").count(), 0);
   const registration = await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).scope);
@@ -87,6 +110,7 @@ try {
   assert.equal(await page.evaluate(() => navigator.onLine), false);
   assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
   await page.waitForFunction(() => document.querySelector(".cabinet").dataset.art === "ready");
+  await page.waitForFunction(() => document.documentElement.dataset.flightArt === "ready");
   for (const theme of ["dark", "light"]) {
     await page.locator("#theme-switch").tap();
     await page.waitForFunction(theme => document.documentElement.dataset.theme === theme &&

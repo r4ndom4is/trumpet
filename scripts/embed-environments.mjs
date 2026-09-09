@@ -10,4 +10,4 @@ if (html.split(begin).length !== 2 || html.split(end).length !== 2 || html.index
 }
 if (/<\/script/i.test(source)) throw new Error("Environment source cannot contain an HTML script closing tag.");
 await writeFile(target, html.slice(0, html.indexOf(begin) + begin.length) + "\n" + source + "\n" + html.slice(html.indexOf(end)));
-console.log("Embedded six environments into index.html.");
+console.log("Embedded canonical environments into index.html.");

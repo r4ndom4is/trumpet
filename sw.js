@@ -1,7 +1,7 @@
 "use strict";
 
 // The runtime is entirely inline in index.html, so each navigation gets one coherent release.
-const VERSION = "v24";
+const VERSION = "v25";
 const PREFIX = `trumpet-flight:${self.registration.scope}:`;
 const CACHE = PREFIX + VERSION;
 const local = path => new URL(path, self.registration.scope).href;
@@ -43,6 +43,15 @@ const CABINET_ASSETS = [
 // END GENERATED CABINET ASSETS
 ];
 const ASSETS = [
+// BEGIN GENERATED FLIGHT ASSETS
+  "./assets/flight/rider.png",
+  "./assets/flight/palace-far-day.png",
+  "./assets/flight/palace-mid-day.png",
+  "./assets/flight/palace-near-day.png",
+  "./assets/flight/palace-far-night.png",
+  "./assets/flight/palace-mid-night.png",
+  "./assets/flight/palace-near-night.png",
+// END GENERATED FLIGHT ASSETS
   "./", "./index.html", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png",
   "./icons/maskable-192.png", "./icons/maskable-512.png",
