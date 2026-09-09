@@ -76,7 +76,7 @@ def prepare(finishes, archive=None):
             gallery = gallery.replace('href="phone-layout.html?view=desktop"', 'href="https://r4ndom4is.github.io/trumpet/"')
             gallery = gallery.replace("Back to the desktop cabinet", "Published game")
             bundle.writestr("tools/cabinet-mockups/rendered/finish-candidates.html", gallery)
-            assets = [OUTPUT / "contact-sheet.jpg", OUTPUT / "manifest.json"]
+            assets = [OUTPUT / "contact-sheet.jpg", OUTPUT / "manifest.json", SOURCE / "finish-comparison.html"]
             for record in records:
                 stem = record["stem"]
                 assets.extend(OUTPUT / f"{stem}{suffix}" for suffix in (".blend", ".json", "-front.png", "-angle.png", "-hardware-front.png"))

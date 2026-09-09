@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<!--
+THESIS: Compare material, not geometry; two real lighting renders are the main event.
+OWN-WORLD: Existing Clawpilot neutrals, rose selection, Segoe UI, restrained controls.
+STORY: Choose a finish and material/environment pairing, keep possibilities on a shortlist.
+FIRST VIEWPORT: Compact introduction and six selectors above paired cabinet images.
+FORM: Brief-pinned comparison gallery; no concept seed or replacement visual identity.
+-->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cabinet finish comparison · Pocket Arcade</title>
+<script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<style>
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
+/* These two photographic grounds stay fixed when the surrounding UI theme changes. */
+:root {
+  --cp-stage-light: #f5f5f5;
+  --cp-stage-light-ink: #242424;
+  --cp-stage-dark: #292929;
+  --cp-stage-dark-ink: #dedede;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--cp-bg); color: var(--cp-text); font: 15px/1.5 "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif; }
+main { max-width: 1160px; margin-inline: auto; padding: 24px 32px 40px; }
+a { color: var(--cp-accent); text-underline-offset: 3px; }
+a:hover { color: var(--cp-accent-hover); }
+button, input { font: inherit; }
+button { min-height: 44px; cursor: pointer; color: var(--cp-text); background: var(--cp-bg-elevated); border: 1px solid var(--cp-border-strong); border-radius: .625rem; padding: 8px 12px; }
+button:hover { border-color: var(--cp-accent); background: var(--cp-accent-soft); }
+button[aria-pressed="true"] { border-color: var(--cp-accent); background: var(--cp-accent-soft); color: var(--cp-accent); }
+:is(a, button, input):focus-visible { outline: 3px solid var(--cp-link); outline-offset: 4px; }
+h1 { font-size: clamp(26px, 3vw, 36px); line-height: 1.15; letter-spacing: -.025em; margin: 16px 0 8px; }
+h2 { font-size: 22px; line-height: 1.25; margin: 0; }
+p { margin: 8px 0 0; max-width: 74ch; }
+.muted, .intro, .materials, .notes, .storage { color: var(--cp-text-muted); }
+.intro { margin-bottom: 20px; }
+.gallery-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; }
+.finishes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.finish { text-align: left; padding: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.finish strong { font-size: 14px; }
+.finish span { color: var(--cp-text-muted); font-size: 12px; }
+.finish[aria-pressed="true"] strong::after { content: " ✓"; }
+.selection { display: flex; justify-content: space-between; align-items: start; gap: 16px; margin: 24px 0 16px; }
+.materials { margin-top: 4px; min-height: 24px; }
+.toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; border-block: 1px solid var(--cp-border); padding-block: 12px; margin-bottom: 20px; }
+fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+legend { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.views, .layers { display: flex; flex-wrap: wrap; gap: 8px; }
+.layers { gap: 20px; flex-wrap: wrap; }
+.layers label { min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--cp-accent); }
+.retry { margin-left: auto; font-size: 13px; }
+.comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+figure { margin: 0; min-width: 0; }
+.figure-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+.figure-heading h3 { margin: 0; font-size: 17px; }
+.figure-heading span { font-size: 12px; color: var(--cp-text-muted); }
+.stage { border-radius: 16px; overflow: hidden; background: var(--cp-stage-light); color: var(--cp-stage-light-ink); }
+.dark .stage { background: var(--cp-stage-dark); color: var(--cp-stage-dark-ink); }
+.composition { position: relative; aspect-ratio: 720 / 1024; width: 100%; max-width: 460px; margin: auto; }
+.composition img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+.composition .overlay { pointer-events: none; }
+.composition:not([data-ready="true"]) .overlay { visibility: hidden; }
+body[data-paper="false"] .paper, body[data-marquee="false"] .marquee { display: none; }
+.placeholder { position: absolute; inset: 0; display: grid; align-content: center; text-align: center; padding: 24px; }
+.placeholder strong { font-size: 18px; }
+.placeholder p { font-size: 14px; }
+.asset-status { min-height: 24px; font-size: 13px; color: var(--cp-text-muted); margin-top: 8px; }
+.figure-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-top: 8px; }
+.figure-actions a { font-size: 14px; }
+.downloads { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.shortlist { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--cp-border); }
+.shortlist h2 { font-size: 20px; }
+.shortlist ul { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 8px; }
+.shortlist li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 8px; border-bottom: 1px solid var(--cp-border); }
+.shortlist li button { font-size: 13px; }
+.storage { font-size: 13px; }
+.storage[data-error="true"] { color: var(--cp-danger); }
+.notes { margin-top: 24px; font-size: 13px; border-top: 1px solid var(--cp-border); padding-top: 16px; }
+.notes p { max-width: 90ch; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+@media (max-width: 900px) {
+  .finishes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  main { padding-inline: 20px; }
+}
+@media (max-width: 540px) {
+  main { padding: 20px 16px 32px; }
+  .finishes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .comparison { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .retry { margin-left: 0; }
+  .figure-actions { align-items: stretch; }
+  .figure-actions a { display: flex; align-items: center; min-height: 44px; }
+}
+</style>
+</head>
+<body data-paper="true" data-marquee="true">
+<main>
+  <header>
+    <nav class="gallery-links" aria-label="Related cabinet views">
+      <a href="finish-candidates.html">← All cabinets side by side</a>
+      <a href="thin-bezel/contact-sheet.jpg" target="_blank" rel="noopener">All 24 wide-screen combinations · contact sheet ↗</a>
+    </nav>
+    <h1>Same cabinet. Six different characters.</h1>
+    <p class="intro">The wider screen from the released Crimson cabinet, now across all six finishes. Try all 24 material and lighting combinations, or compare with the original CRT surround. The live game is unchanged.</p>
+  </header>
+  <div class="finishes" role="group" aria-label="Choose a cabinet finish">
+    <button class="finish" type="button" data-finish="crimson" aria-pressed="true"><strong>Crimson coin-op</strong><span>Lacquer / brass</span></button>
+    <button class="finish" type="button" data-finish="seafoam" aria-pressed="false"><strong>Seafoam cabaret</strong><span>Satin enamel / nickel</span></button>
+    <button class="finish" type="button" data-finish="timber" aria-pressed="false"><strong>Timber frame</strong><span>Walnut / bronze</span></button>
+    <button class="finish" type="button" data-finish="black-amber" aria-pressed="false"><strong>Black &amp; amber</strong><span>Existing reference</span></button>
+    <button class="finish" type="button" data-finish="airmail" aria-pressed="false"><strong>Air Mail</strong><span>New · aviation enamel</span></button>
+    <button class="finish" type="button" data-finish="gilt" aria-pressed="false"><strong>Gilded Mile</strong><span>New · champagne metal</span></button>
+  </div>
+  <section aria-labelledby="selected-name">
+    <div class="selection">
+      <div aria-live="polite" aria-atomic="true">
+        <h2 id="selected-name">Crimson coin-op</h2>
+        <p class="materials" id="selected-materials">Oxblood/crimson lacquer, warm brass, charcoal control laminate.</p>
+      </div>
+    </div>
+    <div class="toolbar">
+      <fieldset>
+        <legend>Screen surround</legend>
+        <div class="views">
+          <button type="button" data-surround="thin" aria-pressed="true">Wide screen</button>
+          <button type="button" data-surround="original" aria-pressed="false">Original CRT</button>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Material × environment</legend>
+        <div class="views">
+          <button type="button" data-pairing="original" aria-pressed="false">Original pairing</button>
+          <button type="button" data-pairing="crossed" aria-pressed="true">Crossed pairing</button>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>View</legend>
+        <div class="views">
+          <button type="button" data-view="front" aria-pressed="true">Front</button>
+          <button type="button" data-view="angle" aria-pressed="false">Three-quarter</button>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Artwork for context</legend>
+        <div class="layers">
+          <label><input type="checkbox" id="paper-toggle" checked> Manual</label>
+          <label><input type="checkbox" id="marquee-toggle" checked> Marquee</label>
+        </div>
+      </fieldset>
+      <button class="retry" id="reload-images" type="button">Reload images</button>
+    </div>
+    <div class="comparison">
+      <figure class="light">
+        <figcaption class="figure-heading"><h3>Light environment</h3><span id="light-material">Dark material</span></figcaption>
+        <div class="stage"><div class="composition" id="light-composition"></div></div>
+        <p class="asset-status" id="light-status" role="status"></p>
+        <div class="figure-actions">
+          <div class="downloads">
+            <a id="light-full" href="thin-bezel/finish-crimson-dark-light-front.png" target="_blank" rel="noopener">Full-size PNG ↗</a>
+            <a id="light-model" href="thin-bezel/finish-crimson-dark-light.blend" download>Editable model</a>
+            <a id="light-skin" href="thin-bezel/finish-crimson-dark-light-hardware-front.png" download>Transparent front</a>
+          </div>
+          <button type="button" data-shortlist="light" aria-pressed="false">Shortlist dark material / light environment</button>
+        </div>
+      </figure>
+      <figure class="dark">
+        <figcaption class="figure-heading"><h3>Dark environment</h3><span id="dark-material">Light material</span></figcaption>
+        <div class="stage"><div class="composition" id="dark-composition"></div></div>
+        <p class="asset-status" id="dark-status" role="status"></p>
+        <div class="figure-actions">
+          <div class="downloads">
+            <a id="dark-full" href="thin-bezel/finish-crimson-light-dark-front.png" target="_blank" rel="noopener">Full-size PNG ↗</a>
+            <a id="dark-model" href="thin-bezel/finish-crimson-light-dark.blend" download>Editable model</a>
+            <a id="dark-skin" href="thin-bezel/finish-crimson-light-dark-hardware-front.png" download>Transparent front</a>
+          </div>
+          <button type="button" data-shortlist="dark" aria-pressed="false">Shortlist light material / dark environment</button>
+        </div>
+      </figure>
+    </div>
+    <p class="muted">Actual material and environment renders, never CSS recoloring. Crossed pairing puts dark materials in the light environment and light materials in the dark environment; original pairing matches them.</p>
+    <p class="muted">Wide-screen cabinets use the same narrow, separate lip and physical button symbols as the released cabinet. Editable models keep the lip independent of the shell; transparent fronts leave the display open for a live game. Original CRT previews retain their separate vector symbols.</p>
+  </section>
+  <section class="shortlist" aria-labelledby="shortlist-heading">
+    <h2 id="shortlist-heading" tabindex="-1">Your shortlist</h2>
+    <p class="muted">Possibilities to revisit, not final decisions. Each entry keeps the finish, material and environment, regardless of camera view or pairing.</p>
+    <p id="shortlist-empty">Nothing shortlisted yet. Keep either material/environment combination using the buttons above.</p>
+    <ul id="shortlist-items" aria-label="Shortlisted finish, material and environment combinations"></ul>
+    <p id="storage-status" class="storage" role="status"></p>
+    <p class="sr-only" id="selection-status" role="status"></p>
+  </section>
+  <footer class="notes">
+    <p>Manual and marquee are separate, optional artwork layers. Lettering is mock-render context; these gallery controls are not wired into the game.</p>
+    <p>These are finish previews, not playable cabinets. The sample screen is artwork; each upgraded model includes screen geometry for the production 448 × 512 game. Original models and released assets are preserved.</p>
+  </footer>
+  <noscript><p>Enable JavaScript to compare all six finishes and manage the shortlist. The full-size Crimson PNG links above still work.</p></noscript>
+</main>
+<script>
+(() => {
+  "use strict";
+  const finishes = {
+    crimson: { name: "Crimson coin-op", materials: "Oxblood/crimson lacquer, warm brass, charcoal control laminate." },
+    seafoam: { name: "Seafoam cabaret", materials: "Mint/seafoam satin enamel, cream laminate, aged nickel." },
+    timber: { name: "Timber frame", materials: "Real procedural walnut grain, parchment laminate, bronze." },
+    "black-amber": { name: "Black & amber", materials: "Charcoal grain laminate and amber brass. The existing reference." },
+    airmail: { name: "Air Mail", materials: "Ivory enamel, midnight-blue panel, oxblood controls, brushed aluminium. A new mid-century aviation direction." },
+    gilt: { name: "Gilded Mile", materials: "Champagne brushed metal, burgundy lacquer, brass. A new satirical gilded-luxury direction for Gilt Trip." }
+  };
+  const toneNames = { light: "Light", dark: "Dark" };
+  const byId = id => document.getElementById(id);
+  const storageKey = "pocket-arcade.finish-shortlist.v2";
+  const legacyStorageKey = "pocket-arcade.finish-shortlist.v1";
+  let selected = "crimson";
+  let view = "front";
+  let surround = "thin";
+  let pairing = "crossed";
+  let shortlist = [];
+  let storageAvailable = true;
+  let generation = 0;
+  let cacheSuffix = "";
+  let reportAssets = [];
+
+  function storageError(message) {
+    storageAvailable = false;
+    const status = byId("storage-status");
+    status.dataset.error = "true";
+    status.textContent = message + " Your shortlist will work for this page session only; copy its labels before closing.";
+  }
+
+  function readSaved(saved, legacy = false) {
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed) || parsed.some(entry => {
+      if (typeof entry !== "string") return true;
+      const parts = entry.split(":");
+      return parts.length !== (legacy ? 2 : 3) ||
+        !Object.keys(finishes).includes(parts[0]) ||
+        !["light", "dark"].includes(parts[1]) ||
+        (!legacy && !["light", "dark"].includes(parts[2]));
+    })) {
+      throw new Error("Saved shortlist has an unsupported format.");
+    }
+    return [...new Set(parsed.map(entry => legacy ? entry + ":" + entry.split(":")[1] : entry))];
+  }
+
+  try {
+    const saved = localStorage.getItem(storageKey);
+    byId("storage-status").textContent = "Shortlist saves in this browser, on this device.";
+    if (saved !== null) {
+      shortlist = readSaved(saved);
+    } else {
+      const legacy = localStorage.getItem(legacyStorageKey);
+      if (legacy !== null) {
+        shortlist = readSaved(legacy, true);
+        persist();
+        if (storageAvailable) {
+          byId("storage-status").textContent = "Previous shortlist preserved as matching material/environment pairs and saved in this browser.";
+        }
+      }
+    }
+  } catch (error) {
+    storageError("Could not read browser storage (" + error.message + ").");
+  }
+
+  function persist() {
+    if (!storageAvailable) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(shortlist));
+      byId("storage-status").textContent = "Shortlist saved in this browser, on this device.";
+    } catch (error) {
+      storageError("Could not save to browser storage (" + error.message + ").");
+    }
+  }
+
+  function labelFor(key) {
+    const [id, material, environment] = key.split(":");
+    return finishes[id].name + " — " + combinationLabel(material, environment);
+  }
+
+  function materialFor(environment) {
+    return pairing === "original" ? environment : (environment === "light" ? "dark" : "light");
+  }
+
+  function combinationLabel(material, environment) {
+    return toneNames[material] + " material / " + environment + " environment";
+  }
+
+  function currentKey(environment) {
+    return selected + ":" + materialFor(environment) + ":" + environment;
+  }
+
+  function drawShortlist() {
+    const list = byId("shortlist-items");
+    list.replaceChildren();
+    byId("shortlist-empty").hidden = shortlist.length > 0;
+    shortlist.forEach(key => {
+      const item = document.createElement("li");
+      const text = document.createElement("span");
+      text.textContent = labelFor(key);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "Remove";
+      remove.setAttribute("aria-label", "Remove " + labelFor(key) + " from shortlist");
+      remove.addEventListener("click", () => {
+        shortlist = shortlist.filter(entry => entry !== key);
+        persist();
+        drawShortlist();
+        byId("shortlist-heading").focus();
+        byId("selection-status").textContent = "Removed " + labelFor(key) + " from shortlist.";
+      });
+      item.append(text, remove);
+      list.append(item);
+    });
+    document.querySelectorAll("[data-shortlist]").forEach(button => {
+      const environment = button.dataset.shortlist;
+      const key = currentKey(environment);
+      const included = shortlist.includes(key);
+      button.setAttribute("aria-pressed", String(included));
+      button.textContent = (included ? "Shortlisted ✓ · " : "Shortlist ") +
+        combinationLabel(materialFor(environment), environment);
+      button.setAttribute("aria-label", (included ? "Remove " : "Shortlist ") + labelFor(key));
+    });
+  }
+
+  function drawImages() {
+    const currentGeneration = ++generation;
+    reportAssets = [];
+    for (const environment of ["light", "dark"]) {
+      const material = materialFor(environment);
+      const combination = combinationLabel(material, environment);
+      const composition = byId(environment + "-composition");
+      const status = byId(environment + "-status");
+      byId(environment + "-material").textContent = toneNames[material] + " material";
+      composition.replaceChildren();
+      composition.dataset.ready = "false";
+      const placeholder = document.createElement("div");
+      placeholder.className = "placeholder";
+      const heading = document.createElement("strong");
+      heading.textContent = "Loading cabinet…";
+      const help = document.createElement("p");
+      help.textContent = "New render files may still be in progress.";
+      placeholder.append(heading, help);
+      composition.append(placeholder);
+      const states = { cabinet: "loading", paper: "loading", marquee: "loading", controls: surround === "thin" ? "ready" : "loading" };
+      function report() {
+        if (generation !== currentGeneration) return;
+        const active = layer => layer === "controls" || document.body.dataset[layer] === "true";
+        const missing = ["paper", "marquee", "controls"].filter(layer =>
+          active(layer) && states[layer] === "missing");
+        const pending = ["paper", "marquee", "controls"].some(layer =>
+          active(layer) && states[layer] === "loading");
+        status.textContent = states.cabinet === "missing"
+          ? "Cabinet PNG unavailable. Use Reload images after rendering completes."
+          : states.cabinet === "loading" ? "Loading " + combination.toLowerCase() + "…"
+          : missing.length ? "Artwork unavailable: " + missing.map(layer => layer === "paper" ? "manual" : layer).join(", ") + ". Retry with Reload images."
+          : pending ? "Cabinet ready. Loading artwork…"
+          : "720 × 1024 · " + (view === "front" ? "Front" : "Three-quarter");
+      }
+      reportAssets.push(report);
+      const stem = (surround === "thin" ? "thin-bezel/" : "") + "finish-" + selected + "-" + material + "-" + environment;
+      const filename = stem + "-" + view + ".png";
+      const controlsFilename = "controls-" + selected + "-" + material + "-" + view + ".svg";
+      const link = byId(environment + "-full");
+      link.href = filename + cacheSuffix;
+      link.textContent = "Full-size PNG ↗";
+      link.setAttribute("aria-label", "Open full-size " + finishes[selected].name + ", " + combination + ", " +
+        (view === "front" ? "front" : "three-quarter") + " cabinet PNG in a new tab");
+      byId(environment + "-model").href = stem + ".blend";
+      byId(environment + "-model").setAttribute("aria-label", "Download editable model: " + finishes[selected].name + ", " + combination);
+      byId(environment + "-skin").href = stem + "-hardware-front.png";
+      byId(environment + "-skin").hidden = surround !== "thin";
+      byId(environment + "-skin").setAttribute("aria-label", "Download transparent front: " + finishes[selected].name + ", " + combination);
+      for (const layer of surround === "thin" ? ["cabinet", "paper", "marquee"] : ["cabinet", "paper", "marquee", "controls"]) {
+        const image = document.createElement("img");
+        image.width = layer === "cabinet" || layer === "controls" ? 720 : 900;
+        image.height = layer === "cabinet" || layer === "controls" ? 1024 : 1280;
+        image.alt = layer === "cabinet"
+          ? finishes[selected].name + ", " + combination + ", " + (view === "front" ? "front view" : "three-quarter view")
+          : "";
+        image.className = layer === "cabinet" ? "hardware" : "overlay " + layer;
+        image.hidden = true;
+        image.addEventListener("load", () => {
+          if (generation !== currentGeneration) return;
+          states[layer] = "ready";
+          image.hidden = false;
+          if (layer === "cabinet") {
+            composition.dataset.ready = "true";
+            placeholder.hidden = true;
+          }
+          report();
+        });
+        image.addEventListener("error", () => {
+          if (generation !== currentGeneration) return;
+          states[layer] = "missing";
+          image.hidden = true;
+          if (layer === "cabinet") {
+            heading.textContent = "Render not available yet";
+            help.textContent = "When the files are ready, choose Reload images. No substitute or recolored image is shown.";
+          }
+          report();
+        });
+        composition.append(image);
+        image.src = (layer === "cabinet" ? filename : layer === "controls" ? controlsFilename :
+          "desktop-" + layer + "-" + view + ".png") + cacheSuffix;
+      }
+      report();
+    }
+  }
+
+  document.querySelectorAll("[data-finish]").forEach(button => {
+    button.addEventListener("click", () => {
+      selected = button.dataset.finish;
+      document.querySelectorAll("[data-finish]").forEach(choice =>
+        choice.setAttribute("aria-pressed", String(choice.dataset.finish === selected)));
+      byId("selected-name").textContent = finishes[selected].name;
+      byId("selected-materials").textContent = finishes[selected].materials;
+      drawImages();
+      drawShortlist();
+    });
+  });
+  document.querySelectorAll("[data-view]").forEach(button => {
+    button.addEventListener("click", () => {
+      view = button.dataset.view;
+      document.querySelectorAll("[data-view]").forEach(choice =>
+        choice.setAttribute("aria-pressed", String(choice.dataset.view === view)));
+      drawImages();
+    });
+  });
+  document.querySelectorAll("[data-surround]").forEach(button => {
+    button.addEventListener("click", () => {
+      surround = button.dataset.surround;
+      document.querySelectorAll("[data-surround]").forEach(choice =>
+        choice.setAttribute("aria-pressed", String(choice.dataset.surround === surround)));
+      drawImages();
+    });
+  });
+  document.querySelectorAll("[data-pairing]").forEach(button => {
+    button.addEventListener("click", () => {
+      pairing = button.dataset.pairing;
+      document.querySelectorAll("[data-pairing]").forEach(choice =>
+        choice.setAttribute("aria-pressed", String(choice.dataset.pairing === pairing)));
+      drawImages();
+      drawShortlist();
+    });
+  });
+  for (const layer of ["paper", "marquee"]) {
+    byId(layer + "-toggle").addEventListener("change", event => {
+      document.body.dataset[layer] = String(event.target.checked);
+      reportAssets.forEach(report => report());
+    });
+  }
+  document.querySelectorAll("[data-shortlist]").forEach(button => {
+    button.addEventListener("click", () => {
+      const key = currentKey(button.dataset.shortlist);
+      const removing = shortlist.includes(key);
+      shortlist = removing ? shortlist.filter(entry => entry !== key) : [...shortlist, key];
+      persist();
+      drawShortlist();
+      byId("selection-status").textContent = (removing ? "Removed " : "Shortlisted ") + labelFor(key) + ".";
+    });
+  });
+  byId("reload-images").addEventListener("click", () => {
+    cacheSuffix = "?reload=" + Date.now();
+    drawImages();
+  });
+  drawImages();
+  drawShortlist();
+})();
+</script>
+</body>
+</html>

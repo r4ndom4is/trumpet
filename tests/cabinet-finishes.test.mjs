@@ -5,8 +5,66 @@ import { access, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
-const gallery = new URL("../tools/cabinet-mockups/rendered/finish-candidates.html", import.meta.url);
+const gallery = new URL("../tools/cabinet-mockups/rendered/finish-comparison.html", import.meta.url);
 const finishes = ["crimson", "seafoam", "timber", "black-amber", "airmail", "gilt"];
+
+test("overview shows all 24 renders with identical finishes side by side in both settings", { timeout: 120000 }, async () => {
+  const browser = await chromium.launch();
+  const overview = new URL("finish-candidates.html", gallery);
+  await mkdir(new URL("../test-results/cabinet-finishes/", import.meta.url), { recursive: true });
+  const errors = [];
+  try {
+    for (const width of [1440, 390]) {
+      const page = await browser.newPage({ viewport: { width, height: 1100 } });
+      page.on("pageerror", error => errors.push(error.message));
+      page.on("requestfailed", request => errors.push(request.url()));
+      await page.goto(overview.href);
+      for (const view of ["front", "angle"]) {
+        await page.locator(`[data-view='${view}']`).click();
+        await page.waitForFunction(() => {
+          const images = [...document.images];
+          return images.length === 72 && images.every(image => image.complete && image.naturalWidth > 0);
+        });
+        assert.equal(await page.locator(".cabinet-row").count(), 12);
+        assert.equal(await page.locator(".hardware").count(), 24);
+        assert.equal(await page.locator(".status:visible").count(), 0);
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        for (const finish of finishes) {
+          for (const material of ["light", "dark"]) {
+            const row = page.locator(`#${finish}-${material}`);
+            assert.equal(await row.isVisible(), true);
+            const left = await row.locator("[data-environment='light'] .composition").boundingBox();
+            const right = await row.locator("[data-environment='dark'] .composition").boundingBox();
+            assert.ok(Math.abs(left.y - right.y) < 1, "settings must remain side by side, even on mobile");
+            assert.ok(left.x + left.width <= right.x, "settings do not overlap");
+            for (const environment of ["light", "dark"]) {
+              const figure = row.locator(`[data-environment='${environment}']`);
+              const stem = `thin-bezel/finish-${finish}-${material}-${environment}`;
+              assert.equal(await figure.locator(".hardware").getAttribute("src"), `${stem}-${view}.png`);
+              const paths = await figure.locator(".downloads a").evaluateAll(links => links.map(link => link.getAttribute("href")));
+              for (const path of paths) await access(new URL(path, overview));
+            }
+          }
+        }
+        await page.screenshot({ path: fileURLToPath(new URL(`../test-results/cabinet-finishes/overview-${view}-${width}.png`, import.meta.url)) });
+      }
+      await page.locator(".jump a[href='#gilt-light']").click();
+      assert.match(page.url(), /#gilt-light$/);
+      await page.locator("#gilt-light details").first().locator("summary").click();
+      assert.equal(await page.locator("#gilt-light .downloads").first().isVisible(), true);
+      await page.close();
+    }
+    const page = await browser.newPage();
+    await page.route("**/thin-bezel/finish-crimson-light-light-front.png", route => route.abort());
+    await page.goto(overview.href);
+    await page.locator("#crimson-light .status[data-error='true']").waitFor();
+    assert.match(await page.locator("#crimson-light .status[data-error='true']").textContent(), /Missing cabinet/);
+    await page.close();
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
 
 test("wide-screen finish gallery preserves all pairings, views and original models", { timeout: 120000 }, async () => {
   const browser = await chromium.launch();
