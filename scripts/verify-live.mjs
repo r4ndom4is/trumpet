@@ -120,6 +120,7 @@ try {
   })), { enabled: true, projectId: "trumpet-flight", emulators: false });
   assert.equal(await page.locator(".result-options").count(), 0);
   await page.locator("#leaderboard-open").tap();
+  await page.locator("#scores-local").tap();
   assert.equal(await page.locator("#leaderboard-list li").count(), 1);
   assert.match(await page.locator("#leaderboard").innerText(), /SAVED ON THIS DEVICE/);
   await page.locator("#leaderboard-close").tap();
