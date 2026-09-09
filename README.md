@@ -70,7 +70,9 @@ The game preserves the exact initial collision frame as an untouched 2x, nearest
 
 ## Global scores: free Firebase setup
 
-Global scores are prepared for Firebase's **Spark/no-billing** plan and disabled in the checked-in configuration until a real project is connected. No Cloud Functions, billing account, analytics, or background score polling are required. Local play and the existing on-device Top 10 remain available without Firebase or a network.
+Global scores use Firebase project **`trumpet-flight`** on the **Spark/no-billing** plan. Its Standard Firestore `(default)` database is in **`europe-west1` (Belgium)**, and Anonymous Authentication is enabled. No Cloud Functions, billing account, analytics, or background score polling are required. The game stays hosted on GitHub Pages; `r4ndom4is.github.io` is an authorized authentication domain. Local play and the existing on-device Top 10 remain available without Firebase or a network.
+
+`scripts/firebase-config.js` contains public web-app identifiers, not private credentials. To disable global scores, set `enabled: false`, re-embed, and release with a new service-worker version. Keep Firestore rules deployed from `firestore.rules`; never switch the database to open test-mode rules. Spark quotas can make global scores temporarily unavailable rather than incur billing charges.
 
 There are only two score documents, `leaderboards/daily` and `leaderboards/allTime`, with at most ten entries each. Each guest identity has at most one personal best on each board; one flight can qualify for both. Higher scores rank first and earlier tied scores keep their place. The daily window resets at **00:00 UTC**: yesterday's entries disappear from the display immediately, and the first qualifying submission replaces the previous daily document. No daily archive accumulates.
 
@@ -89,9 +91,9 @@ npm run firebase:emulators
 npm run serve:firebase
 ```
 
-Open **http://localhost:4184/trumpet/?entry=direct**. This server injects emulator-only configuration without editing the production configuration. It talks only to the `demo-trumpet-flight` Auth and Firestore emulators on this machine. Emulator operation needs Java 21 and no Google login or billing. Run `npm run test:firebase` with those emulator ports free to execute the rules and client integration suites.
+Open **http://localhost:4184/trumpet/?entry=direct**. This server injects emulator-only configuration without editing the production configuration. It talks only to the `demo-trumpet-flight` Auth and Firestore emulators on this machine. Emulator operation needs Java 21 and no Google login or billing. Run `npm run test:firebase` with those emulator ports free to execute the rules and client integration suites. Automated browser tests use `tests/serve-test.mjs` to strip real Firebase configuration before applying fixture or emulator settings, so test flights never submit to the production boards.
 
-### Connect the real project later
+### Provision another project
 
 1. Create a Firebase project on **Spark**, without linking billing. Analytics is not needed.
 2. Register a Web app, enable **Anonymous** sign-in under Authentication, and create a Cloud Firestore database in your chosen region. Keep database access locked until deploying the repository rules.

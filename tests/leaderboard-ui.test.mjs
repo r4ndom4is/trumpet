@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile, mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
-import { serve } from "../scripts/serve.mjs";
+import { serve } from "./serve-test.mjs";
 
 const uiSource = await readFile(new URL("../scripts/leaderboard.js", import.meta.url), "utf8");
 const cssSource = await readFile(new URL("../scripts/cabinet.css", import.meta.url), "utf8");

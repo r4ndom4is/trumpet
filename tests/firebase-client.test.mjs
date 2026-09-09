@@ -87,7 +87,7 @@ test("Disabled adapter and bundled SDK are inert, inline-safe and contain the pu
   const config = await readFile(new URL("../scripts/firebase-config.js", import.meta.url), "utf8");
   let requests = 0;
   const window = { fetch: () => { requests++; throw new Error("Unexpected network"); } };
-  vm.runInNewContext(`${config}\n${source}`, { window, console, setTimeout, clearTimeout });
+  vm.runInNewContext(`${config}\nwindow.TRUMPET_FIREBASE.enabled = false;\n${source}`, { window, console, setTimeout, clearTimeout });
   assert.equal(window.TRUMPET_GLOBAL_SCORES.enabled, false);
   assert.equal(requests, 0);
   assert.doesNotMatch(source, /<\/script/i);

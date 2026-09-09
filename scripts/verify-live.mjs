@@ -20,7 +20,7 @@ try {
   assert.equal(await page.locator(".marquee").innerText(), "trumpet flight.");
   const cachedArt = await page.evaluate(async () => {
     const keys = await caches.keys();
-    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v23")));
+    const cache = await caches.open(keys.find(key => key.includes("trumpet-flight:") && key.endsWith(":v24")));
     return (await cache.keys()).filter(request => request.url.includes("/assets/cabinet/v2/")).map(request => new URL(request.url).pathname.split("/").at(-1)).sort();
   });
   assert.deepEqual(cachedArt, (await readdir(new URL("../assets/cabinet/v2/", import.meta.url))).filter(file => file.endsWith(".webp")).sort());
@@ -78,6 +78,9 @@ try {
   assert.equal(await page.locator("#mute-indicator").isHidden(), true);
   await mkdir(new URL("../test-results/", import.meta.url), { recursive: true });
   await page.screenshot({ path: "test-results/live-mobile.png", fullPage: true });
+  const boards = await page.evaluate(() => window.TRUMPET_GLOBAL_SCORES.read({ force: true }));
+  assert.equal(boards.uid, null, "Public board reads must not create an anonymous account");
+  assert.ok(boards.daily.order.length <= 10 && boards.allTime.order.length <= 10);
   await context.setOffline(true);
   await page.reload();
   await page.waitForFunction(() => document.getElementById("app-status").textContent === "Offline. Ready to fly.");
@@ -110,7 +113,11 @@ try {
   assert.deepEqual(await page.locator("#overlay").evaluate(node => ({
     color: getComputedStyle(node).backgroundColor, image: getComputedStyle(node).backgroundImage
   })), { color: "rgba(0, 0, 0, 0.64)", image: "none" });
-  assert.equal(await page.evaluate(() => window.TRUMPET_FIREBASE.enabled), false);
+  assert.deepEqual(await page.evaluate(() => ({
+    enabled: window.TRUMPET_FIREBASE.enabled,
+    projectId: window.TRUMPET_FIREBASE.projectId,
+    emulators: window.TRUMPET_FIREBASE.emulators
+  })), { enabled: true, projectId: "trumpet-flight", emulators: false });
   assert.equal(await page.locator(".result-options").count(), 0);
   await page.locator("#leaderboard-open").tap();
   assert.equal(await page.locator("#leaderboard-list li").count(), 1);

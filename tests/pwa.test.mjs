@@ -4,7 +4,7 @@ import { readFile, readdir, mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { serve } from "../scripts/serve.mjs";
+import { serve, localOnlyConfig } from "./serve-test.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 test("Pocket Arcade header matches the manual's square-tile mark", () => {
@@ -1567,7 +1567,7 @@ test("Trumpet Flight: gameplay, installation, offline and safe updates", { timeo
       await context.setOffline(true);
       const offlineResponse = await page.goto(url + "?scoutTheme=dark");
       assert.equal((await offlineResponse.text()).replace(/\r\n/g, "\n"),
-        html.replace(/\r\n/g, "\n").replace('data-cabinet-entry="auto"', 'data-cabinet-entry="direct"'));
+        localOnlyConfig(html).replace(/\r\n/g, "\n").replace('data-cabinet-entry="auto"', 'data-cabinet-entry="direct"'));
       await page.waitForFunction(() => document.getElementById("app-status").textContent === "Offline. Ready to fly.");
       assert.equal(await page.evaluate(() => {
         const api = window.TRUMPET_ENVIRONMENTS;

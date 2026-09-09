@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
-import { serve } from "../scripts/serve.mjs";
+import { serve } from "./serve-test.mjs";
 
 test("Cabinet arrival: intentional activation, accessible fallback and offline continuity", { timeout: 120000 }, async t => {
   const server = serve();

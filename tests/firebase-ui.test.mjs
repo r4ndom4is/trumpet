@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
-import { serve } from "../scripts/serve.mjs";
+import { serve } from "./serve-test.mjs";
 
 test("Generated cabinet UI publishes through the real Firebase adapter and emulator rules", { timeout: 120000 }, async () => {
   const host = process.env.FIRESTORE_EMULATOR_HOST;

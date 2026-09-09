@@ -5,7 +5,7 @@ import { readFile, mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
 import { chromium } from "playwright";
-import { serve } from "../scripts/serve.mjs";
+import { serve } from "./serve-test.mjs";
 
 const source = await readFile(new URL("../scripts/environments.js", import.meta.url), "utf8");
 const window = {};

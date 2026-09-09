@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
-import { serve } from "../scripts/serve.mjs";
+import { serve } from "./serve-test.mjs";
 import { resultPreview } from "../scripts/serve-result-preview.mjs";
 
 test("local result alternatives preserve scores and keep retry in place", { timeout: 60000 }, async () => {
