@@ -194,19 +194,26 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
         assert.equal(await page.locator("#manual-open").evaluate(node => getComputedStyle(node).outlineStyle), "solid");
       } finally { await context.close(); }
     });
-    await t.test("game and surrounding space reject selection while the manual stays selectable", async () => {
+    await t.test("game, subtitle and surrounding space reject selection while the manual stays selectable", async () => {
       const { context, page } = await open({}, {
         viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true
       }, touchBrowser);
       try {
+        await page.locator("#play").tap();
         const tapHighlightSupported = await page.evaluate(() => CSS.supports("-webkit-tap-highlight-color", "transparent"));
-        for (const selector of [".shell > main", ".cabinet", "#screen", "#game"]) {
+        for (const selector of [".shell", ".shell > header", ".brand", ".edition", "#compact-tagline .eyebrow",
+          ".shell > main", ".cabinet", "#screen", "#game"]) {
           assert.deepEqual(await page.locator(selector).evaluate(node => ({
             selection: getComputedStyle(node).webkitUserSelect,
             highlight: getComputedStyle(node).getPropertyValue("-webkit-tap-highlight-color"),
             canceled: !node.dispatchEvent(new Event("selectstart", { bubbles: true, cancelable: true }))
           })), { selection: "none", highlight: tapHighlightSupported ? "rgba(0, 0, 0, 0)" : "", canceled: true });
         }
+        assert.equal(await page.locator("#compact-tagline .eyebrow").evaluate(node =>
+          node.firstChild.dispatchEvent(new Event("selectstart", { bubbles: true, cancelable: true }))), false);
+        await page.locator("#compact-tagline .eyebrow").dblclick();
+        assert.equal(await page.evaluate(() => window.getSelection().toString()), "");
+        assert.equal(await page.locator(".cabinet").getAttribute("data-flight-state"), "playing");
         await page.locator("#leaderboard-open").tap();
         assert.equal(await page.locator("#leaderboard-title").evaluate(node =>
           node.dispatchEvent(new Event("selectstart", { bubbles: true, cancelable: true }))), false);
@@ -224,6 +231,20 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
           selection: getComputedStyle(node).webkitUserSelect,
           canceled: !node.dispatchEvent(new Event("selectstart", { bubbles: true, cancelable: true }))
         })), { selection: "text", canceled: false });
+        await page.locator(".manual-content p").first().dblclick();
+        assert.notEqual(await page.evaluate(() => window.getSelection().toString()), "");
+        await page.locator("#manual-close").tap();
+        assert.deepEqual(await page.evaluate(() => {
+          const fields = document.createElement("div");
+          fields.innerHTML = '<input value="Editable"><textarea>Editable</textarea><div contenteditable="true"><strong>Editable</strong></div>';
+          document.querySelector(".shell").append(fields);
+          const result = [...fields.querySelectorAll("input, textarea, strong")].map(node => ({
+            selection: getComputedStyle(node).webkitUserSelect,
+            canceled: !node.dispatchEvent(new Event("selectstart", { bubbles: true, cancelable: true }))
+          }));
+          fields.remove();
+          return result;
+        }), Array.from({ length: 3 }, () => ({ selection: "text", canceled: false })));
       } finally { await context.close(); }
     });
     for (const viewport of [

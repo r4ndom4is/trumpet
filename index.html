@@ -298,7 +298,7 @@ body .shell {
 .shell .compact-tagline .eyebrow::before { display: none; }
 .shell .compact-tagline .eyebrow { font-size: clamp(10px, 2.6vw, 11px); line-height: 1.4; letter-spacing: .8px; color: var(--cp-accent); }
 .shell > main { position: relative; flex: 1; width: 100%; min-height: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0; gap: 0; }
-.shell > main {
+.shell, .shell * {
   user-select: none; -webkit-user-select: none;
   -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
 }
@@ -456,7 +456,7 @@ body .shell {
 .shell .cabinet-footer { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; overflow: hidden; clip-path: inset(50%); font-size: 10px; }
 .shell .cabinet > .notice { position: fixed; bottom: 8px; left: 12px; right: 12px; z-index: 4; width: min(460px, calc(100% - 24px)); margin: 0 auto; padding: 10px; background: var(--cp-panel-strong); }
 .shell .theme-notice { pointer-events: none; }
-.shell :is(input, textarea, [contenteditable="true"]), .manual, .manual * {
+.shell :is(input, textarea, select, [contenteditable="true"], [contenteditable="true"] *), .manual, .manual * {
   user-select: text; -webkit-user-select: text; -webkit-touch-callout: default;
 }
 .manual .intro-panel { display: block; margin: 0; }
@@ -4089,7 +4089,7 @@ window.TRUMPET_CABINET = {"version":2,"finish":"crimson-light","environments":["
     if (event.target.closest("button, .dialog") || (event.pointerType === "mouse" && event.button !== 0)) return;
     event.preventDefault(); action();
   });
-  document.querySelector(".shell > main").addEventListener("selectstart", event => {
+  document.querySelector(".shell").addEventListener("selectstart", event => {
     const target = event.target instanceof Element ? event.target : event.target.parentElement;
     if (!target?.closest('.manual, input, textarea, select, [contenteditable="true"]')) event.preventDefault();
   });
