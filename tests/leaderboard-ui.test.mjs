@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile, mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 import { serve } from "./serve-test.mjs";
 
 const uiSource = await readFile(new URL("../scripts/leaderboard.js", import.meta.url), "utf8");
@@ -56,13 +56,15 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const url = `http://127.0.0.1:${server.address().port}/trumpet/`;
   const browser = await chromium.launch();
+  let touchBrowser = browser;
   const errors = [];
   const artifacts = process.env.GLOBAL_SCORES_ARTIFACT_DIR;
   if (artifacts) await mkdir(artifacts, { recursive: true });
-  async function open(scenario = {}, options = {}) {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: "block", ...options });
+  async function open(scenario = {}, options = {}, engine = browser) {
+    const context = await engine.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: "block", ...options });
     await context.addInitScript(scenario => {
       window.__scoreScenario = scenario;
+      if (scenario.records) localStorage.setItem("trumpet-flight-top10", JSON.stringify(scenario.records));
       if (scenario.savedTag) localStorage.setItem("trumpet-flight-arcade-tag", scenario.savedTag);
       if (scenario.best !== undefined) localStorage.setItem("trumpet-flight-best", String(scenario.best));
     }, scenario);
@@ -98,13 +100,138 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
     assert.ok(result.scrollHeight <= result.height + 1 && result.scrollWidth <= result.width + 1 &&
       result.contained, `${selector} fits without scrolling or clipped controls: ${JSON.stringify(result)}`);
   }
+  const localRecords = Array.from({ length: 10 }, (_, index) => ({ score: 40 - index, at: Date.now() - index * 86400000 }));
+  async function rankedListFits(page) {
+    await page.waitForFunction(() => {
+      const rows = document.querySelector(".score-rows").getBoundingClientRect();
+      const items = [...document.querySelectorAll("#leaderboard-list li")];
+      return items.length === 10 && items.every((node, index) => {
+        const box = node.getBoundingClientRect();
+        const previous = items[index - 1]?.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && box.top >= rows.top - 1 && box.bottom <= rows.bottom + 1 &&
+          Math.abs(box.left - rows.left) < 1 && Math.abs(box.right - rows.right) < 1 &&
+          (!previous || box.top >= previous.bottom - .5) &&
+          [...node.children].every(child => {
+            const bounds = child.getBoundingClientRect();
+            return bounds.left >= box.left - 1 && bounds.right <= box.right + 1 &&
+              bounds.top >= box.top - 1 && bounds.bottom <= box.bottom + 1;
+          }) && parseFloat(getComputedStyle(node.querySelector("strong")).fontSize) >= 14;
+      });
+    });
+    assert.equal(await page.locator("#leaderboard-list li:visible").count(), 10);
+    assert.equal(await page.locator("#scores-next, #scores-previous, #scores-page").count(), 0);
+    await fits(page, "#leaderboard");
+    assert.equal(await page.locator("#leaderboard button:visible").evaluateAll(nodes =>
+      nodes.every(node => {
+        const box = node.getBoundingClientRect();
+        return box.width >= 44 && box.height >= 44;
+      })), true, "filters and close control retain touch-sized targets");
+    assert.equal(await page.locator("#leaderboard button:visible, #leaderboard-title").evaluateAll(nodes =>
+      nodes.every((node, index) => {
+        const box = node.getBoundingClientRect();
+        return nodes.slice(index + 1).every(other => {
+          const next = other.getBoundingClientRect();
+          return Math.min(box.right, next.right) - Math.max(box.left, next.left) <= 1 ||
+            Math.min(box.bottom, next.bottom) - Math.max(box.top, next.top) <= 1;
+        });
+      })), true, "title and filter hit targets do not overlap");
+  }
   try {
+    if (process.env.GLOBAL_SCORES_TOUCH_BROWSER === "webkit") touchBrowser = await webkit.launch();
+    await t.test("both scopes keep one complete ranked column through small-screen rotations", async () => {
+      const { context, page } = await open({ records: localRecords }, {
+        viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true
+      }, touchBrowser);
+      try {
+        await page.locator("#leaderboard-open").tap();
+        for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }, { width: 390, height: 844 }]) {
+          await page.setViewportSize(viewport);
+          await rankedListFits(page);
+          if (artifacts) await page.screenshot({ path: resolve(artifacts, `scores-touch-${viewport.width}.png`) });
+          await page.locator("#scores-local").tap();
+          assert.equal(await page.locator(".score-tabs").isVisible(), false);
+          await rankedListFits(page);
+          assert.deepEqual(await page.locator("#leaderboard-list strong").allTextContents(), localRecords.map(record => String(record.score)));
+          if (artifacts) await page.screenshot({ path: resolve(artifacts, `scores-touch-local-${viewport.width}.png`) });
+          await page.locator("#scores-global").tap();
+        }
+        await page.locator("#leaderboard-close").tap();
+        await page.waitForFunction(() => !document.getElementById("leaderboard").open);
+        assert.equal(await page.locator(".shell > header").isVisible(), true);
+      } finally { await context.close(); }
+    });
+    await t.test("touch-closing scores clears the deck focus decoration without losing keyboard focus", async () => {
+      const { context, page } = await open({}, {
+        viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true
+      }, touchBrowser);
+      try {
+        const opener = page.locator("#leaderboard-open");
+        await opener.focus();
+        await page.keyboard.press("Enter");
+        await page.locator("#leaderboard-close").tap();
+        await page.waitForFunction(() => !document.getElementById("leaderboard").open &&
+          document.activeElement.id === "leaderboard-open");
+        assert.equal(await opener.evaluate(node => getComputedStyle(node).outlineStyle), "none");
+        await page.waitForFunction(() =>
+          getComputedStyle(document.getElementById("leaderboard-open"), "::before").opacity === "0");
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Escape");
+        await page.waitForFunction(() => !document.getElementById("leaderboard").open &&
+          document.activeElement.id === "leaderboard-open");
+        assert.equal(await opener.evaluate(node => getComputedStyle(node).outlineStyle), "solid");
+        assert.equal(await opener.evaluate(node => getComputedStyle(node).outlineWidth), "2px");
+        await opener.tap();
+        await page.locator("#leaderboard-close").tap();
+        await page.waitForFunction(() => !document.getElementById("leaderboard").open);
+        assert.equal(await opener.evaluate(node => getComputedStyle(node).outlineStyle), "none");
+        await page.locator("#manual-open").tap();
+        await page.locator("#manual-close").tap();
+        await page.waitForFunction(() => document.activeElement.id === "manual-open");
+        assert.equal(await page.locator("#manual-open").evaluate(node => getComputedStyle(node).outlineStyle), "none");
+        await page.keyboard.press("Enter");
+        await page.keyboard.press("Escape");
+        await page.waitForFunction(() => !document.getElementById("manual").open);
+        assert.equal(await page.locator("#manual-open").evaluate(node => getComputedStyle(node).outlineStyle), "solid");
+      } finally { await context.close(); }
+    });
+    await t.test("game and surrounding space reject selection while the manual stays selectable", async () => {
+      const { context, page } = await open({}, {
+        viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true
+      }, touchBrowser);
+      try {
+        const tapHighlightSupported = await page.evaluate(() => CSS.supports("-webkit-tap-highlight-color", "transparent"));
+        for (const selector of [".shell > main", ".cabinet", "#screen", "#game"]) {
+          assert.deepEqual(await page.locator(selector).evaluate(node => ({
+            selection: getComputedStyle(node).webkitUserSelect,
+            highlight: getComputedStyle(node).getPropertyValue("-webkit-tap-highlight-color"),
+            canceled: !node.dispatchEvent(new Event("selectstart", { bubbles: true, cancelable: true }))
+          })), { selection: "none", highlight: tapHighlightSupported ? "rgba(0, 0, 0, 0)" : "", canceled: true });
+        }
+        await page.locator("#leaderboard-open").tap();
+        assert.equal(await page.locator("#leaderboard-title").evaluate(node =>
+          node.dispatchEvent(new Event("selectstart", { bubbles: true, cancelable: true }))), false);
+        assert.equal(await page.locator("#leaderboard-title").evaluate(node =>
+          node.firstChild.dispatchEvent(new Event("selectstart", { bubbles: true, cancelable: true }))), false);
+        const close = await page.locator("#leaderboard-close").boundingBox();
+        assert.ok(close.width >= 48 && close.height >= 48);
+        assert.equal(await page.locator("#leaderboard-close svg").evaluate(node =>
+          node.getBoundingClientRect().width), 24);
+        await fits(page, "#leaderboard");
+        if (artifacts) await page.screenshot({ path: resolve(artifacts, "scores-touch.png") });
+        await page.locator("#leaderboard-close").tap();
+        await page.locator("#manual-open").tap();
+        assert.deepEqual(await page.locator(".manual-content p").first().evaluate(node => ({
+          selection: getComputedStyle(node).webkitUserSelect,
+          canceled: !node.dispatchEvent(new Event("selectstart", { bubbles: true, cancelable: true }))
+        })), { selection: "text", canceled: false });
+      } finally { await context.close(); }
+    });
     for (const viewport of [
       { width: 320, height: 568 }, { width: 390, height: 844 },
       { width: 667, height: 375 }, { width: 1440, height: 1000 }
     ]) {
       await t.test(`scores stay inside the live screen at ${viewport.width}x${viewport.height}`, async () => {
-        const { context, page } = await open({}, { viewport, colorScheme: viewport.width > 1000 ? "dark" : "light" });
+        const { context, page } = await open({ records: localRecords }, { viewport, colorScheme: viewport.width > 1000 ? "dark" : "light" });
         try {
           assert.equal(await page.evaluate(() => window.__scoreCalls.reads), 0);
           await page.locator("#play").click();
@@ -124,29 +251,24 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
           }), true);
           assert.equal(await page.locator("#game").isVisible(), false);
           assert.equal(await page.locator("#leaderboard-refresh, #leaderboard-enter, #score-submit-open").count(), 0);
-          const paged = await page.locator(".score-page-controls").isVisible();
-          assert.equal(await page.locator("#leaderboard-list li:visible").count(), paged ? 5 : 10);
-          if (paged) {
-            await page.locator("#scores-next").click();
-            assert.deepEqual(await page.locator("#leaderboard-list li:visible").evaluateAll(nodes =>
-              nodes.map(node => node.dataset.rank)), ["06", "07", "08", "09", "10"]);
-            await page.locator("#scores-previous").click();
-          }
-          await fits(page, "#leaderboard");
-          if (viewport.width === 390 || viewport.width === 1440) {
-            assert.equal(await page.evaluate(() => {
-              const last = document.querySelector("#leaderboard-list li:last-child").getBoundingClientRect();
-              const rows = document.querySelector(".score-rows").getBoundingClientRect();
-              return last.bottom <= rows.bottom + 1;
-            }), true, "all ten entries fit without scrolling on the standard phone and desktop");
-          }
+          await rankedListFits(page);
           if (artifacts) await page.screenshot({ path: resolve(artifacts, `scores-${viewport.width}.png`) });
           await page.locator("#scores-allTime").click();
-          assert.equal(await page.locator("#scores-allTime").getAttribute("aria-selected"), "true");
+          assert.equal(await page.locator("#scores-allTime").getAttribute("aria-checked"), "true");
+          await page.locator("#scores-global").focus();
           await page.keyboard.press("ArrowRight");
-          assert.equal(await page.locator("#scores-local").getAttribute("aria-selected"), "true");
+          assert.equal(await page.locator("#scores-local").getAttribute("aria-checked"), "true");
+          assert.equal(await page.locator(".score-tabs").isVisible(), false);
+          assert.equal(await page.locator("#scores-local-context").isVisible(), true);
+          await rankedListFits(page);
+          if (artifacts) await page.screenshot({ path: resolve(artifacts, `scores-local-${viewport.width}.png`) });
+          await page.keyboard.press("ArrowLeft");
+          assert.equal(await page.locator("#scores-global").getAttribute("aria-checked"), "true");
+          assert.equal(await page.locator(".score-tabs").isVisible(), true);
+          assert.equal(await page.locator("#scores-allTime").getAttribute("aria-checked"), "true");
+          await page.locator("#scores-allTime").focus();
           await page.keyboard.press("Home");
-          assert.equal(await page.locator("#scores-daily").getAttribute("aria-selected"), "true");
+          assert.equal(await page.locator("#scores-daily").getAttribute("aria-checked"), "true");
           await page.locator("#leaderboard-list li").first().click();
           assert.equal(await page.locator(".cabinet").getAttribute("data-flight-state"), "paused");
           await page.keyboard.press("Escape");
@@ -251,6 +373,115 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
         } finally { await context.close(); }
       });
     }
+    await t.test("initials wheels have crisp mouse detents, accumulate trackpad motion and preserve zoom", async () => {
+      const { context, page } = await open({ delaySubmit: true });
+      try {
+        await page.evaluate(() => window.__finishScore(24));
+        const first = page.locator(".initial-character").first();
+        await first.waitFor({ state: "visible" });
+        await first.hover();
+        await page.mouse.wheel(0, 120);
+        await page.waitForFunction(() => document.getElementById("leaderboard-name").value === "BAA");
+        assert.equal(await first.getAttribute("aria-valuetext"), "B");
+        await page.mouse.wheel(0, -120);
+        await page.waitForFunction(() => document.getElementById("leaderboard-name").value === "AAA");
+        const wheel = async options => first.evaluate((node, options) => {
+          const event = new WheelEvent("wheel", { bubbles: true, cancelable: true, ...options });
+          node.dispatchEvent(event);
+          return event.defaultPrevented;
+        }, options);
+        for (let i = 0; i < 3; i++) assert.equal(await wheel({ deltaY: 12 }), true);
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), "AAA");
+        await wheel({ deltaY: 12 });
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), "BAA");
+        assert.equal(await wheel({ deltaY: 120, ctrlKey: true }), false);
+        assert.equal(await wheel({ deltaX: 100, deltaY: 12 }), false);
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), "BAA");
+        await wheel({ deltaY: -3, deltaMode: 1 });
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), "AAA");
+        await wheel({ deltaY: -1, deltaMode: 2 });
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), "9AA");
+        await wheel({ deltaY: 120 });
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), "AAA");
+        assert.equal(await first.getAttribute("aria-valuenow"), "0");
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        await wheel({ deltaY: 120 });
+        assert.equal(await first.locator(".initial-reel").evaluate(node => node.getAnimations().length), 0);
+        await page.locator("#leaderboard-publish").click();
+        assert.equal(await first.getAttribute("aria-disabled"), "true");
+        const saved = await page.locator("#leaderboard-name").inputValue();
+        await wheel({ deltaY: 120 });
+        await first.press("ArrowUp");
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), saved);
+        assert.equal(await page.evaluate(() => window.__scoreCalls.submits.length), 1);
+        await page.evaluate(() => window.__releaseSubmit());
+      } finally { await context.close(); }
+    });
+    await t.test("touch wheels follow the finger and snap without scrolling the cabinet or spilling into another slot", async () => {
+      const { context, page } = await open({}, { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+      try {
+        await page.evaluate(() => window.__finishScore(24));
+        const first = page.locator(".initial-character").first();
+        await first.waitFor({ state: "visible" });
+        const box = await first.boundingBox(), second = await page.locator(".initial-character").nth(1).boundingBox();
+        const x = box.x + box.width/2, y = box.y + box.height/2;
+        const cdp = await context.newCDPSession(page);
+        const touch = (type, xx = x, yy = y) => cdp.send("Input.dispatchTouchEvent", {
+          type, touchPoints: type === "touchEnd" || type === "touchCancel" ? [] : [{ x: xx, y: yy, id: 1 }]
+        });
+        await touch("touchStart");
+        await touch("touchMove", x, y - box.height * .3);
+        assert.equal(await first.getAttribute("data-dragging"), "true");
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), "AAA");
+        await touch("touchMove", second.x + second.width/2, y - box.height * 1.2);
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), "BAA");
+        await touch("touchEnd");
+        assert.equal(await first.getAttribute("data-dragging"), null);
+        const duration = await first.locator(".initial-reel").evaluate(node => node.getAnimations()[0]?.effect.getTiming().duration);
+        assert.equal(duration, 100);
+        await first.locator(".initial-reel").evaluate(node => Promise.all(node.getAnimations().map(animation => animation.finished)));
+        assert.equal(await page.evaluate(() => scrollY), 0);
+        await fits(page, "#leaderboard-entry");
+        await touch("touchStart");
+        await touch("touchMove", x, y + box.height * .7);
+        await touch("touchEnd");
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), "AAA", "release chooses the nearest letter");
+        await touch("touchStart");
+        await touch("touchMove", x, y - box.height * .3);
+        await touch("touchCancel");
+        assert.equal(await first.getAttribute("data-dragging"), null);
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), "AAA");
+        await enterTag(page, "Z09");
+        assert.equal(await page.locator("#leaderboard-name").inputValue(), "Z09");
+        if (artifacts) await page.screenshot({ path: resolve(artifacts, "scrollable-initials-phone.png") });
+        await cdp.detach();
+      } finally { await context.close(); }
+    });
+    await t.test("initial detents click quietly only when sound is enabled", async () => {
+      for (const muted of [false, true]) {
+        const { context, page } = await open();
+        try {
+          if (muted) await page.locator("#sound").click();
+          await page.evaluate(() => {
+            window.__detentTones = 0;
+            const create = AudioContext.prototype.createOscillator;
+            AudioContext.prototype.createOscillator = function() {
+              const oscillator = create.call(this), set = oscillator.frequency.setValueAtTime;
+              oscillator.frequency.setValueAtTime = function(value, ...args) {
+                if (value === 1200) window.__detentTones++;
+                return set.call(this, value, ...args);
+              };
+              return oscillator;
+            };
+            window.__finishScore(24);
+          });
+          await page.getByRole("button", { name: "Next first initial", exact: true }).click();
+          if (!muted) await page.waitForFunction(() => window.__detentTones === 1);
+          else await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          assert.equal(await page.evaluate(() => window.__detentTones), muted ? 0 : 1);
+        } finally { await context.close(); }
+      }
+    });
     await t.test("first-time ready shows a painted rider and one instruction, without empty counters", async () => {
       for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 1000 }]) {
         const { context, page } = await open({ enabled: false }, { viewport, colorScheme: viewport.width > 1000 ? "dark" : "light" });
@@ -284,12 +515,12 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
         await page.locator("#run-save").click();
         await page.locator("#leaderboard-open").click();
         await page.locator("#scores-allTime").click();
-        assert.equal(await page.locator("#scores-allTime").getAttribute("aria-selected"), "true");
+        assert.equal(await page.locator("#scores-allTime").getAttribute("aria-checked"), "true");
         assert.equal(await page.evaluate(() => window.__scoreCalls.reads), 1);
         await page.evaluate(() => window.__releaseSubmit());
         await page.waitForFunction(() => window.__scoreCalls.completed === 1);
         assert.equal(await page.locator("#leaderboard").isVisible(), true);
-        assert.equal(await page.locator("#scores-allTime").getAttribute("aria-selected"), "true");
+        assert.equal(await page.locator("#scores-allTime").getAttribute("aria-checked"), "true");
       } finally { await context.close(); }
     });
     await t.test("unconfigured Firebase sends no requests and leaves local scores usable", async () => {
@@ -298,7 +529,7 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
         await page.evaluate(() => window.__finishScore(12));
         await page.locator("#leaderboard-open").click();
         assert.deepEqual(await page.locator("#leaderboard-list strong").allTextContents(), ["12"]);
-        await page.locator("#scores-daily").click();
+        await page.locator("#scores-global").click();
         assert.match(await page.locator("#leaderboard-empty").textContent(), /not connected/);
         assert.equal(await page.locator("#leaderboard-entry").isVisible(), false);
         assert.equal(await page.evaluate(() => window.__scoreCalls.reads), 0);
@@ -473,6 +704,7 @@ test("Cabinet score screen: local fallback, global ranking and optional arcade-t
     });
     assert.deepEqual(errors, []);
   } finally {
+    if (touchBrowser !== browser) await touchBrowser.close();
     await browser.close();
     await new Promise(resolve => server.close(resolve));
   }

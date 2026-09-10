@@ -9,6 +9,9 @@
  * (cutoff, gain, attack, close, bend, q, sustain) is passed through as tone()'s options.
  */
 window.TRUMPET_SOUNDS = {
+  initial: { id: "initial-detent", notes: [
+    { freq: 1200, dur: 0.022, to: 600, at: 0, wave: "triangle", cutoff: 2600, gain: 0.016, attack: 0.001, sustain: 0.25 }
+  ] },
   flap: { id: "flap-phrase-1", notes: [
     { freq: 196, dur: 0.026, to: 196, at: 0, wave: "brass", cutoff: 650, gain: 0.0425, attack: 0.005 },
     { freq: 174.44, dur: 0.032, to: 174.44, at: 0.026, wave: "brass", cutoff: 700, gain: 0.0375, attack: 0.005 }
